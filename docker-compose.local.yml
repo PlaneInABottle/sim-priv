@@ -3,17 +3,21 @@ services:
     build:
       context: .
       dockerfile: docker/app.Dockerfile
+    restart: unless-stopped
     ports:
       - '3000:3000'
     deploy:
       resources:
         limits:
-          memory: 8G
+          memory: 16G
+        reservations:
+          memory: 12G
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-simstudio}
       - BETTER_AUTH_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_IS_HOSTED=${NEXT_PUBLIC_IS_HOSTED:-false}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev-secret-at-least-32-characters-long}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-dev-encryption-key-at-least-32-chars}
       - API_ENCRYPTION_KEY=${API_ENCRYPTION_KEY:-}
@@ -32,8 +36,8 @@ services:
       realtime:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '--quiet', 'http://127.0.0.1:3000']
-      interval: 90s
+      test: ['CMD', 'curl', '-f', 'http://127.0.0.1:3000']
+      interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -59,10 +63,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 16G
+        reservations:
+          memory: 12G
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '--quiet', 'http://127.0.0.1:3002/health']
-      interval: 90s
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:3002/health']
+      interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
@@ -82,9 +88,9 @@ services:
 
   db:
     image: pgvector/pgvector:pg17
-    restart: always
+    restart: unless-stopped
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}

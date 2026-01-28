@@ -16,8 +16,10 @@ COPY packages/db/package.json ./packages/db/package.json
 COPY packages/tsconfig/package.json ./packages/tsconfig/package.json
 
 # Install dependencies with cache mount for faster builds
+# Use --omit=dev to keep image small, then add drizzle-kit explicitly (needed for migrations)
 RUN --mount=type=cache,id=bun-cache,target=/root/.bun/install/cache \
-    bun install --ignore-scripts
+    bun install --omit=dev --ignore-scripts && \
+    bun add drizzle-kit --ignore-scripts
 
 # ========================================
 # Runner Stage: Production Environment
@@ -48,3 +50,7 @@ COPY --chown=nextjs:nodejs packages/db ./packages/db
 USER nextjs
 
 WORKDIR /app/packages/db
+
+# Key change: provide a sensible default command so the image can run standalone.
+# docker-compose can still override this command as needed.
+CMD ["bun", "run", "db:migrate"]
