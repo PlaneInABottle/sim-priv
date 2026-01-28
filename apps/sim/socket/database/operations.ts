@@ -15,6 +15,7 @@ import {
   EDGE_OPERATIONS,
   EDGES_OPERATIONS,
   OPERATION_TARGETS,
+  SUBBLOCK_OPERATIONS,
   SUBFLOW_OPERATIONS,
   VARIABLE_OPERATIONS,
   WORKFLOW_OPERATIONS,
@@ -196,6 +197,9 @@ export async function persistWorkflowOperation(workflowId: string, operation: an
           break
         case OPERATION_TARGETS.SUBFLOW:
           await handleSubflowOperationTx(tx, workflowId, op, payload)
+          break
+        case OPERATION_TARGETS.SUBBLOCK:
+          await handleSubblockOperationTx(tx, workflowId, op, payload)
           break
         case OPERATION_TARGETS.VARIABLE:
           await handleVariableOperationTx(tx, workflowId, op, payload)
@@ -1704,6 +1708,64 @@ async function handleSubflowOperationTx(
     default:
       logger.warn(`Unknown subflow operation: ${operation}`)
       throw new Error(`Unsupported subflow operation: ${operation}`)
+  }
+}
+
+// Subblock operations - updates workflowBlocks.subBlocks JSON field
+async function handleSubblockOperationTx(
+  tx: any,
+  workflowId: string,
+  operation: string,
+  payload: any
+) {
+  switch (operation) {
+    case SUBBLOCK_OPERATIONS.UPDATE: {
+      if (!payload.blockId || !payload.subblockId) {
+        throw new Error('Missing required fields for subblock update operation')
+      }
+
+      const [block] = await tx
+        .select({ subBlocks: workflowBlocks.subBlocks })
+        .from(workflowBlocks)
+        .where(
+          and(eq(workflowBlocks.id, payload.blockId), eq(workflowBlocks.workflowId, workflowId))
+        )
+        .limit(1)
+
+      if (!block) {
+        throw new Error(`Block ${payload.blockId} not found in workflow ${workflowId}`)
+      }
+
+      const subBlocks = (block.subBlocks as Record<string, any>) || {}
+      if (!subBlocks[payload.subblockId]) {
+        subBlocks[payload.subblockId] = {
+          id: payload.subblockId,
+          type: 'unknown',
+          value: payload.value,
+        }
+      } else {
+        subBlocks[payload.subblockId] = {
+          ...subBlocks[payload.subblockId],
+          value: payload.value,
+        }
+      }
+
+      await tx
+        .update(workflowBlocks)
+        .set({ subBlocks, updatedAt: new Date() })
+        .where(
+          and(eq(workflowBlocks.id, payload.blockId), eq(workflowBlocks.workflowId, workflowId))
+        )
+
+      logger.debug(
+        `Updated subblock ${payload.subblockId} for block ${payload.blockId} in workflow ${workflowId}`
+      )
+      break
+    }
+
+    default:
+      logger.warn(`Unknown subblock operation: ${operation}`)
+      throw new Error(`Unsupported subblock operation: ${operation}`)
   }
 }
 

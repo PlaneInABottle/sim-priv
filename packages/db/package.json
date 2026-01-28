@@ -19,12 +19,13 @@
     }
   },
   "scripts": {
-    "db:push": "bunx drizzle-kit push --config=./drizzle.config.ts",
-    "db:migrate": "bunx drizzle-kit migrate --config=./drizzle.config.ts",
-    "db:studio": "bunx drizzle-kit studio --config=./drizzle.config.ts",
+    "db:push": "bun ../../node_modules/drizzle-kit/bin.cjs push --config=./drizzle.config.ts",
+    "db:migrate": "bun ../../node_modules/drizzle-kit/bin.cjs migrate --config=./drizzle.config.ts",
+    "db:studio": "bun ../../node_modules/drizzle-kit/bin.cjs studio --config=./drizzle.config.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.44.5",
     "postgres": "^3.4.5",
     "uuid": "^11.1.0",
