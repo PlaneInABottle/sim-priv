@@ -3,9 +3,9 @@ import type { HttpMethod, TableRow, ToolResponse } from '@/tools/types'
 export interface RequestParams {
   url: string
   method?: HttpMethod
-  headers?: TableRow[]
+  headers?: TableRow[] | string // Allow stringified JSON from UI storage
   body?: unknown
-  params?: TableRow[]
+  params?: TableRow[] | string // Allow stringified JSON from UI storage
   pathParams?: Record<string, string>
   formData?: Record<string, string | Blob>
   timeout?: number

@@ -1,0 +1,328 @@
+/**
+ * POST /api/workflows/[id]/operations
+ *
+ * Execute workflow operations via REST API.
+ * Wraps the WebSocket operation layer for programmatic workflow editing.
+ *
+ * AuthZ: Owner or workspace write/admin permission required.
+ * Supports both session auth and API-key auth (x-api-key header).
+ *
+ * Request Body:
+ * {
+ *   operation: string,     // e.g., "update-name", "batch-add-blocks"
+ *   target: string,        // e.g., "block", "blocks", "edge"
+ *   payload: any,          // Operation-specific data
+ *   timestamp?: number,    // Optional: Unix timestamp (defaults to Date.now())
+ *   broadcast?: boolean    // Optional: Notify WebSocket clients (defaults to true)
+ * }
+ *
+ * Response: { success: boolean, operationId: string, timestamp: number, broadcastSent: boolean }
+ */
+
+import { createLogger } from '@sim/logger'
+import type { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { authenticateApiKeyFromHeader, updateApiKeyLastUsed } from '@/lib/api-key/service'
+import { getSession } from '@/lib/auth'
+import { env } from '@/lib/core/config/env'
+import { generateRequestId } from '@/lib/core/utils/request'
+import { getWorkflowAccessContext, getWorkflowById } from '@/lib/workflows/utils'
+import { createErrorResponse, createSuccessResponse } from '@/app/api/workflows/utils'
+import { persistWorkflowOperation } from '@/socket/database/operations'
+import { getAllValidBlockTypes, WorkflowOperationSchema } from '@/socket/validation/schemas'
+
+const logger = createLogger('WorkflowOperationsAPI')
+
+/**
+ * Extended operation request schema.
+ * Preprocesses request to inject default timestamp before validating against WorkflowOperationSchema.
+ * Adds optional broadcast field for WebSocket notification.
+ */
+const OperationRequestSchema = z
+  .preprocess(
+    (data: any) => ({
+      ...data,
+      timestamp: data?.timestamp ?? Date.now(),
+      operationId: data?.operationId ?? crypto.randomUUID(),
+    }),
+    WorkflowOperationSchema
+  )
+  .and(
+    z.object({
+      broadcast: z.boolean().default(true),
+    })
+  )
+
+/**
+ * Authenticate user via session or API key
+ * Returns userId if authenticated, null otherwise
+ */
+async function authenticateUser(
+  request: NextRequest,
+  workflowId: string,
+  requestId: string
+): Promise<{ userId: string | null; error: NextResponse | null }> {
+  // Try session auth first
+  const session = await getSession()
+  if (session?.user?.id) {
+    return { userId: session.user.id, error: null }
+  }
+
+  const workflow = await getWorkflowById(workflowId)
+  if (!workflow) {
+    return { userId: null, error: createErrorResponse('Workflow not found', 404) }
+  }
+
+  // Try API key auth (scoped to workflow/workspace policy)
+  const apiKeyHeader = request.headers.get('x-api-key')
+  if (apiKeyHeader) {
+    const authResult = workflow.workspaceId
+      ? await authenticateApiKeyFromHeader(apiKeyHeader, {
+          workspaceId: workflow.workspaceId,
+          keyTypes: ['workspace', 'personal'],
+        })
+      : await authenticateApiKeyFromHeader(apiKeyHeader, {
+          userId: workflow.userId,
+          keyTypes: ['personal'],
+        })
+
+    if (authResult.success && authResult.userId) {
+      if (authResult.keyId) {
+        await updateApiKeyLastUsed(authResult.keyId).catch((err) => {
+          logger.warn(`[${requestId}] Failed to update API key last used timestamp:`, {
+            keyId: authResult.keyId,
+            error: err,
+          })
+        })
+      }
+      return { userId: authResult.userId, error: null }
+    }
+  }
+
+  return { userId: null, error: createErrorResponse('Unauthorized', 401) }
+}
+
+/**
+ * Validate user has write permission on the workflow
+ */
+async function validateWritePermission(
+  workflowId: string,
+  userId: string,
+  requestId: string
+): Promise<{ error: NextResponse | null }> {
+  const accessContext = await getWorkflowAccessContext(workflowId, userId)
+
+  if (!accessContext) {
+    logger.warn(`[${requestId}] Workflow ${workflowId} not found`)
+    return { error: createErrorResponse('Workflow not found', 404) }
+  }
+
+  const { workflow, workspacePermission, isOwner } = accessContext
+
+  // Owner always has write access
+  if (isOwner) {
+    return { error: null }
+  }
+
+  // Check workspace permissions for write access
+  if (workflow.workspaceId) {
+    const hasWritePermission = workspacePermission === 'write' || workspacePermission === 'admin'
+    if (hasWritePermission) {
+      return { error: null }
+    }
+  }
+
+  logger.warn(`[${requestId}] User ${userId} unauthorized to write workflow ${workflowId}`)
+  return { error: createErrorResponse('Unauthorized: Access denied to write this workflow', 403) }
+}
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const requestId = generateRequestId()
+  const { id: workflowId } = await params
+
+  try {
+    // 1. Authenticate user (session or API key)
+    const { userId, error: authError } = await authenticateUser(request, workflowId, requestId)
+    if (authError || !userId) {
+      logger.warn(`[${requestId}] Unauthorized access attempt for workflow ${workflowId}`)
+      return authError ?? createErrorResponse('Unauthorized', 401)
+    }
+
+    // 2. Validate write permission on workflow
+    const { error: permError } = await validateWritePermission(workflowId, userId, requestId)
+    if (permError) {
+      return permError
+    }
+
+    // 3. Parse request body
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      logger.warn(`[${requestId}] Invalid JSON in request body`, { workflowId })
+      return createErrorResponse('Invalid JSON in request body', 400)
+    }
+
+    // 4. Validate request body with Zod schema
+    let validatedOperation: z.infer<typeof OperationRequestSchema>
+    try {
+      validatedOperation = OperationRequestSchema.parse(body)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Check if this is a block type validation error
+        const blockTypeErrors = error.issues.filter((issue) => {
+          const path = issue.path.join('.')
+          return path.includes('type') && issue.message.includes('Invalid block type')
+        })
+
+        if (blockTypeErrors.length > 0) {
+          // Provide detailed error message with valid block types
+          const validTypes = getAllValidBlockTypes()
+          const exampleTypes = [
+            'agent',
+            'api',
+            'function',
+            'condition',
+            'router',
+            'slack',
+            'gmail',
+            'google_sheets',
+            'webhook',
+            'api_trigger',
+            'schedule',
+            'loop',
+            'parallel',
+            'starter',
+            'response',
+          ].filter((t) => validTypes.includes(t))
+          const invalidTypes = blockTypeErrors
+            .map((e) => e.message.match(/Invalid block type: "([^"]+)"/)?.[1] || 'unknown')
+            .filter(Boolean)
+
+          const errorMessage =
+            `Invalid block type(s): ${invalidTypes.join(', ')}. ` +
+            `Valid block types include: ${exampleTypes.join(', ')}, and ${validTypes.length - exampleTypes.length} more. ` +
+            `Total ${validTypes.length} block types available. ` +
+            `Use underscores (e.g., "api_trigger", "google_sheets") not hyphens.`
+
+          logger.warn(`[${requestId}] Invalid block type in request`, {
+            workflowId,
+            invalidTypes,
+            zodErrors: error.errors,
+          })
+          return createErrorResponse(errorMessage, 400)
+        }
+
+        // Format union validation errors more helpfully
+        const errorMessages = error.issues.map((issue) => {
+          if (issue.code === 'invalid_union') {
+            // For union errors, extract details from sub-errors
+            const subErrors = issue.unionErrors
+              ?.flatMap((e) =>
+                e.issues.map(
+                  (i) => `${i.path.length > 0 ? `${i.path.join('.')}: ` : ''}${i.message}`
+                )
+              )
+              .filter(Boolean)
+            return subErrors?.length ? subErrors.join('; ') : 'Invalid operation format'
+          }
+          return `${issue.path.length > 0 ? `${issue.path.join('.')}: ` : ''}${issue.message}`
+        })
+        const errorMessage = errorMessages.join(', ')
+        logger.warn(`[${requestId}] Invalid operation request`, {
+          workflowId,
+          zodErrors: error.errors,
+        })
+        return createErrorResponse(`Invalid operation request: ${errorMessage}`, 400)
+      }
+      throw error
+    }
+
+    const operationId = validatedOperation.operationId
+    const timestamp = validatedOperation.timestamp
+
+    // 5. Persist operation to database
+    try {
+      await persistWorkflowOperation(workflowId, {
+        operation: validatedOperation.operation,
+        target: validatedOperation.target,
+        payload: validatedOperation.payload,
+        timestamp,
+        operationId,
+        userId,
+      })
+    } catch (dbError) {
+      logger.error(`[${requestId}] Failed to persist operation to database`, {
+        error: dbError,
+        workflowId,
+        operationId,
+        operation: validatedOperation.operation,
+        target: validatedOperation.target,
+      })
+      return createErrorResponse('Failed to persist operation to database', 500)
+    }
+
+    logger.info(`[${requestId}] Persisted operation ${operationId}`, {
+      workflowId,
+      operation: validatedOperation.operation,
+      target: validatedOperation.target,
+    })
+
+    // 6. Optional: Broadcast to WebSocket clients
+    let broadcastSent = false
+    if (validatedOperation.broadcast) {
+      try {
+        const socketUrl = env.SOCKET_SERVER_URL || 'http://localhost:3002'
+
+        const notifyResponse = await fetch(`${socketUrl}/api/copilot-workflow-edit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workflowId,
+            description: `API: ${validatedOperation.operation} on ${validatedOperation.target}`,
+          }),
+          signal: AbortSignal.timeout(5000), // 5 second timeout
+        })
+
+        if (notifyResponse.ok) {
+          broadcastSent = true
+          logger.info(`[${requestId}] Broadcast sent for operation ${operationId}`, {
+            workflowId,
+            operation: validatedOperation.operation,
+            target: validatedOperation.target,
+          })
+        } else {
+          logger.warn(`[${requestId}] Failed to broadcast operation ${operationId}`, {
+            workflowId,
+            status: notifyResponse.status,
+            statusText: notifyResponse.statusText,
+          })
+        }
+      } catch (broadcastError) {
+        // Don't fail the operation if broadcast fails
+        logger.warn(`[${requestId}] Error broadcasting operation ${operationId}`, {
+          error: broadcastError,
+          workflowId,
+          operation: validatedOperation.operation,
+          target: validatedOperation.target,
+        })
+      }
+    } else {
+      logger.debug(`[${requestId}] Broadcast skipped for operation ${operationId}`, {
+        workflowId,
+        broadcast: validatedOperation.broadcast,
+      })
+    }
+
+    // 7. Return success response
+    return createSuccessResponse({
+      success: true,
+      operationId,
+      timestamp,
+      broadcastSent,
+    })
+  } catch (error) {
+    logger.error(`[${requestId}] Failed to process operation`, { error, workflowId })
+    return createErrorResponse('Failed to process operation', 500)
+  }
+}

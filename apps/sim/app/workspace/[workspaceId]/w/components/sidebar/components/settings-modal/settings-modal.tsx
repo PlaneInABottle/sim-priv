@@ -165,6 +165,7 @@ const allNavigationItems: NavigationItem[] = [
     icon: KeySquare,
     section: 'system',
     requiresHosted: true,
+    selfHostedOverride: true,
   },
   {
     id: 'copilot',

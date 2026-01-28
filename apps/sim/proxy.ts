@@ -167,6 +167,34 @@ function setUtmCookie(request: NextRequest, response: NextResponse): void {
   })
 }
 
+/**
+ * Blocks public marketing routes for self-hosted deployments
+ */
+function handlePublicRouteBlocking(request: NextRequest): NextResponse | null {
+  if (isHosted) {
+    return null // Only block on self-hosted
+  }
+
+  const url = request.nextUrl
+  const blockedRoutes = [
+    '/careers',
+    '/studio',
+    '/changelog',
+    '/templates',
+    '/terms',
+    '/privacy',
+    '/signup',
+  ]
+
+  for (const route of blockedRoutes) {
+    if (url.pathname === route || url.pathname.startsWith(`${route}/`)) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+  }
+
+  return null
+}
+
 export async function proxy(request: NextRequest) {
   const url = request.nextUrl
 
@@ -175,6 +203,9 @@ export async function proxy(request: NextRequest) {
 
   const redirect = handleRootPathRedirects(request, hasActiveSession)
   if (redirect) return redirect
+
+  const publicRouteBlock = handlePublicRouteBlocking(request)
+  if (publicRouteBlock) return publicRouteBlock
 
   if (url.pathname === '/login' || url.pathname === '/signup') {
     if (hasActiveSession) {
@@ -189,11 +220,6 @@ export async function proxy(request: NextRequest) {
   }
 
   if (url.pathname.startsWith('/chat/')) {
-    return NextResponse.next()
-  }
-
-  // Allow public access to template pages for SEO
-  if (url.pathname.startsWith('/templates')) {
     return NextResponse.next()
   }
 
@@ -235,8 +261,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     '/', // Root path for self-hosted redirect logic
-    '/terms', // Whitelabel terms redirect
-    '/privacy', // Whitelabel privacy redirect
     '/w', // Legacy /w redirect
     '/w/:path*', // Legacy /w/* redirects
     '/workspace/:path*', // New workspace routes
