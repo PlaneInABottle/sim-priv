@@ -2,6 +2,7 @@
 
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { isHosted } from '@/lib/core/config/feature-flags'
 import { inter } from '@/app/_styles/fonts/inter/inter'
 import { soehne } from '@/app/_styles/fonts/soehne/soehne'
 import { BrandedButton } from '@/app/(auth)/components/branded-button'
@@ -45,7 +46,7 @@ export function InviteStatusCard({
         <div className={`${inter.className} mt-8 flex w-full items-center justify-center py-8`}>
           <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
         </div>
-        <SupportFooter position='absolute' />
+        {isHosted && <SupportFooter position='absolute' />}
       </>
     )
   }
@@ -79,7 +80,7 @@ export function InviteStatusCard({
         ))}
       </div>
 
-      <SupportFooter position='absolute' />
+      {isHosted && <SupportFooter position='absolute' />}
     </>
   )
 }
