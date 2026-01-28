@@ -15,7 +15,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { client } from '@/lib/auth/auth-client'
+import { useBrandConfig } from '@/lib/branding/branding'
 import { getEnv, isFalsy, isTruthy } from '@/lib/core/config/env'
+import { isHosted } from '@/lib/core/config/feature-flags'
 import { cn } from '@/lib/core/utils/cn'
 import { getBaseUrl } from '@/lib/core/utils/urls'
 import { quickValidateEmail } from '@/lib/messaging/email/validation'
@@ -100,6 +102,7 @@ export default function LoginPage({
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const brand = useBrandConfig()
   const [isLoading, setIsLoading] = useState(false)
   const [_mounted, setMounted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -386,7 +389,7 @@ export default function LoginPage({
     <>
       <div className='space-y-1 text-center'>
         <h1 className={`${soehne.className} font-medium text-[32px] text-black tracking-tight`}>
-          Sign in
+          Sign in to {brand.name}
         </h1>
         <p className={`${inter.className} font-[380] text-[16px] text-muted-foreground`}>
           Enter your details
@@ -447,13 +450,15 @@ export default function LoginPage({
             <div className='space-y-2'>
               <div className='flex items-center justify-between'>
                 <Label htmlFor='password'>Password</Label>
-                <button
-                  type='button'
-                  onClick={() => setForgotPasswordOpen(true)}
-                  className='font-medium text-muted-foreground text-xs transition hover:text-foreground'
-                >
-                  Forgot password?
-                </button>
+                {isHosted && (
+                  <button
+                    type='button'
+                    onClick={() => setForgotPasswordOpen(true)}
+                    className='font-medium text-muted-foreground text-xs transition hover:text-foreground'
+                  >
+                    Forgot password?
+                  </button>
+                )}
               </div>
               <div className='relative'>
                 <Input
@@ -535,8 +540,8 @@ export default function LoginPage({
         </div>
       )}
 
-      {/* Only show signup link if email/password signup is enabled */}
-      {!isFalsy(getEnv('NEXT_PUBLIC_EMAIL_PASSWORD_SIGNUP_ENABLED')) && (
+      {/* Only show signup link if email/password signup is enabled and hosted */}
+      {isHosted && !isFalsy(getEnv('NEXT_PUBLIC_EMAIL_PASSWORD_SIGNUP_ENABLED')) && (
         <div className={`${inter.className} pt-6 text-center font-light text-[14px]`}>
           <span className='font-normal'>Don't have an account? </span>
           <Link
@@ -548,81 +553,85 @@ export default function LoginPage({
         </div>
       )}
 
-      <div
-        className={`${inter.className} auth-text-muted absolute right-0 bottom-0 left-0 px-8 pb-8 text-center font-[340] text-[13px] leading-relaxed sm:px-8 md:px-[44px]`}
-      >
-        By signing in, you agree to our{' '}
-        <Link
-          href='/terms'
-          target='_blank'
-          rel='noopener noreferrer'
-          className='auth-link underline-offset-4 transition hover:underline'
+      {isHosted && (
+        <div
+          className={`${inter.className} auth-text-muted absolute right-0 bottom-0 left-0 px-8 pb-8 text-center font-[340] text-[13px] leading-relaxed sm:px-8 md:px-[44px]`}
         >
-          Terms of Service
-        </Link>{' '}
-        and{' '}
-        <Link
-          href='/privacy'
-          target='_blank'
-          rel='noopener noreferrer'
-          className='auth-link underline-offset-4 transition hover:underline'
-        >
-          Privacy Policy
-        </Link>
-      </div>
+          By signing in, you agree to our{' '}
+          <Link
+            href='/terms'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='auth-link underline-offset-4 transition hover:underline'
+          >
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link
+            href='/privacy'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='auth-link underline-offset-4 transition hover:underline'
+          >
+            Privacy Policy
+          </Link>
+        </div>
+      )}
 
-      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
-        <DialogContent className='auth-card auth-card-shadow max-w-[540px] rounded-[10px] border backdrop-blur-sm'>
-          <DialogHeader>
-            <DialogTitle className='font-semibold text-black text-xl tracking-tight'>
-              Reset Password
-            </DialogTitle>
-            <DialogDescription className='text-muted-foreground text-sm'>
-              Enter your email address and we'll send you a link to reset your password if your
-              account exists.
-            </DialogDescription>
-          </DialogHeader>
-          <div className='space-y-4'>
-            <div className='space-y-2'>
-              <div className='flex items-center justify-between'>
-                <Label htmlFor='reset-email'>Email</Label>
-              </div>
-              <Input
-                id='reset-email'
-                value={forgotPasswordEmail}
-                onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                placeholder='Enter your email'
-                required
-                type='email'
-                className={cn(
-                  'rounded-[10px] shadow-sm transition-colors focus:border-gray-400 focus:ring-2 focus:ring-gray-100',
-                  resetStatus.type === 'error' &&
-                    'border-red-500 focus:border-red-500 focus:ring-red-100 focus-visible:ring-red-500'
+      {isHosted && (
+        <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+          <DialogContent className='auth-card auth-card-shadow max-w-[540px] rounded-[10px] border backdrop-blur-sm'>
+            <DialogHeader>
+              <DialogTitle className='font-semibold text-black text-xl tracking-tight'>
+                Reset Password
+              </DialogTitle>
+              <DialogDescription className='text-muted-foreground text-sm'>
+                Enter your email address and we'll send you a link to reset your password if your
+                account exists.
+              </DialogDescription>
+            </DialogHeader>
+            <div className='space-y-4'>
+              <div className='space-y-2'>
+                <div className='flex items-center justify-between'>
+                  <Label htmlFor='reset-email'>Email</Label>
+                </div>
+                <Input
+                  id='reset-email'
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  placeholder='Enter your email'
+                  required
+                  type='email'
+                  className={cn(
+                    'rounded-[10px] shadow-sm transition-colors focus:border-gray-400 focus:ring-2 focus:ring-gray-100',
+                    resetStatus.type === 'error' &&
+                      'border-red-500 focus:border-red-500 focus:ring-red-100 focus-visible:ring-red-500'
+                  )}
+                />
+                {resetStatus.type === 'error' && (
+                  <div className='mt-1 space-y-1 text-red-400 text-xs'>
+                    <p>{resetStatus.message}</p>
+                  </div>
                 )}
-              />
-              {resetStatus.type === 'error' && (
-                <div className='mt-1 space-y-1 text-red-400 text-xs'>
+              </div>
+              {resetStatus.type === 'success' && (
+                <div className='mt-1 space-y-1 text-[#4CAF50] text-xs'>
                   <p>{resetStatus.message}</p>
                 </div>
               )}
+              <BrandedButton
+                type='button'
+                onClick={handleForgotPassword}
+                disabled={isSubmittingReset}
+                loading={isSubmittingReset}
+                loadingText='Sending'
+              >
+                Send Reset Link
+              </BrandedButton>
             </div>
-            {resetStatus.type === 'success' && (
-              <div className='mt-1 space-y-1 text-[#4CAF50] text-xs'>
-                <p>{resetStatus.message}</p>
-              </div>
-            )}
-            <BrandedButton
-              type='button'
-              onClick={handleForgotPassword}
-              disabled={isSubmittingReset}
-              loading={isSubmittingReset}
-              loadingText='Sending'
-            >
-              Send Reset Link
-            </BrandedButton>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }

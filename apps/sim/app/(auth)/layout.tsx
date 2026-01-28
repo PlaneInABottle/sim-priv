@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { isHosted } from '@/lib/core/config/feature-flags'
 import AuthBackground from '@/app/(auth)/components/auth-background'
 import Nav from '@/app/(landing)/components/nav/nav'
 
@@ -30,7 +31,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <AuthBackground>
       <main className='relative flex min-h-screen flex-col text-foreground'>
         {/* Header - Nav handles all conditional logic */}
-        <Nav hideAuthButtons={true} variant='auth' />
+        {isHosted && <Nav hideAuthButtons={true} variant='auth' />}
 
         {/* Content */}
         <div className='relative z-30 flex flex-1 items-center justify-center px-4 pb-24'>
