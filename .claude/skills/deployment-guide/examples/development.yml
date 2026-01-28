@@ -1,0 +1,58 @@
+# Development Docker Compose
+
+Local development environment with hot reload and database.
+
+```yaml
+# docker-compose.dev.yml
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports: ["3000:3000"]
+    volumes:
+      - ./apps/sim:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://postgres:dev@db:5432/app
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DB=app
+      - POSTGRES_USER=postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+```
+
+## Usage
+
+```bash
+# Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker-compose -f docker-compose.dev.yml logs -f app
+
+# Stop
+docker-compose -f docker-compose.dev.yml down
+
+# Clean volumes
+docker-compose -f docker-compose.dev.yml down -v
+```
+
+## Features
+
+- **Hot reload**: Code changes reflected immediately
+- **Database persistence**: Data survives container restarts
+- **External DB access**: Database accessible on port 5432
+- **Development environment**: NODE_ENV=development

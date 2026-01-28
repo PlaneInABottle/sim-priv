@@ -1,0 +1,70 @@
+# Monorepo Render Blueprint
+
+Multiple services with rootDir for monorepo deployment.
+
+```yaml
+# render.yaml
+services:
+  # Frontend application
+  - type: web
+    name: frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    plan: starter
+
+  # Backend API
+  - type: web
+    name: backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    healthCheckPath: /health
+    plan: standard
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: app-db
+          property: connectionString
+
+databases:
+  - name: app-db
+    plan: basic-4gb
+    postgresMajorVersion: '16'
+```
+
+## What This Creates
+
+- **Frontend Service**: Independent deployment from frontend/
+- **Backend Service**: Independent deployment from backend/
+- **Database**: Shared database with 4GB plan
+- **Build Isolation**: Changes in frontend/ don't trigger backend builds
+
+## Benefits
+
+- **Separate build cycles**: Frontend/backend build independently
+- **Selective deploys**: Only affected services redeploy
+- **Clean separation**: Each service has its own root
+- **Scalable**: Easy to add more services
+
+## Requirements
+
+- Monorepo structure with separate applications
+- Each app has its own package.json/requirements.txt
+- Dockerfile optional (using native runtimes in this example)
+
+## Directory Structure
+
+```
+repo/
+├── frontend/
+│   ├── package.json
+│   └── src/
+├── backend/
+│   ├── requirements.txt
+│   └── src/
+└── render.yaml
+```

@@ -1,0 +1,77 @@
+# Multi-Service Render Blueprint
+
+Web service + background worker + database for production applications.
+
+```yaml
+# render.yaml
+services:
+  # Main web application
+  - type: web
+    name: web-app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: npm start
+    healthCheckPath: /
+    plan: standard
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: app-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: redis
+          property: connectionString
+
+  # Background job processor
+  - type: worker
+    name: background-worker
+    runtime: node
+    plan: starter
+    startCommand: node worker.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: app-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: redis
+          property: connectionString
+
+  # Redis for caching and queues
+  - type: keyvalue
+    name: redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: app-db
+    plan: basic-1gb
+    postgresMajorVersion: '16'
+```
+
+## What This Creates
+
+- **Web Service**: Standard plan (2 GB RAM, 1 CPU)
+- **Worker Service**: Starter plan for background jobs
+- **Redis**: Starter plan for caching/queues
+- **Database**: Basic 1GB plan
+- **Service References**: Worker and web share database/redis connections
+
+## Use Cases
+
+- Applications with background job processing
+- Queued task systems
+- Caching layer
+- High-throughput applications
+
+## Requirements
+
+- Web application with queue/worker architecture
+- Redis-compatible job queue (Bull, Kue, etc.)
+- Dockerfile for web and worker services

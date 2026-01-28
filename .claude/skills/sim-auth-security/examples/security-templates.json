@@ -1,0 +1,307 @@
+{
+  "$schema": "./schema.json",
+  "description": "Security and authentication templates for Sim workflows",
+  "templates": {
+    "oauth_connection_flow": {
+      "description": "Pattern for connecting OAuth services in workflows",
+      "steps": [
+        {
+          "step": 1,
+          "action": "Check existing connection",
+          "code": "const connections = await getOAuthConnections(userId, providerId)"
+        },
+        {
+          "step": 2,
+          "action": "Initiate OAuth if needed",
+          "code": "if (!connection) { redirectToOAuth(providerId, scopes) }"
+        },
+        {
+          "step": 3,
+          "action": "Use token in workflow",
+          "code": "const token = await getValidToken(userId, providerId)"
+        }
+      ],
+      "example_block": {
+        "type": "gmail",
+        "name": "Send Email",
+        "data": {
+          "oauth": {
+            "provider": "google",
+            "serviceId": "gmail",
+            "scopes": ["gmail.send"]
+          }
+        }
+      }
+    },
+
+    "api_key_rotation": {
+      "description": "Workflow for rotating API keys with zero downtime",
+      "variables": [
+        {
+          "name": "oldKeyId",
+          "type": "string",
+          "description": "Current key to rotate"
+        },
+        {
+          "name": "gracePeriodHours",
+          "type": "number",
+          "default": 24,
+          "description": "Hours to keep old key active"
+        }
+      ],
+      "steps": [
+        {
+          "step": 1,
+          "action": "Generate new key",
+          "api_call": "POST /api/keys",
+          "body": {
+            "name": "rotated-{{timestamp}}",
+            "permissions": "inherit"
+          }
+        },
+        {
+          "step": 2,
+          "action": "Update applications",
+          "description": "Deploy new key to all consumers"
+        },
+        {
+          "step": 3,
+          "action": "Verify new key",
+          "api_call": "GET /api/health",
+          "headers": {
+            "X-API-Key": "{{newKey}}"
+          }
+        },
+        {
+          "step": 4,
+          "action": "Disable old key after grace period",
+          "api_call": "PATCH /api/keys/{{oldKeyId}}",
+          "body": {
+            "enabled": false
+          }
+        },
+        {
+          "step": 5,
+          "action": "Delete old key",
+          "api_call": "DELETE /api/keys/{{oldKeyId}}"
+        }
+      ]
+    },
+
+    "secret_refresh": {
+      "description": "Pattern for refreshing secrets in running workflows",
+      "implementation": {
+        "use_variables": {
+          "description": "Store secrets in workflow variables, not block data",
+          "example": {
+            "variables": [
+              {
+                "name": "apiSecret",
+                "type": "string",
+                "value": "{{env.API_SECRET}}"
+              }
+            ],
+            "block_reference": "{{variables.apiSecret}}"
+          }
+        },
+        "dynamic_resolution": {
+          "description": "Resolve secrets at execution time",
+          "example": {
+            "systemPrompt": "Use API key: {{env.OPENAI_API_KEY}}"
+          }
+        }
+      }
+    },
+
+    "byok_setup": {
+      "description": "Configure BYOK for a workspace",
+      "providers": {
+        "openai": {
+          "providerId": "openai",
+          "keyFormat": "sk-...",
+          "usage": ["LLM calls", "Embeddings"],
+          "api_call": {
+            "method": "POST",
+            "url": "/api/workspaces/{{workspaceId}}/byok-keys",
+            "body": {
+              "providerId": "openai",
+              "apiKey": "sk-your-key"
+            }
+          }
+        },
+        "anthropic": {
+          "providerId": "anthropic",
+          "keyFormat": "sk-ant-...",
+          "usage": ["LLM calls"],
+          "api_call": {
+            "method": "POST",
+            "url": "/api/workspaces/{{workspaceId}}/byok-keys",
+            "body": {
+              "providerId": "anthropic",
+              "apiKey": "sk-ant-your-key"
+            }
+          }
+        },
+        "google": {
+          "providerId": "google",
+          "keyFormat": "API key",
+          "usage": ["LLM calls (Gemini)"],
+          "api_call": {
+            "method": "POST",
+            "url": "/api/workspaces/{{workspaceId}}/byok-keys",
+            "body": {
+              "providerId": "google",
+              "apiKey": "your-google-key"
+            }
+          }
+        },
+        "mistral": {
+          "providerId": "mistral",
+          "keyFormat": "API key",
+          "usage": ["LLM calls", "OCR"],
+          "api_call": {
+            "method": "POST",
+            "url": "/api/workspaces/{{workspaceId}}/byok-keys",
+            "body": {
+              "providerId": "mistral",
+              "apiKey": "your-mistral-key"
+            }
+          }
+        }
+      },
+      "verification": {
+        "description": "Verify BYOK key is working",
+        "test_workflow": {
+          "type": "agent",
+          "data": {
+            "model": "gpt-4",
+            "systemPrompt": "Say 'BYOK working'"
+          }
+        },
+        "expected_result": "Execution succeeds with isBYOK: true in logs"
+      }
+    },
+
+    "security_monitoring": {
+      "description": "Security monitoring workflow pattern",
+      "triggers": [
+        {
+          "event": "api_key_created",
+          "action": "Log and notify admin"
+        },
+        {
+          "event": "failed_auth_threshold",
+          "threshold": 10,
+          "window": "5m",
+          "action": "Alert security team"
+        },
+        {
+          "event": "rate_limit_exceeded",
+          "action": "Log IP and evaluate blocking"
+        },
+        {
+          "event": "token_refresh_failed",
+          "action": "Notify user, log for investigation"
+        }
+      ],
+      "example_workflow": {
+        "name": "Security Monitor",
+        "blocks": [
+          {
+            "type": "api_trigger",
+            "name": "Security Event Webhook"
+          },
+          {
+            "type": "condition",
+            "name": "Check Event Severity",
+            "data": {
+              "condition": "{{input.severity}} === 'critical'"
+            }
+          },
+          {
+            "type": "slack",
+            "name": "Alert Security Channel",
+            "data": {
+              "channel": "#security-alerts",
+              "message": "🚨 {{input.event}}: {{input.details}}"
+            }
+          }
+        ]
+      }
+    },
+
+    "webhook_authentication": {
+      "description": "Patterns for authenticating incoming webhooks",
+      "methods": {
+        "bearer_token": {
+          "block_config": {
+            "type": "generic_webhook",
+            "data": {
+              "requireAuth": true,
+              "token": "{{variables.webhookSecret}}"
+            }
+          },
+          "request_example": {
+            "headers": {
+              "Authorization": "Bearer your-secret-token"
+            }
+          }
+        },
+        "custom_header": {
+          "block_config": {
+            "type": "generic_webhook",
+            "data": {
+              "requireAuth": true,
+              "token": "{{variables.webhookSecret}}",
+              "secretHeaderName": "X-Webhook-Secret"
+            }
+          },
+          "request_example": {
+            "headers": {
+              "X-Webhook-Secret": "your-secret-token"
+            }
+          }
+        },
+        "signature_verification": {
+          "description": "For providers that sign payloads (GitHub, Stripe)",
+          "verification_code": "const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex'); return signature === headers['x-signature'];"
+        }
+      }
+    },
+
+    "environment_setup": {
+      "description": "Required environment variables for security",
+      "required": {
+        "BETTER_AUTH_SECRET": {
+          "description": "Session encryption secret",
+          "generate": "openssl rand -hex 32",
+          "length": 32
+        },
+        "ENCRYPTION_KEY": {
+          "description": "Secret encryption key",
+          "generate": "openssl rand -hex 32",
+          "length": "64 hex chars (32 bytes)"
+        },
+        "DATABASE_URL": {
+          "description": "Database connection with SSL",
+          "example": "postgresql://user:pass@host:5432/db?sslmode=require"
+        }
+      },
+      "oauth_providers": {
+        "google": {
+          "AUTH_GOOGLE_ID": "OAuth client ID",
+          "AUTH_GOOGLE_SECRET": "OAuth client secret"
+        },
+        "github": {
+          "AUTH_GITHUB_ID": "OAuth app client ID",
+          "AUTH_GITHUB_SECRET": "OAuth app client secret"
+        },
+        "microsoft": {
+          "AUTH_MICROSOFT_ENTRA_ID_ID": "Azure app client ID",
+          "AUTH_MICROSOFT_ENTRA_ID_SECRET": "Azure app client secret",
+          "AUTH_MICROSOFT_ENTRA_ID_TENANT_ID": "Azure tenant (common for multi-tenant)"
+        }
+      }
+    }
+  }
+}

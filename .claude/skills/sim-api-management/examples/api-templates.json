@@ -1,0 +1,300 @@
+{
+  "templates": [
+    {
+      "name": "basic-api-trigger",
+      "description": "Simple API endpoint with agent processing",
+      "blocks": [
+        {
+          "id": "start_1",
+          "type": "start_trigger",
+          "name": "Start",
+          "position": { "x": 100, "y": 100 },
+          "data": {
+            "inputFormat": {
+              "message": { "type": "string", "description": "User message" },
+              "context": { "type": "object", "description": "Optional context" }
+            }
+          }
+        },
+        {
+          "id": "agent_1",
+          "type": "agent",
+          "name": "Process Request",
+          "position": { "x": 350, "y": 100 },
+          "data": {
+            "model": "gpt-4o-mini",
+            "systemPrompt": "Process the user request and return a helpful response.\n\nMessage: {{blocks.start_1.output.message}}\nContext: {{blocks.start_1.output.context}}"
+          }
+        },
+        {
+          "id": "response_1",
+          "type": "response",
+          "name": "API Response",
+          "position": { "x": 600, "y": 100 },
+          "data": {
+            "body": "{\"success\": true, \"result\": {{blocks.agent_1.output}}}"
+          }
+        }
+      ],
+      "edges": [
+        { "id": "e1", "source": "start_1", "target": "agent_1" },
+        { "id": "e2", "source": "agent_1", "target": "response_1" }
+      ]
+    },
+    {
+      "name": "webhook-listener",
+      "description": "Generic webhook receiver with event routing",
+      "blocks": [
+        {
+          "id": "webhook_1",
+          "type": "generic_webhook",
+          "name": "Webhook Receiver",
+          "position": { "x": 100, "y": 100 },
+          "data": {
+            "requireAuth": true,
+            "token": "{{variables.webhookSecret}}",
+            "inputFormat": {
+              "event": { "type": "string" },
+              "data": { "type": "object" }
+            }
+          }
+        },
+        {
+          "id": "router_1",
+          "type": "router",
+          "name": "Event Router",
+          "position": { "x": 350, "y": 100 },
+          "data": {
+            "routes": [
+              {
+                "condition": "{{blocks.webhook_1.output.event}} === 'created'",
+                "label": "Created"
+              },
+              {
+                "condition": "{{blocks.webhook_1.output.event}} === 'updated'",
+                "label": "Updated"
+              },
+              { "condition": "{{blocks.webhook_1.output.event}} === 'deleted'", "label": "Deleted" }
+            ]
+          }
+        },
+        {
+          "id": "response_1",
+          "type": "response",
+          "name": "Acknowledge",
+          "position": { "x": 350, "y": 250 },
+          "data": {
+            "body": "{\"received\": true}"
+          }
+        }
+      ],
+      "edges": [
+        { "id": "e1", "source": "webhook_1", "target": "router_1" },
+        { "id": "e2", "source": "webhook_1", "target": "response_1" }
+      ],
+      "variables": [{ "name": "webhookSecret", "type": "string", "value": "" }]
+    },
+    {
+      "name": "error-handling",
+      "description": "API with validation and error handling",
+      "blocks": [
+        {
+          "id": "start_1",
+          "type": "start_trigger",
+          "name": "Start",
+          "position": { "x": 100, "y": 100 },
+          "data": {
+            "inputFormat": {
+              "action": { "type": "string", "description": "Action: create, update, delete" },
+              "data": { "type": "object", "description": "Request data" }
+            }
+          }
+        },
+        {
+          "id": "validator_1",
+          "type": "agent",
+          "name": "Validate Input",
+          "position": { "x": 350, "y": 100 },
+          "data": {
+            "model": "gpt-4o-mini",
+            "systemPrompt": "Validate the input:\n- action must be one of: create, update, delete\n- data must contain required fields based on action\n\nReturn: {\"valid\": true/false, \"error\": \"message if invalid\"}\n\nInput: {{blocks.start_1.output}}"
+          }
+        },
+        {
+          "id": "condition_1",
+          "type": "condition",
+          "name": "Is Valid?",
+          "position": { "x": 550, "y": 100 },
+          "data": {
+            "condition": "{{blocks.validator_1.output.valid}} === true"
+          }
+        },
+        {
+          "id": "processor_1",
+          "type": "agent",
+          "name": "Process Request",
+          "position": { "x": 750, "y": 50 },
+          "data": {
+            "model": "gpt-4o",
+            "systemPrompt": "Process the validated request.\nAction: {{blocks.start_1.output.action}}\nData: {{blocks.start_1.output.data}}"
+          }
+        },
+        {
+          "id": "success_response",
+          "type": "response",
+          "name": "Success Response",
+          "position": { "x": 950, "y": 50 },
+          "data": {
+            "body": "{\"success\": true, \"data\": {{blocks.processor_1.output}}}"
+          }
+        },
+        {
+          "id": "error_response",
+          "type": "response",
+          "name": "Error Response",
+          "position": { "x": 750, "y": 150 },
+          "data": {
+            "body": "{\"success\": false, \"error\": {{blocks.validator_1.output.error}}}"
+          }
+        }
+      ],
+      "edges": [
+        { "id": "e1", "source": "start_1", "target": "validator_1" },
+        { "id": "e2", "source": "validator_1", "target": "condition_1" },
+        { "id": "e3", "source": "condition_1", "target": "processor_1", "sourceHandle": "true" },
+        {
+          "id": "e4",
+          "source": "condition_1",
+          "target": "error_response",
+          "sourceHandle": "false"
+        },
+        { "id": "e5", "source": "processor_1", "target": "success_response" }
+      ]
+    },
+    {
+      "name": "rate-limiting",
+      "description": "API with rate limiting check",
+      "blocks": [
+        {
+          "id": "start_1",
+          "type": "start_trigger",
+          "name": "Start",
+          "position": { "x": 100, "y": 100 },
+          "data": {
+            "inputFormat": {
+              "clientId": { "type": "string", "description": "Client identifier" },
+              "request": { "type": "object", "description": "Request payload" }
+            }
+          }
+        },
+        {
+          "id": "rate_check_1",
+          "type": "function",
+          "name": "Check Rate Limit",
+          "position": { "x": 350, "y": 100 },
+          "data": {
+            "code": "const clientId = input.clientId;\nconst limit = 100;\nconst window = 3600; // 1 hour\n\n// In production, check against external store\nconst currentCount = 0; // Replace with actual lookup\n\nreturn {\n  allowed: currentCount < limit,\n  remaining: limit - currentCount,\n  resetAt: new Date(Date.now() + window * 1000).toISOString()\n};"
+          }
+        },
+        {
+          "id": "condition_1",
+          "type": "condition",
+          "name": "Within Limit?",
+          "position": { "x": 550, "y": 100 },
+          "data": {
+            "condition": "{{blocks.rate_check_1.output.allowed}} === true"
+          }
+        },
+        {
+          "id": "processor_1",
+          "type": "agent",
+          "name": "Process Request",
+          "position": { "x": 750, "y": 50 },
+          "data": {
+            "model": "gpt-4o",
+            "systemPrompt": "Process the request: {{blocks.start_1.output.request}}"
+          }
+        },
+        {
+          "id": "success_response",
+          "type": "response",
+          "name": "Success Response",
+          "position": { "x": 950, "y": 50 },
+          "data": {
+            "body": "{\"success\": true, \"data\": {{blocks.processor_1.output}}, \"rateLimit\": {\"remaining\": {{blocks.rate_check_1.output.remaining}}, \"resetAt\": \"{{blocks.rate_check_1.output.resetAt}}\"}}"
+          }
+        },
+        {
+          "id": "rate_limit_response",
+          "type": "response",
+          "name": "Rate Limited",
+          "position": { "x": 750, "y": 150 },
+          "data": {
+            "body": "{\"success\": false, \"error\": \"Rate limit exceeded\", \"retryAfter\": \"{{blocks.rate_check_1.output.resetAt}}\"}"
+          }
+        }
+      ],
+      "edges": [
+        { "id": "e1", "source": "start_1", "target": "rate_check_1" },
+        { "id": "e2", "source": "rate_check_1", "target": "condition_1" },
+        { "id": "e3", "source": "condition_1", "target": "processor_1", "sourceHandle": "true" },
+        {
+          "id": "e4",
+          "source": "condition_1",
+          "target": "rate_limit_response",
+          "sourceHandle": "false"
+        },
+        { "id": "e5", "source": "processor_1", "target": "success_response" }
+      ]
+    },
+    {
+      "name": "streaming-response",
+      "description": "API with streaming agent response",
+      "blocks": [
+        {
+          "id": "start_1",
+          "type": "start_trigger",
+          "name": "Start",
+          "position": { "x": 100, "y": 100 },
+          "data": {
+            "inputFormat": {
+              "prompt": { "type": "string", "description": "User prompt" },
+              "stream": { "type": "boolean", "description": "Enable streaming" }
+            }
+          }
+        },
+        {
+          "id": "agent_1",
+          "type": "agent",
+          "name": "Streaming Agent",
+          "position": { "x": 350, "y": 100 },
+          "data": {
+            "model": "gpt-4o",
+            "streaming": true,
+            "systemPrompt": "Respond to the user's prompt in a helpful and detailed manner.\n\nPrompt: {{blocks.start_1.output.prompt}}"
+          }
+        },
+        {
+          "id": "response_1",
+          "type": "response",
+          "name": "Stream Response",
+          "position": { "x": 600, "y": 100 },
+          "data": {
+            "body": "{{blocks.agent_1.output}}",
+            "streaming": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "e1", "source": "start_1", "target": "agent_1" },
+        { "id": "e2", "source": "agent_1", "target": "response_1" }
+      ],
+      "notes": "Client should handle SSE events when stream=true"
+    }
+  ],
+  "usage": {
+    "import": "Use sim-mcp import_workflow with a template's blocks and edges",
+    "customize": "Modify inputFormat, prompts, and conditions to match your use case",
+    "example": "import_workflow({ workspaceId: 'ws_123', workflow: { blocks: template.blocks, edges: template.edges } })"
+  }
+}
