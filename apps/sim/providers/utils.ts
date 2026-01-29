@@ -1176,6 +1176,8 @@ export function createOpenAICompatibleStream(
 
   return new ReadableStream({
     async start(controller) {
+      const encoder = new TextEncoder()
+
       try {
         for await (const chunk of stream) {
           if (chunk.usage) {
@@ -1187,7 +1189,7 @@ export function createOpenAICompatibleStream(
           const content = chunk.choices?.[0]?.delta?.content || ''
           if (content) {
             fullContent += content
-            controller.enqueue(new TextEncoder().encode(content))
+            controller.enqueue(encoder.encode(content))
           }
         }
 
