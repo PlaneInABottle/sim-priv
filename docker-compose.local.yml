@@ -17,7 +17,6 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-simstudio}
       - BETTER_AUTH_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      - NEXT_PUBLIC_IS_HOSTED=${NEXT_PUBLIC_IS_HOSTED:-false}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev-secret-at-least-32-characters-long}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-dev-encryption-key-at-least-32-chars}
       - API_ENCRYPTION_KEY=${API_ENCRYPTION_KEY:-}

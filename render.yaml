@@ -28,8 +28,6 @@ services:
           property: connectionString
       - key: NEXT_PUBLIC_APP_URL
         sync: false
-      - key: NEXT_PUBLIC_IS_HOSTED
-        value: "false"
       - key: NEXT_PUBLIC_CREDENTIAL_SETS_ENABLED
         value: "true"
       - key: NEXT_PUBLIC_BRAND_NAME
@@ -54,6 +52,13 @@ services:
         sync: false
       - key: NEXT_PUBLIC_SOCKET_URL
         sync: false
+      # Optional: Redis for distributed locking, rate limiting, and caching
+      # Uncomment to enable multi-replica support
+      # - key: REDIS_URL
+      #   fromService:
+      #     type: redis
+      #     name: engine-redis
+      #     property: connectionString
 
   # Realtime Socket Server
   - type: web
@@ -75,8 +80,6 @@ services:
           property: connectionString
       - key: NEXT_PUBLIC_APP_URL
         sync: false
-      - key: NEXT_PUBLIC_IS_HOSTED
-        value: "false"
       - key: NEXT_PUBLIC_CREDENTIAL_SETS_ENABLED
         value: "true"
       - key: BETTER_AUTH_URL
@@ -91,9 +94,25 @@ services:
           type: web
           name: engine
           envVarKey: INTERNAL_API_SECRET
+      # Optional: Redis for cross-pod Socket.IO broadcasting
+      # Uncomment to enable multi-replica support
+      # - key: REDIS_URL
+      #   fromService:
+      #     type: redis
+      #     name: engine-redis
+      #     property: connectionString
 
 databases:
   - name: engine-db
     region: frankfurt
     plan: basic-256mb
     postgresMajorVersion: '17'
+
+# Optional: Uncomment to add Redis for multi-replica deployments
+# Redis enables: cross-pod Socket.IO broadcasting, distributed locking,
+# rate limiting storage, and MCP caching
+#
+# redis:
+#   - name: engine-redis
+#     region: frankfurt
+#     plan: starter  # Or free for testing
