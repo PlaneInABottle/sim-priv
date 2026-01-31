@@ -3,8 +3,8 @@
  * Shared GraphQL queries and execution helpers
  */
 
-import { IKAS_CONFIG } from './config.js'
 import { fetchWithTimeout } from './auth.js'
+import { IKAS_CONFIG } from './config.js'
 
 /**
  * Execute a GraphQL query

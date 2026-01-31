@@ -7,13 +7,13 @@
  */
 
 import {
-  getToken,
   fetchCategories,
   fetchProducts,
+  getToken,
   getVisibleProducts,
   isVisibleCategory,
-  separator,
   printHeader,
+  separator,
 } from '../lib/index.js'
 
 function buildCategoryTree(categories) {
@@ -53,18 +53,19 @@ async function exploreCategory(token, categoryId, categoryName, allCategories, d
   console.log(`${indent}📂 ${categoryName}`)
 
   // Check if has visible subcategories
-  const subcategories = allCategories.filter((c) => c.parentId === categoryId && isVisibleCategory(c))
+  const subcategories = allCategories.filter(
+    (c) => c.parentId === categoryId && isVisibleCategory(c)
+  )
 
   if (subcategories.length > 0) {
     console.log(`${indent}  └─ ${subcategories.length} visible subcategories`)
     return { type: 'parent', count: subcategories.length }
-  } else {
-    // Leaf category - fetch products
-    const products = await fetchProducts(token, categoryId, 50)
-    const visibleProducts = getVisibleProducts(products)
-    console.log(`${indent}  └─ ${visibleProducts.length} products`)
-    return { type: 'leaf', count: visibleProducts.length, products: visibleProducts }
   }
+  // Leaf category - fetch products
+  const products = await fetchProducts(token, categoryId, 50)
+  const visibleProducts = getVisibleProducts(products)
+  console.log(`${indent}  └─ ${visibleProducts.length} products`)
+  return { type: 'leaf', count: visibleProducts.length, products: visibleProducts }
 }
 
 async function main() {

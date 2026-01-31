@@ -7,18 +7,20 @@
  */
 
 import {
-  getToken,
   fetchCategories,
   fetchProducts,
+  getToken,
   getVisibleProducts,
   isVisibleCategory,
-  separator,
   printHeader,
+  separator,
 } from '../lib/index.js'
 
 async function browseWithFiltering(token, categoryId, allCategories) {
   // Filter to only show visible subcategories (those with salesChannelIds)
-  const subcategories = allCategories.filter((c) => c.parentId === categoryId && isVisibleCategory(c))
+  const subcategories = allCategories.filter(
+    (c) => c.parentId === categoryId && isVisibleCategory(c)
+  )
 
   console.log(`\n📊 Found ${subcategories.length} subcategories`)
   console.log('🔍 Checking each one...\n')
@@ -33,20 +35,19 @@ async function browseWithFiltering(token, categoryId, allCategories) {
         // Has subcategories - keep it (don't check products)
         console.log(`  ✅ "${cat.name}" - Has subcategories (keeping)`)
         return { cat, isEmpty: false, reason: 'has_children' }
-      } else {
-        // Leaf category - check if it has visible products
-        const products = await fetchProducts(token, cat.id)
-        const visibleProducts = getVisibleProducts(products)
-        const isEmpty = visibleProducts.length === 0
-
-        if (isEmpty) {
-          console.log(`  ❌ "${cat.name}" - Leaf with 0 products (hiding)`)
-        } else {
-          console.log(`  ✅ "${cat.name}" - Leaf with ${visibleProducts.length} products (keeping)`)
-        }
-
-        return { cat, isEmpty, reason: isEmpty ? 'empty_leaf' : 'has_products' }
       }
+      // Leaf category - check if it has visible products
+      const products = await fetchProducts(token, cat.id)
+      const visibleProducts = getVisibleProducts(products)
+      const isEmpty = visibleProducts.length === 0
+
+      if (isEmpty) {
+        console.log(`  ❌ "${cat.name}" - Leaf with 0 products (hiding)`)
+      } else {
+        console.log(`  ✅ "${cat.name}" - Leaf with ${visibleProducts.length} products (keeping)`)
+      }
+
+      return { cat, isEmpty, reason: isEmpty ? 'empty_leaf' : 'has_products' }
     })
   )
 

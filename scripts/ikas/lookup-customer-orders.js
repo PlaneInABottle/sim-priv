@@ -73,7 +73,8 @@ const CACHE_KEYS = {
 
 /** Environment-based configuration */
 const CONFIG = {
-  OAUTH_URL: process.env.KAMATAS_IKAS_OAUTH_URL || 'https://kamatas.myikas.com/api/admin/oauth/token',
+  OAUTH_URL:
+    process.env.KAMATAS_IKAS_OAUTH_URL || 'https://kamatas.myikas.com/api/admin/oauth/token',
   GRAPHQL_URL: process.env.IKAS_GRAPHQL_URL || 'https://api.myikas.com/api/v1/admin/graphql',
   CLIENT_ID: process.env.KAMATAS_IKAS_CLIENT_ID || '31adc972-1033-41bb-b23b-96b45238d6a2',
   CLIENT_SECRET:
@@ -175,7 +176,10 @@ function validateSearchInput(searchType, searchValue) {
       // Order numbers are typically numeric strings
       // Accept alphanumeric to handle various formats
       if (!/^[a-zA-Z0-9-]+$/.test(trimmedValue)) {
-        return { valid: false, error: 'Order number must contain only letters, numbers, and hyphens' }
+        return {
+          valid: false,
+          error: 'Order number must contain only letters, numbers, and hyphens',
+        }
       }
       if (trimmedValue.length < 1 || trimmedValue.length > 50) {
         return { valid: false, error: 'Order number must be between 1 and 50 characters' }
@@ -244,12 +248,12 @@ function normalizeSearchValue(searchType, value) {
       // Handle Turkish country code variants
       // Keep +90 prefix as '90' for international format consistency
       if (digits.startsWith('0090')) {
-        digits = '90' + digits.substring(4)
+        digits = `90${digits.substring(4)}`
       } else if (digits.startsWith('090')) {
-        digits = '90' + digits.substring(3)
+        digits = `90${digits.substring(3)}`
       } else if (digits.startsWith('0') && digits.length === 11) {
         // Turkish local format starting with 0
-        digits = '90' + digits.substring(1)
+        digits = `90${digits.substring(1)}`
       }
 
       return digits
@@ -754,7 +758,11 @@ async function lookupCustomerByIdentifier(token, searchType, searchValue) {
   // Try exact phone match
   matchedCustomer = customers.find((c) => {
     const customerPhone = normalizeSearchValue(SEARCH_TYPES.PHONE, c.phone)
-    return customerPhone === normalizedSearch || customerPhone.endsWith(normalizedSearch) || normalizedSearch.endsWith(customerPhone)
+    return (
+      customerPhone === normalizedSearch ||
+      customerPhone.endsWith(normalizedSearch) ||
+      normalizedSearch.endsWith(customerPhone)
+    )
   })
 
   // If no phone match on customer, check addresses
@@ -800,7 +808,12 @@ async function lookupCustomerByIdentifier(token, searchType, searchValue) {
  * @param {number} [limit=10] - Maximum number of orders to return
  * @returns {Promise<{ orders: Object[], totalCount: number }>} Orders result
  */
-async function lookupOrdersByCustomerId(token, customerId, orderStatus = null, limit = REQUEST_CONFIG.DEFAULT_LIMIT) {
+async function lookupOrdersByCustomerId(
+  token,
+  customerId,
+  orderStatus = null,
+  limit = REQUEST_CONFIG.DEFAULT_LIMIT
+) {
   log(LogLevel.INFO, 'Looking up orders', { customerId, orderStatus, limit })
 
   const variables = {
@@ -919,7 +932,8 @@ function formatOrder(order) {
     shippingAddress: order.shippingAddress
       ? {
           fullName:
-            `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim() || null,
+            `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim() ||
+            null,
           phone: order.shippingAddress.phone,
           address: order.shippingAddress.addressLine1,
           addressLine2: order.shippingAddress.addressLine2,
@@ -932,7 +946,8 @@ function formatOrder(order) {
     billingAddress: order.billingAddress
       ? {
           fullName:
-            `${order.billingAddress.firstName || ''} ${order.billingAddress.lastName || ''}`.trim() || null,
+            `${order.billingAddress.firstName || ''} ${order.billingAddress.lastName || ''}`.trim() ||
+            null,
           phone: order.billingAddress.phone,
           address: order.billingAddress.addressLine1,
           addressLine2: order.billingAddress.addressLine2,
@@ -1042,7 +1057,12 @@ async function lookupCustomerOrders({
 }) {
   // Clear previous logs
   clearLogs()
-  log(LogLevel.INFO, 'Starting customer order lookup', { searchType, searchValue, orderStatus, limit })
+  log(LogLevel.INFO, 'Starting customer order lookup', {
+    searchType,
+    searchValue,
+    orderStatus,
+    limit,
+  })
 
   try {
     // Validate input
@@ -1062,7 +1082,10 @@ async function lookupCustomerOrders({
 
     // Normalize search value
     const normalizedValue = normalizeSearchValue(searchType, searchValue)
-    log(LogLevel.DEBUG, 'Normalized search value', { original: searchValue, normalized: normalizedValue })
+    log(LogLevel.DEBUG, 'Normalized search value', {
+      original: searchValue,
+      normalized: normalizedValue,
+    })
 
     // Get OAuth token
     const token = await getIkasToken()
@@ -1164,7 +1187,7 @@ async function runTests() {
   await runTest('Token Acquisition', async () => {
     const token = await getIkasToken()
     console.log(`   Token: ${token.substring(0, 20)}...`)
-    return { token: token.substring(0, 20) + '...' }
+    return { token: `${token.substring(0, 20)}...` }
   })
 
   // Get sample data for tests
@@ -1173,9 +1196,16 @@ async function runTests() {
     const token = await getIkasToken()
 
     // Get a sample order
-    const orderResult = await executeGraphQL(token, ORDER_BY_NUMBER_QUERY.replace('$orderNumber: StringFilterInput,', '').replace('orderNumber: $orderNumber,', ''), {
-      pagination: { limit: 5, page: 1 },
-    })
+    const orderResult = await executeGraphQL(
+      token,
+      ORDER_BY_NUMBER_QUERY.replace('$orderNumber: StringFilterInput,', '').replace(
+        'orderNumber: $orderNumber,',
+        ''
+      ),
+      {
+        pagination: { limit: 5, page: 1 },
+      }
+    )
 
     const sampleOrders = orderResult.data?.listOrder?.data || []
     if (sampleOrders.length > 0) {
@@ -1411,7 +1441,7 @@ async function runTests() {
   })
 
   // Summary
-  console.log('\n' + separator)
+  console.log(`\n${separator}`)
   console.log('📊 TEST SUMMARY')
   console.log(separator)
 
@@ -1424,12 +1454,10 @@ async function runTests() {
 
   if (failed > 0) {
     console.log('\n   Failed tests:')
-    testResults
-      .filter((t) => !t.passed)
-      .forEach((t) => console.log(`   - ${t.name}: ${t.error}`))
+    testResults.filter((t) => !t.passed).forEach((t) => console.log(`   - ${t.name}: ${t.error}`))
   }
 
-  console.log('\n' + separator)
+  console.log(`\n${separator}`)
   console.log(failed === 0 ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED')
   console.log(separator)
 
@@ -1448,27 +1476,21 @@ export {
   PACKAGE_STATUSES,
   CACHE_TTL,
   REQUEST_CONFIG,
-
   // Validation functions
   validateSearchInput,
   normalizeSearchValue,
-
   // Token management
   getIkasToken,
-
   // Lookup functions
   lookupCustomerByIdentifier,
   lookupOrdersByCustomerId,
   lookupOrderByNumber,
-
   // Response formatting
   formatOrderResponse,
   formatCustomer,
   formatOrder,
-
   // Main function
   lookupCustomerOrders,
-
   // Logging
   getLogs,
   clearLogs,

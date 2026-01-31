@@ -7,13 +7,13 @@
  */
 
 import {
-  getToken,
-  fetchProducts,
   fetchProductDetail,
+  fetchProducts,
+  getToken,
   introspectType,
-  TEST_CATEGORIES,
-  separator,
   printHeader,
+  separator,
+  TEST_CATEGORIES,
 } from '../lib/index.js'
 
 function displayProductDetails(product) {
@@ -137,7 +137,10 @@ async function main() {
     const productFields = await introspectType(token, 'Product')
     console.log(
       '📋 Available Product fields:',
-      productFields.map((f) => f.name).slice(0, 10).join(', '),
+      productFields
+        .map((f) => f.name)
+        .slice(0, 10)
+        .join(', '),
       '...'
     )
 

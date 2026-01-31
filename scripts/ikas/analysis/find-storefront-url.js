@@ -6,7 +6,7 @@
  * Usage: node scripts/ikas/analysis/find-storefront-url.js
  */
 
-import { getToken, executeGraphQL } from '../lib/index.js'
+import { executeGraphQL, getToken } from '../lib/index.js'
 
 async function findStorefront() {
   const token = await getToken()

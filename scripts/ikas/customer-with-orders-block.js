@@ -507,7 +507,8 @@ async function fetchCustomerOrders(token, customerId, limit = CONFIG.ORDERS_LIMI
       })),
       shippingAddress: order.shippingAddress
         ? {
-            fullName: `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim(),
+            fullName:
+              `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim(),
             phone: order.shippingAddress.phone,
             address: order.shippingAddress.addressLine1,
             addressLine2: order.shippingAddress.addressLine2,
@@ -519,7 +520,8 @@ async function fetchCustomerOrders(token, customerId, limit = CONFIG.ORDERS_LIMI
         : null,
       billingAddress: order.billingAddress
         ? {
-            fullName: `${order.billingAddress.firstName || ''} ${order.billingAddress.lastName || ''}`.trim(),
+            fullName:
+              `${order.billingAddress.firstName || ''} ${order.billingAddress.lastName || ''}`.trim(),
             phone: order.billingAddress.phone,
             address: order.billingAddress.addressLine1,
             addressLine2: order.billingAddress.addressLine2,
@@ -677,15 +679,15 @@ export {
 // ============================================================================
 
 async function runTests() {
-  console.log('=' .repeat(70))
+  console.log('='.repeat(70))
   console.log('🧪 IKAS Customer + Orders Block Test')
-  console.log('=' .repeat(70))
+  console.log('='.repeat(70))
 
   // Test phone numbers (replace with actual test data)
   const testPhones = [
     '+90 555 123 4567', // Standard Turkish format
-    '05551234567',      // Local format
-    '5551234567',       // Without leading zero
+    '05551234567', // Local format
+    '5551234567', // Without leading zero
   ]
 
   console.log('\n📞 Testing with sample phone lookup...\n')
@@ -704,7 +706,9 @@ async function runTests() {
     const customerWithPhone = customers.find((c) => c.phone)
 
     if (customerWithPhone) {
-      console.log(`\n📋 Found test customer: ${customerWithPhone.firstName} ${customerWithPhone.lastName}`)
+      console.log(
+        `\n📋 Found test customer: ${customerWithPhone.firstName} ${customerWithPhone.lastName}`
+      )
       console.log(`   Phone: ${customerWithPhone.phone}`)
       console.log(`   Email: ${customerWithPhone.email || 'N/A'}`)
 
@@ -714,9 +718,9 @@ async function runTests() {
       console.log('Result:')
       console.log(JSON.stringify(result, null, 2))
 
-      console.log('\n' + '=' .repeat(70))
+      console.log(`\n${'='.repeat(70)}`)
       console.log('📊 SUMMARY')
-      console.log('=' .repeat(70))
+      console.log('='.repeat(70))
       console.log(`Success: ${result.success}`)
       console.log(`Customer Found: ${result.found}`)
       if (result.customer) {

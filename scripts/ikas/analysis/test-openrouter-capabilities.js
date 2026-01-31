@@ -94,7 +94,9 @@ async function test() {
   for (const [modelId, caps] of modelCapabilitiesCache.entries()) {
     if (modelId.includes('gemini')) {
       console.log(`   - ${modelId}`)
-      console.log(`     tools: ${caps.supportsTools}, structured: ${caps.supportsStructuredOutputs}`)
+      console.log(
+        `     tools: ${caps.supportsTools}, structured: ${caps.supportsStructuredOutputs}`
+      )
     }
   }
 }

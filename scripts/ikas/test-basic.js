@@ -6,7 +6,7 @@
  * Usage: node scripts/ikas/test-basic.js
  */
 
-import { getToken, fetchCategories, fetchProducts, separator, printHeader } from './lib/index.js'
+import { fetchCategories, getToken, printHeader, separator } from './lib/index.js'
 
 async function main() {
   try {

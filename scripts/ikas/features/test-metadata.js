@@ -6,7 +6,12 @@
  * Usage: node scripts/ikas/features/test-metadata.js
  */
 
-import { getToken, executeGraphQL, constructProductUrl, constructCategoryUrl } from '../lib/index.js'
+import {
+  constructCategoryUrl,
+  constructProductUrl,
+  executeGraphQL,
+  getToken,
+} from '../lib/index.js'
 
 async function testMetadata() {
   const token = await getToken()

@@ -7,12 +7,12 @@
  */
 
 import {
-  getToken,
   executeGraphQL,
   getProductPrice,
-  TEST_CATEGORIES,
-  separator,
+  getToken,
   printHeader,
+  separator,
+  TEST_CATEGORIES,
 } from '../lib/index.js'
 
 async function fetchProductsDetailed(token, categoryId) {
@@ -93,7 +93,9 @@ async function checkVisibility(categoryId) {
       console.log(`         SKU: ${v.sku || 'N/A'}`)
       if (v.prices && v.prices.length > 0) {
         const vPrice = v.prices[0]
-        console.log(`         Price: ${vPrice.discountPrice || vPrice.sellPrice} ${vPrice.currency}`)
+        console.log(
+          `         Price: ${vPrice.discountPrice || vPrice.sellPrice} ${vPrice.currency}`
+        )
       }
     })
     console.log('')
@@ -108,9 +110,7 @@ async function checkVisibility(categoryId) {
   )
   console.log(`   Products with hidden channels: ${withHiddenChannels.length}`)
 
-  const inactiveVariants = filteredProducts.filter(
-    (p) => p.variants && p.variants.some((v) => !v.isActive)
-  )
+  const inactiveVariants = filteredProducts.filter((p) => p.variants?.some((v) => !v.isActive))
   console.log(`   Products with inactive variants: ${inactiveVariants.length}`)
 
   const suspiciouslyLowPriced = filteredProducts.filter((p) => {

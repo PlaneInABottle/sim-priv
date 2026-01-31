@@ -7,15 +7,14 @@
  */
 
 import {
-  getToken,
   fetchCategories,
   fetchProducts,
-  getProductPrice,
   formatPriceWithDiscount,
+  getProductPrice,
+  getToken,
   isVisibleCategory,
-  TEST_CATEGORIES,
-  separator,
   printHeader,
+  TEST_CATEGORIES,
 } from '../lib/index.js'
 
 async function checkCategory(categoryId) {
@@ -32,7 +31,9 @@ async function checkCategory(categoryId) {
 
   console.log(`\n📂 Category: ${category.name}`)
   console.log(`   ID: ${category.id}`)
-  console.log(`   Visible: ${isVisibleCategory(category) ? '✅ Yes' : '❌ No (no salesChannelIds)'}`)
+  console.log(
+    `   Visible: ${isVisibleCategory(category) ? '✅ Yes' : '❌ No (no salesChannelIds)'}`
+  )
 
   // Check for visible subcategories
   const subcategories = categories.filter((c) => c.parentId === categoryId && isVisibleCategory(c))

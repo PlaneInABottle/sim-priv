@@ -6,13 +6,7 @@
  * Usage: node scripts/ikas/analysis/check-empty-categories.js
  */
 
-import {
-  getToken,
-  executeGraphQL,
-  EMPTY_CATEGORIES,
-  separator,
-  printHeader,
-} from '../lib/index.js'
+import { EMPTY_CATEGORIES, executeGraphQL, getToken, printHeader, separator } from '../lib/index.js'
 
 async function fetchCategoriesWithChannels(token) {
   const query = `{
@@ -57,8 +51,7 @@ async function main() {
   // Summary
   const emptyCatsWithNoChannels = categories.filter(
     (c) =>
-      EMPTY_CATEGORIES.includes(c.name) &&
-      (!c.salesChannelIds || c.salesChannelIds.length === 0)
+      EMPTY_CATEGORIES.includes(c.name) && (!c.salesChannelIds || c.salesChannelIds.length === 0)
   )
 
   separator()

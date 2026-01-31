@@ -7,16 +7,16 @@
  */
 
 import {
-  getToken,
+  buildPath,
   fetchCategories,
   fetchProducts,
-  getProductPrice,
   formatPriceWithDiscount,
-  buildPath,
+  getProductPrice,
+  getToken,
   isVisibleCategory,
-  TEST_CATEGORIES,
-  separator,
   printHeader,
+  separator,
+  TEST_CATEGORIES,
 } from '../lib/index.js'
 
 async function browse(token, allCategories, categoryId = null) {
@@ -41,7 +41,9 @@ async function browse(token, allCategories, categoryId = null) {
     }))
   } else {
     // Check if category has visible subcategories
-    const subcategories = allCategories.filter((c) => c.parentId === categoryId && isVisibleCategory(c))
+    const subcategories = allCategories.filter(
+      (c) => c.parentId === categoryId && isVisibleCategory(c)
+    )
 
     if (subcategories.length > 0) {
       // Has subcategories - show ONLY subcategories

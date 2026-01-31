@@ -7,14 +7,13 @@
  */
 
 import {
-  getToken,
+  constructCategoryUrl,
+  constructProductUrl,
   fetchCategories,
   fetchProducts,
-  constructProductUrl,
-  constructCategoryUrl,
-  IKAS_CONFIG,
-  separator,
+  getToken,
   printHeader,
+  separator,
 } from '../lib/index.js'
 
 async function testCategorySlugs(token, categories) {
@@ -76,9 +75,7 @@ async function main() {
     await testCategorySlugs(token, categories)
 
     // Find a category with products (not a parent category)
-    const leafCategory = categories.find(
-      (cat) => !categories.some((c) => c.parentId === cat.id)
-    )
+    const leafCategory = categories.find((cat) => !categories.some((c) => c.parentId === cat.id))
 
     if (leafCategory) {
       console.log(`\nUsing leaf category: ${leafCategory.name} (${leafCategory.id})`)

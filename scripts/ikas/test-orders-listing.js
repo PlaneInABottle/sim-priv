@@ -59,7 +59,7 @@
  * Usage: node scripts/ikas/test-orders-listing.js
  */
 
-import { getToken, executeGraphQL, separator, printHeader } from './lib/index.js'
+import { executeGraphQL, getToken, printHeader, separator } from './lib/index.js'
 
 // GraphQL fragment for order fields (reusable across tests)
 const ORDER_FIELDS = `
@@ -367,9 +367,7 @@ async function testSearchParameter(token) {
   })
 
   const orders = sampleResult.data.listOrder.data || []
-  const orderWithPhone = orders.find(
-    (o) => o.customer?.phone || o.shippingAddress?.phone
-  )
+  const orderWithPhone = orders.find((o) => o.customer?.phone || o.shippingAddress?.phone)
 
   if (!orderWithPhone) {
     console.log('⚠️  No orders with phone numbers found for testing')
@@ -415,23 +413,24 @@ async function testSearchParameter(token) {
     console.log(`✅ Search by phone WORKS! Found ${searchCount} orders`)
     console.log(`   Original order #${originalOrderNumber} is in results`)
     return { searchable: true, phone: testPhone, count: searchCount }
-  } else {
-    console.log(`⚠️  Search by phone may NOT work with phone field`)
-    console.log(`   Search returned ${searchCount} orders, but original order was ${foundOriginal ? '' : 'NOT '}found`)
-
-    // Also test search with order number to verify search works at all
-    const orderSearchResult = await executeGraphQL(token, searchQuery, {
-      search: originalOrderNumber,
-      pagination: { limit: 5, page: 1 },
-    })
-
-    const orderSearchCount = orderSearchResult.data.listOrder.count
-    if (orderSearchCount > 0) {
-      console.log(`   (Note: Search by order number works - found ${orderSearchCount} orders)`)
-    }
-
-    return { searchable: false, reason: 'Phone not in searchable fields' }
   }
+  console.log(`⚠️  Search by phone may NOT work with phone field`)
+  console.log(
+    `   Search returned ${searchCount} orders, but original order was ${foundOriginal ? '' : 'NOT '}found`
+  )
+
+  // Also test search with order number to verify search works at all
+  const orderSearchResult = await executeGraphQL(token, searchQuery, {
+    search: originalOrderNumber,
+    pagination: { limit: 5, page: 1 },
+  })
+
+  const orderSearchCount = orderSearchResult.data.listOrder.count
+  if (orderSearchCount > 0) {
+    console.log(`   (Note: Search by order number works - found ${orderSearchCount} orders)`)
+  }
+
+  return { searchable: false, reason: 'Phone not in searchable fields' }
 }
 
 /**
@@ -492,15 +491,12 @@ async function testPhoneViaCustomerLookup(token) {
 
       const orderCount = orderResult.data.listOrder.count
       console.log(`✅ Customer has ${orderCount} orders`)
-      console.log(
-        '   ℹ️  This is a viable workaround: find customer by phone → get their orders'
-      )
+      console.log('   ℹ️  This is a viable workaround: find customer by phone → get their orders')
 
       return { viable: true, customerId: customerWithPhone.id, orderCount }
-    } else {
-      console.log('⚠️  No customers with phone numbers found')
-      return { viable: false }
     }
+    console.log('⚠️  No customers with phone numbers found')
+    return { viable: false }
   } catch (error) {
     console.log(`⚠️  Customer API test failed: ${error.message}`)
     return { viable: false, error: error.message }

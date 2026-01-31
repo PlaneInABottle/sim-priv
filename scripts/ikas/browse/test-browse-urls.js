@@ -7,15 +7,15 @@
  */
 
 import {
-  getToken,
+  constructCategoryUrl,
+  constructProductUrl,
   fetchCategories,
   fetchProducts,
+  getToken,
   IKAS_CONFIG,
-  constructProductUrl,
-  constructCategoryUrl,
   isVisibleCategory,
-  separator,
   printHeader,
+  separator,
 } from '../lib/index.js'
 
 async function testRootCategories(token, allCategories) {
