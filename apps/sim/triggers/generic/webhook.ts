@@ -86,7 +86,17 @@ export const genericWebhookTrigger: TriggerConfig = {
     },
   ],
 
-  outputs: {},
+  outputs: {
+    body: {
+      type: 'object',
+      description: 'The webhook request payload (e.g., body.orderId, body.event)',
+    },
+    headers: {
+      type: 'object',
+      description:
+        'Contains only the header specified in "Secret Header Name". Omitted if no secret header is configured. Access via headers.<header-name> (e.g., headers.x-tenant-token)',
+    },
+  },
 
   webhook: {
     method: 'POST',
