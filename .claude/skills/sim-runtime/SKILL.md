@@ -119,13 +119,19 @@ Or run `scripts/check-health.sh` from the skill directory at `.claude/skills/sim
 
 ## Monitoring Logs
 
-**App + Socket logs:** Detached processes redirect output to logs. Check process output with:
-```bash
-ps aux | grep "bun run dev:full"  # Find PID
-tail -f /tmp/sim-dev.log  # If logs redirected
+**App + Socket logs:** Detached processes automatically redirect output to temporary log files. Use `read_bash` to get the log path:
+
+```
+read_bash(shellId: "{shellId}", delay: 5)
+# Returns: <command detached, output redirected to /var/folders/.../copilot-detached-{shellId}-*.log>
 ```
 
-Or restart without detach temporarily to see live output.
+Then monitor the log file:
+```bash
+tail -f /var/folders/.../T/copilot-detached-{shellId}-*.log
+```
+
+**Best practice:** Use health checks (curl endpoints) instead of parsing logs to verify services are running.
 
 **Database logs:**
 
