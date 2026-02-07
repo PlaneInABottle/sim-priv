@@ -8,7 +8,16 @@ license: Complete terms in LICENSE.txt
 
 Autonomous guide for creating, building, executing, and monitoring Sim Studio workflows via the 21 sim-mcp tools. All operations update the UI in real-time.
 
-> **Reference docs:** [MCP Tools Reference](references/mcp-tools-reference.md) · [Block Types](references/block-types.md) · [Troubleshooting](references/troubleshooting.md) · [Operations API](references/operations-api.md) · [Workflow Templates](examples/workflow-templates.json)
+> **Reference docs:** [MCP Tools Reference](references/mcp-tools-reference.md) · [Block Types](references/block-types.md) · [Troubleshooting](references/troubleshooting.md) · [Workflow Templates](examples/workflow-templates.json)
+
+### When to Read References
+
+**Read these when you need:**
+- **Detailed tool parameters** → [MCP Tools Reference](references/mcp-tools-reference.md) — full parameter tables for all 21 tools
+- **Subblock configurations** → [Block Types](references/block-types.md) — subblock IDs, formats, and examples for all block types
+- **Extended debugging** → [Troubleshooting](references/troubleshooting.md) — execution patterns, debug workflows, common error fixes
+
+**Start with SKILL.md** — it covers 80% of workflow operations. Only dive into references for specific details.
 
 ## Workflow Lifecycle
 
@@ -31,7 +40,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 
 ## Tool Quick Reference
 
-> Full parameter tables: [references/mcp-tools-reference.md](references/mcp-tools-reference.md)
+> **Need parameter details?** See [MCP Tools Reference](references/mcp-tools-reference.md)
 
 ### Creation & Building
 
@@ -203,7 +212,7 @@ update_subblock(blockId, "data", '{"result": "<Agent.content>"}')
 | `linear` | `operation`, `credential`, `teamId` |
 | `jira` | `operation`, `credential`, `projectKey` |
 
-> Full block type details: [references/block-types.md](references/block-types.md)
+> **Need subblock IDs?** See [Block Types](references/block-types.md)
 
 ---
 
