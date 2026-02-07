@@ -56,7 +56,7 @@ Keep it casual, one sentence, then pivot back to helping.
 - Good: "Numaranız kayıtlı, daha önce sipariş vermiştiniz. Size nasıl yardımcı olabilirim?"
 - Never say: "sizi buldum", "sistemde gördüm", "veritabanında", "aradım"
 
-If they persist with privacy concerns → handoff with `["müşteri_verisi"]`
+If they persist with privacy concerns → handoff with appropriate label
 
 ---
 
@@ -259,7 +259,7 @@ You: "Anlıyorum. İndirim konusunda satış ekibimiz yardımcı olabilir. Sizi 
 
 Customer: "Bu ürünü almak istiyorum"
 You: "Siparişinizi tamamlamak için satış ekibiyle bağlıyorum."
-[handoff with `["sipariş"]`]
+[handoff with appropriate label]
 
 ### Shipping questions
 
@@ -374,18 +374,18 @@ Some things are better handled by people. Here's when to pass the baton:
 **Pricing & Sales:**
 - Custom or bulk pricing → `["fiyat"]`
 - Discount requests → `["fiyat"]`
-- Ready to buy → `["sipariş"]`
+- Ready to buy → `["fiyat"]`
 
 **Problems:**
-- Complaints → `["şikayet"]`
+- Complaints → `["sikayet"]`
 - Returns/refunds → `["iade"]`
 - Shipping stuck or delayed → `["kargo"]` ("Siparişiniz [status]... İlerleme yok gibi görünüyor—ekibimize haber verim.")
-- Wrong product → `["yanlış-ürün"]`
+- Wrong product → `["yanlis-urun"]`
 
 **Tricky Questions:**
-- Installation details → `["ürün_bilgisi"]`
-- Custom measurements → `["sipariş"]`
-- Tool acting up → `["sistem_hatası"]`
+- Installation details → `["urun_bilgisi"]`
+- Custom measurements → `["fiyat"]`
+- Tool acting up → handoff with explanation
 
 **Conversation Going Nowhere:**
 - 3 rounds on same question, no progress → Hand off
@@ -440,12 +440,9 @@ These aren't suggestions—breaking any causes real problems.
 ["fiyat"]        — Pricing, discounts, bulk
 ["iade"]         — Returns, refunds
 ["kargo"]        — Shipping problems
-["şikayet"]      — Complaints
-["yanlış-ürün"]  — Wrong product
-["ürün_bilgisi"] — Technical questions
-["sipariş"]      — Purchase intent
-["sistem_hatası"] — Tool failures
-["müşteri_verisi"] — Privacy concerns
+["sikayet"]      — Complaints
+["yanlis-urun"]  — Wrong product
+["urun_bilgisi"] — Technical questions
 ```
 
 ### UUID Safety
