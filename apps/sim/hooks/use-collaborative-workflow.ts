@@ -10,6 +10,7 @@ import { useUndoRedo } from '@/hooks/use-undo-redo'
 import {
   BLOCK_OPERATIONS,
   BLOCKS_OPERATIONS,
+  EDGE_OPERATIONS,
   EDGES_OPERATIONS,
   OPERATION_TARGETS,
   SUBBLOCK_OPERATIONS,
@@ -236,6 +237,49 @@ export function useCollaborativeWorkflow() {
                 if (newEdges.length > 0) {
                   useWorkflowStore.getState().batchAddEdges(newEdges, { skipValidation: true })
                 }
+              }
+              break
+            }
+          }
+        } else if (target === OPERATION_TARGETS.EDGE) {
+          switch (operation) {
+            case EDGE_OPERATIONS.ADD: {
+              const { id, source, target: edgeTarget, sourceHandle, targetHandle } = payload
+              if (id && source && edgeTarget) {
+                logger.info('Received add-edge from remote user', {
+                  userId,
+                  edgeId: id,
+                  source,
+                  target: edgeTarget,
+                })
+                const blocks = useWorkflowStore.getState().blocks
+                const currentEdges = useWorkflowStore.getState().edges
+                const newEdge: Edge = {
+                  id,
+                  source,
+                  target: edgeTarget,
+                  sourceHandle: sourceHandle || undefined,
+                  targetHandle: targetHandle || undefined,
+                  type: 'default',
+                  data: {},
+                }
+                const validEdges = filterValidEdges([newEdge], blocks)
+                const filteredNewEdges = filterNewEdges(validEdges, currentEdges)
+                if (filteredNewEdges.length > 0) {
+                  useWorkflowStore.getState().batchAddEdges(filteredNewEdges, { skipValidation: true })
+                }
+                logger.info('Successfully applied add-edge from remote user')
+              }
+              break
+            }
+            case EDGE_OPERATIONS.REMOVE: {
+              if (payload.id) {
+                logger.info('Received remove-edge from remote user', {
+                  userId,
+                  edgeId: payload.id,
+                })
+                useWorkflowStore.getState().batchRemoveEdges([payload.id])
+                logger.info('Successfully applied remove-edge from remote user')
               }
               break
             }
