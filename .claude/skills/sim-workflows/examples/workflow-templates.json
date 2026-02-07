@@ -27,7 +27,7 @@
         "name": "Return Response",
         "position": { "x": 700, "y": 100 },
         "data": {
-          "data": "{{blocks.agent_1.output}}"
+          "data": "<AI Assistant.content>"
         }
       }
     ],
@@ -47,7 +47,7 @@
 
   "conditional_routing": {
     "name": "Conditional Routing",
-    "description": "Route to different agents based on condition",
+    "description": "Route to different agents based on condition. Uses context object for expressions and condition-{id} sourceHandles.",
     "blocks": [
       {
         "id": "trigger_1",
@@ -61,7 +61,10 @@
         "name": "Check Priority",
         "position": { "x": 350, "y": 150 },
         "data": {
-          "condition": "{{input.priority}} === 'high'"
+          "conditions": [
+            { "id": "is_high", "title": "if", "value": "context.input.priority === 'high'" },
+            { "id": "fallback", "title": "else", "value": "" }
+          ]
         }
       },
       {
@@ -99,12 +102,12 @@
       {
         "source": "condition_1",
         "target": "agent_high",
-        "sourceHandle": "true"
+        "sourceHandle": "condition-is_high"
       },
       {
         "source": "condition_1",
         "target": "agent_standard",
-        "sourceHandle": "false"
+        "sourceHandle": "condition-fallback"
       },
       {
         "source": "agent_high",
@@ -134,10 +137,8 @@
         "position": { "x": 350, "y": 100 },
         "data": {
           "method": "GET",
-          "url": "https://api.example.com/users/{{input.userId}}",
-          "headers": {
-            "Authorization": "Bearer {{variables.apiKey}}"
-          }
+          "url": "https://api.example.com/users/<Start.input.userId>",
+          "headers": [["Authorization", "Bearer <variable.apiKey>"]]
         }
       },
       {
@@ -198,7 +199,7 @@
         "position": { "x": 350, "y": 100 },
         "data": {
           "type": "forEach",
-          "array": "{{input.items}}",
+          "array": "<Start.input.items>",
           "maxIterations": 100
         }
       },
@@ -209,7 +210,7 @@
         "position": { "x": 600, "y": 100 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Analyze the item: {{loop.current}}"
+          "systemPrompt": "Analyze the provided item."
         }
       },
       {
@@ -218,7 +219,7 @@
         "name": "Return Results",
         "position": { "x": 850, "y": 100 },
         "data": {
-          "data": "{{blocks.loop_1.output}}"
+          "data": "<Process Items.result>"
         }
       }
     ],
@@ -255,7 +256,7 @@
         "position": { "x": 350, "y": 100 },
         "data": {
           "knowledgeBaseId": "kb_123",
-          "query": "{{input.question}}",
+          "query": "<Start.input.question>",
           "limit": 5,
           "minScore": 0.7
         }
@@ -267,7 +268,7 @@
         "position": { "x": 600, "y": 100 },
         "data": {
           "model": "gpt-4",
-          "systemPrompt": "Answer the question using the provided context:\n\nContext: {{blocks.kb_1.output}}\n\nQuestion: {{input.question}}"
+          "systemPrompt": "Answer the question using the provided context."
         }
       },
       {
@@ -319,7 +320,7 @@
         "position": { "x": 600, "y": 50 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Analyze sentiment of: {{input.text}}"
+          "systemPrompt": "Analyze sentiment of the provided text."
         }
       },
       {
@@ -329,7 +330,7 @@
         "position": { "x": 600, "y": 200 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Extract entities from: {{input.text}}"
+          "systemPrompt": "Extract entities from the provided text."
         }
       },
       {
@@ -339,7 +340,7 @@
         "position": { "x": 600, "y": 350 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Summarize: {{input.text}}"
+          "systemPrompt": "Summarize the provided text."
         }
       },
       {
@@ -348,11 +349,7 @@
         "name": "Return Combined Results",
         "position": { "x": 900, "y": 200 },
         "data": {
-          "data": {
-            "sentiment": "{{blocks.agent_1.output}}",
-            "entities": "{{blocks.agent_2.output}}",
-            "summary": "{{blocks.agent_3.output}}"
-          }
+          "data": "{\"sentiment\": \"<Sentiment Analysis.content>\", \"entities\": \"<Entity Extraction.content>\", \"summary\": \"<Summarization.content>\"}"
         }
       }
     ],
@@ -390,7 +387,7 @@
 
   "error_handling": {
     "name": "Error Handling",
-    "description": "Workflow with error handling and fallback",
+    "description": "Workflow with error handling and fallback using condition-{id} handles",
     "blocks": [
       {
         "id": "trigger_1",
@@ -405,7 +402,7 @@
         "position": { "x": 350, "y": 150 },
         "data": {
           "method": "GET",
-          "url": "{{input.apiUrl}}",
+          "url": "<Start.input.apiUrl>",
           "timeout": 5000,
           "onError": {
             "continueOnError": true
@@ -418,7 +415,10 @@
         "name": "Check Success",
         "position": { "x": 600, "y": 150 },
         "data": {
-          "condition": "{{blocks.api_1.output.status}} === 200"
+          "conditions": [
+            { "id": "success", "title": "if", "value": "context.status === 200" },
+            { "id": "error", "title": "else", "value": "" }
+          ]
         }
       },
       {
@@ -460,12 +460,12 @@
       {
         "source": "condition_1",
         "target": "agent_success",
-        "sourceHandle": "true"
+        "sourceHandle": "condition-success"
       },
       {
         "source": "condition_1",
         "target": "agent_error",
-        "sourceHandle": "false"
+        "sourceHandle": "condition-error"
       },
       {
         "source": "agent_success",

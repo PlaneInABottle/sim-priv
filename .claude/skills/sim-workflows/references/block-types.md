@@ -72,8 +72,32 @@ Branching logic based on JavaScript expression evaluation.
 **Data structure:**
 ```typescript
 {
-  condition: string          // JavaScript expression, e.g., "{{input.status}} === 'success'"
+  conditions: Array<{
+    id: string                // Unique condition ID (used in edge sourceHandle)
+    title: string             // "if", "else if", or "else"
+    value: string             // JavaScript expression using `context` object
+  }>
 }
+```
+
+**Condition expression syntax:**
+The `context` object is auto-populated from the source block's output (spread flat). You can also use `<BlockName.field>` tag syntax.
+
+```typescript
+// Examples by source block type:
+"context.result.priority === 'high'"          // source = function block
+"context.content.includes('urgent')"          // source = agent block
+"context.status === 200"                       // source = api block
+"context.data.items.length > 0"               // source = api block
+"context.input.mode === 'strict'"             // source = start_trigger
+
+// Using tag syntax (any upstream block):
+"<Function 1.result.score> >= 80"
+
+// Multi-condition chain:
+// condition 1 (if):     "context.status === 200 && context.data.valid === true"
+// condition 2 (else if): "context.status === 200"
+// condition 3 (else):    ""   ← empty = catch-all fallback
 ```
 
 **Output fields:**
@@ -84,6 +108,51 @@ Branching logic based on JavaScript expression evaluation.
 
 **Handles:**
 - `condition-{conditionId}` — routes to the target for each matching condition
+
+### Condition Branching Deep Dive
+
+**Multi-condition chains (if / else-if / else):**
+```json
+[
+  { "id": "high", "title": "if", "value": "context.result.priority === 'high'" },
+  { "id": "medium", "title": "else if", "value": "context.result.priority === 'medium'" },
+  { "id": "fallback", "title": "else", "value": "" }
+]
+```
+Each condition is evaluated in order. The first truthy match wins. An empty `value` (`""`) acts as a catch-all fallback (always matches if no prior condition matched).
+
+**Edge wiring for multi-conditions:**
+```
+edge: source="cond", target="high_agent",   sourceHandle="condition-high"
+edge: source="cond", target="medium_agent",  sourceHandle="condition-medium"
+edge: source="cond", target="default_agent", sourceHandle="condition-fallback"
+```
+
+**Complex expressions:**
+```javascript
+// Boolean logic (&&, ||)
+"context.status === 200 && context.data.items.length > 0"
+"context.result.type === 'A' || context.result.type === 'B'"
+
+// Nested property checks
+"context.data.user.role === 'admin'"
+"context.result.scores[0] >= 80"
+
+// Null-safe checks
+"context.data && context.data.results && context.data.results.length > 0"
+
+// String methods
+"context.content.toLowerCase().includes('error')"
+"context.data.email.endsWith('@company.com')"
+
+// Numeric comparisons
+"context.result.confidence >= 0.95"
+"context.data.items.length > 0 && context.data.items.length <= 100"
+
+// Type checks
+"typeof context.result === 'object'"
+"Array.isArray(context.data.items)"
+```
 
 ### router
 Multi-way routing based on multiple conditions.
@@ -302,11 +371,12 @@ Pause workflow and wait for human approval or input.
 ## Block Configuration Best Practices
 
 ### Using Expressions
-Blocks support template expressions to reference workflow data:
-- `{{input}}` - Current block input
-- `{{variables.name}}` - Workflow variable
-- `{{blocks.blockId.output}}` - Output from specific block
-- `{{trigger.input}}` - Trigger input data
+Blocks support tag expressions to reference workflow data:
+- `<BlockName.field>` - Output from a specific block (uses display name)
+- `<variable.name>` - Workflow variable reference
+- In **condition blocks**, use `context.field` for source block output (auto-populated)
+- In **function blocks**, tags become safe variable references (not inline strings)
+- **Do NOT use** `{{blocks.blockId.output}}` or `{{input}}` — these are not valid syntax
 
 ### Position Layout
 Standard spacing for visual clarity:

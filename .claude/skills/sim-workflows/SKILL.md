@@ -8,13 +8,15 @@ license: Complete terms in LICENSE.txt
 
 Autonomous guide for creating, building, executing, and monitoring Sim Studio workflows via the 21 sim-mcp tools. All operations update the UI in real-time.
 
-> **Reference docs:** [MCP Tools Reference](references/mcp-tools-reference.md) · [Block Types](references/block-types.md) · [Troubleshooting](references/troubleshooting.md) · [Workflow Templates](examples/workflow-templates.json)
+> **Reference docs:** [MCP Tools Reference](references/mcp-tools-reference.md) · [Block Types](references/block-types.md) · [Function Patterns](references/function-block-patterns.md) · [API Patterns](references/api-block-patterns.md) · [Troubleshooting](references/troubleshooting.md) · [Workflow Templates](examples/workflow-templates.json)
 
 ### When to Read References
 
 **Read these when you need:**
 - **Detailed tool parameters** → [MCP Tools Reference](references/mcp-tools-reference.md) — full parameter tables for all 21 tools
 - **Subblock configurations** → [Block Types](references/block-types.md) — subblock IDs, formats, and examples for all block types
+- **Function block code** → [Function Patterns](references/function-block-patterns.md) — sandbox APIs, tag usage, common patterns, error handling
+- **API block setup** → [API Patterns](references/api-block-patterns.md) — headers format, body handling, tag resolution, public test APIs
 - **Extended debugging** → [Troubleshooting](references/troubleshooting.md) — execution patterns, debug workflows, common error fixes
 
 **Start with SKILL.md** — it covers 80% of workflow operations. Only dive into references for specific details.
@@ -125,6 +127,43 @@ Reference outputs using the block's **display name** (not ID):
 {{variable.myVar}}         — In template text fields
 ```
 
+### Condition Block Context Object
+
+Condition blocks evaluate JavaScript expressions using a special `context` object that is **auto-populated from the source block's output** (the block directly connected upstream). The source block's output fields are spread flat onto `context`.
+
+**How it works:** The condition expression is wrapped as:
+```javascript
+const context = { /* source block output, spread flat */ };
+return Boolean(yourExpression)
+```
+
+**`context` fields by source block type:**
+
+| Source Block | `context` Fields | Example Expression |
+|-------------|-----------------|-------------------|
+| `function` | `context.result` (return value), `context.stdout` | `context.result.priority === 'high'` |
+| `agent` | `context.content` (response text), `context.tokens`, `context.model` | `context.content.includes('urgent')` |
+| `api` | `context.data` (response body), `context.status`, `context.headers` | `context.status === 200` |
+| `start_trigger` | `context.input` (full input), `context.conversationId`, `context.files`, plus spread inputFormat fields | `context.input.priority === 'high'` |
+| `condition` | Spreads its own source output (inherits all fields from upstream) | `context.result > 100` |
+
+**Both syntaxes work in conditions:**
+- **`context.field`** — references the immediate source block's output
+- **`<BlockName.field>`** — tag syntax, resolved server-side before evaluation (can reference ANY upstream block, not just the immediate source)
+
+```json
+// Using context (source block output)
+{ "value": "context.result.priority === 'high'" }
+
+// Using tag syntax (any block by display name)
+{ "value": "<Function 1.result.priority> === 'high'" }
+
+// Combining both
+{ "value": "context.status === 200 && <Start.input.retryEnabled> === true" }
+```
+
+> **⚠️ WRONG:** `<PreviousBlock.result.priority> === 'high'` — tags use display names only, not generic labels. Use the actual block name or `context.field`.
+
 ---
 
 ## Block Types & Configuration
@@ -181,10 +220,12 @@ SubBlocks: `conditions`
 
 ```json
 [
-  { "id": "is_high", "title": "if", "value": "<Block.field> === 'high'" },
+  { "id": "is_high", "title": "if", "value": "context.result.priority === 'high'" },
   { "id": "fallback", "title": "else", "value": "" }
 ]
 ```
+
+**Expression syntax:** Use `context.field` to reference the source block's output (auto-populated), or `<BlockName.field>` tag syntax to reference any upstream block by display name. See [Condition Block Context Object](#condition-block-context-object) for full details.
 
 **⚠️ Edge sourceHandles must be `"condition-{conditionId}"`.** Do NOT use `"true"` / `"false"`.
 
@@ -272,13 +313,16 @@ add_blocks({
   ]
 })
 
+// Conditions use `context` object (auto-populated from source block output)
 update_subblock({ ..., blockId: "cond", subblockId: "conditions", value: [
-  { "id": "is_high", "title": "if", "value": "<PreviousBlock.result.priority> === 'high'" },
+  { "id": "is_high", "title": "if", "value": "context.result.priority === 'high'" },
   { "id": "fallback", "title": "else", "value": "" }
 ]})
 ```
 
 **Key:** Condition `id` must match edge `sourceHandle` suffix after `"condition-"`.
+
+**⚠️ Custom block IDs:** Custom block IDs in atomic `add_blocks` may require UUID format. If custom IDs fail, omit them and let the system auto-generate IDs, then use `get_workflow` to discover the assigned IDs.
 
 > More patterns: [references/troubleshooting.md](references/troubleshooting.md) (Execute & Monitor, Debug Failures)
 
@@ -372,8 +416,43 @@ create_workflow → add_blocks (trigger + agent + response with edges) → updat
 <BlockName.field>           Block output reference
 <variable.name>             Variable reference
 {{variable.name}}           Template variable in text
+context.field               Condition block context (source output)
 ```
 
 ### Trigger Types for execute_workflow
 
 `api` | `manual` | `schedule` | `chat` | `webhook` | `mcp` | `a2a`
+
+---
+
+## Tag Syntax Edge Cases & Troubleshooting
+
+### Nested Property Access
+Tags support dot notation for nested properties:
+```
+<Function 1.result.user.name>     — Nested object access
+<API Call.data.items[0].id>       — Array index access
+```
+If a nested path is `undefined`, the tag resolves to `undefined` (not an error).
+
+### Null / Undefined References
+- If a referenced block hasn't executed yet, the tag resolves to `undefined`
+- If a field doesn't exist on the output, the tag resolves to `undefined`
+- Use condition checks: `context.result !== undefined && context.result.field === 'value'`
+
+### Tags in Function Block Code
+Tags in function code are replaced with safe variable names before execution:
+```javascript
+// Written as:
+const data = <My API.data>;
+
+// Becomes (internally):
+const __tag_my_api_0data = /* actual value */;
+const data = __tag_my_api_0data;
+```
+**⚠️ Block names with spaces:** Work in tag syntax but the internal variable name sanitization handles them. However, for clarity and reliability in function code, prefer block names without spaces (e.g., "MyAPI" instead of "My API").
+
+### Tags vs Context in Conditions
+- **`context.field`** — references the immediate source block only; auto-populated
+- **`<BlockName.field>`** — can reference ANY upstream block by display name; resolved server-side
+- Both can be used in the same expression: `context.status === 200 && <Start.input.mode> === 'strict'`
