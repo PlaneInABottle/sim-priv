@@ -64,13 +64,13 @@ Run from repo root. Requires `DATABASE_URL` in `.env`.
 
 ### Step 3: Start App + Socket Server
 
-Use async mode so the process runs in background:
+Use async mode with detach so the process persists:
 
 ```
-bash(command: "bun run dev:full", mode="async")
+bash(command: "bun run dev:full", mode="async", detach=true)
 ```
 
-This runs `concurrently` with two processes labeled `[App]` and `[Realtime]`.
+**Important:** `detach=true` ensures the server survives agent shutdown. This runs `concurrently` with two processes labeled `[App]` and `[Realtime]`.
 
 ### Step 4: Verify Services Are Ready
 
@@ -112,7 +112,13 @@ Or run `scripts/check-health.sh` from the skill directory at `.claude/skills/sim
 
 ## Monitoring Logs
 
-**App + Socket logs:** Use `read_bash` with the shellId from the `bun run dev:full` async call. Output is prefixed with `[App]` or `[Realtime]`.
+**App + Socket logs:** Detached processes redirect output to logs. Check process output with:
+```bash
+ps aux | grep "bun run dev:full"  # Find PID
+tail -f /tmp/sim-dev.log  # If logs redirected
+```
+
+Or restart without detach temporarily to see live output.
 
 **Database logs:**
 
@@ -126,13 +132,16 @@ docker compose -f docker-compose.local.yml logs db --tail 50
 
 ### Restart App (Keep Database)
 
-1. Stop the running `bun run dev:full` process with `stop_bash` using the shellId
-2. Restart: `bash(command: "bun run dev:full", mode="async")`
+1. Find the process: `ps aux | grep "bun run dev:full"`
+2. Kill it: `kill <PID>` (detached processes cannot use `stop_bash`)
+3. Restart: `bash(command: "bun run dev:full", mode="async", detach=true)`
 
 ### Stop Everything
 
 ```bash
-# Stop app (use stop_bash with the shellId)
+# Stop app (detached process - use kill with PID)
+ps aux | grep "bun run dev:full" | grep -v grep | awk '{print $2}' | xargs kill
+
 # Stop database:
 docker compose -f docker-compose.local.yml down
 ```
