@@ -98,7 +98,7 @@ Reference outputs using the block's **display name** (not ID):
 
 ```
 <Agent 1.content>          — Agent's text response
-<API Trigger.input>        — Full trigger input object
+<Start.input>              — Full trigger input object
 <Function 1.result>        — Function return value (always .result, not .output)
 ```
 
@@ -108,7 +108,7 @@ Reference outputs using the block's **display name** (not ID):
 |-----------|--------------|
 | `agent` | `.content` (response text) |
 | `function` | `.result` (return value), `.stdout` (console output) |
-| `api_trigger` | `.input` (full input), plus spread fields from inputFormat, optional `.files` |
+| `start_trigger` | `.input` (full input), `.conversationId`, `.files`, plus spread fields from inputFormat |
 | `api` | `.data` (response body), `.status`, `.headers` |
 | `condition` | `.conditionResult` (boolean), `.selectedPath`, `.selectedOption`; spreads source output |
 | `response` | `.data`, `.status`, `.headers` |
@@ -131,21 +131,25 @@ Reference outputs using the block's **display name** (not ID):
 
 ### Trigger Blocks (exactly one required per workflow)
 
-| Type | Name | Key SubBlocks |
-|------|------|---------------|
-| `api_trigger` | API Trigger | `inputFormat` |
-| `generic_webhook` | Webhook | (dynamic from payload) |
-| `chat_trigger` | Chat | (none — outputs: `input`, `conversationId`, `files`) |
-| `schedule` | Schedule | `scheduleType`, `cronExpression`, `timezone` |
-| `starter` | Starter | `startWorkflow` |
-| `start_trigger` | Start | `inputFormat` |
+| Type | Name | Key SubBlocks | Use For |
+|------|------|---------------|---------|
+| `start_trigger` | Start | `inputFormat` | ✅ **Recommended** — unified entry point for API, manual, chat, MCP, A2A triggers |
+| `generic_webhook` | Webhook | (dynamic from payload) | Receiving incoming webhooks from external services |
+| `schedule` | Schedule | `scheduleType`, `cronExpression`, `timezone` | Scheduled/cron workflows |
+
+> **⚠️ Legacy triggers (`api_trigger`, `chat_trigger`, `manual_trigger`, `input_trigger`, `starter`) are hidden from the toolbar and deprecated. Always use `start_trigger` instead.**
 
 **⚠️ Trigger / execute_workflow compatibility:**
-- `triggerType: "api"` → requires `api_trigger` (NOT `generic_webhook`)
+- `triggerType: "api"` → works with `start_trigger`
+- `triggerType: "manual"` → works with `start_trigger`
+- `triggerType: "chat"` → works with `start_trigger`
+- `triggerType: "mcp"` → works with `start_trigger`
+- `triggerType: "a2a"` → works with `start_trigger`
 - `triggerType: "webhook"` → requires `generic_webhook`
-- `triggerType: "chat"` → requires `chat_trigger`
-- `triggerType: "manual"` → works with most trigger types
+- `triggerType: "schedule"` → requires `schedule`
 - Wrong match returns: `"No start block found. Add a start block to this workflow."`
+
+**Start block outputs:** `.input` (full input object), `.conversationId`, `.files`, plus any custom fields defined in `inputFormat`
 
 ### Agent Block
 
@@ -165,7 +169,7 @@ Runtime environment:
 - **`console`**, **`fetch`** (sandboxed), **`environmentVariables`**
 
 ```javascript
-const message = <API_Trigger.message>;  // becomes a variable holding the value
+const message = <Start.message>;  // becomes a variable holding the value
 return { processed: true, data: message };
 ```
 
@@ -216,18 +220,18 @@ update_subblock(blockId, "data", '{"result": "<Agent.content>"}')
 
 ---
 
-## End-to-End Pattern: API Trigger → Agent → Response
+## End-to-End Pattern: Start → Agent → Response
 
 ```
 Step 1: Create the workflow
-create_workflow({ name: "Webhook Handler", workspaceId: "825eaf6a-..." })
+create_workflow({ name: "My Workflow", workspaceId: "825eaf6a-..." })
 → returns { id: "wf_new" }
 
 Step 2: Add blocks and edges (new workflows start empty)
 add_blocks({
   workflowId: "wf_new",
   blocks: [
-    { id: "trigger", type: "api_trigger", name: "API Trigger", position: { x: 100, y: 300 } },
+    { id: "trigger", type: "start_trigger", name: "Start", position: { x: 100, y: 300 } },
     { id: "agent1", type: "agent", name: "Process", position: { x: 400, y: 300 } },
     { id: "resp", type: "response", name: "Response", position: { x: 700, y: 300 } }
   ],
@@ -241,7 +245,7 @@ Step 3: Configure the agent
 update_subblock({ ..., blockId: "agent1", subblockId: "systemPrompt", value: "Process the payload." })
 update_subblock({ ..., blockId: "agent1", subblockId: "model", value: "gpt-4o" })
 update_subblock({ ..., blockId: "agent1", subblockId: "apiKey", value: "sk-..." })
-update_subblock({ ..., blockId: "agent1", subblockId: "messages", value: [{ "role": "user", "content": "Process: <API Trigger.input>" }] })
+update_subblock({ ..., blockId: "agent1", subblockId: "messages", value: [{ "role": "user", "content": "Process: <Start.input>" }] })
 
 Step 4: Configure response (json mode first, then data)
 update_subblock({ ..., blockId: "resp", subblockId: "dataMode", value: "json" })
@@ -344,7 +348,7 @@ update_subblock({ ..., blockId: "cond", subblockId: "conditions", value: [
 
 | ⚠️ Mistake | Fix |
 |-----------|-----|
-| Wrong trigger type | `api_trigger` for `triggerType: "api"`, `generic_webhook` for `"webhook"` |
+| Wrong trigger type | `start_trigger` for `triggerType: "api"/"manual"/"chat"`, `generic_webhook` for `"webhook"`, `schedule` for `"schedule"` |
 | Block ID in tags | Use **display name**: `<Agent 1.content>` not `<block_id.content>` |
 | Missing API key | Set both `apiKey` and `model` on agent blocks |
 | Wrong condition handles | Use `"condition-{conditionId}"` NOT `"true"`/`"false"` |

@@ -4,17 +4,46 @@ Comprehensive list of block types available in Sim workflows.
 
 ## Trigger Blocks
 
-### api_trigger
-Starts workflow execution via API call. Provides request data as workflow input.
+### start_trigger
+**Recommended** unified workflow entry point for API, manual, and chat runs. Replaces legacy `api_trigger`, `chat_trigger`, and `manual_trigger` blocks.
 
 **Data structure:**
 ```typescript
 {
-  method?: "GET" | "POST" | "PUT" | "DELETE"
+  inputFormat?: Array<{       // Custom input fields beyond built-in ones
+    name: string
+    type: "string" | "number" | "boolean" | "object" | "array"
+  }>
 }
 ```
 
-**Output:** Spread top-level fields from inputFormat, `.input` (full input object), optional `.files`
+**Output:** `.input` (full input object), `.conversationId`, `.files`, plus spread fields from custom `inputFormat`
+
+**Trigger modes:** `api`, `manual`, `chat` (all supported by this single block)
+
+### generic_webhook
+Receive webhooks from any external service. Exposes a unique webhook URL.
+
+**Data structure:**
+```typescript
+{}  // Dynamic — fields come from the incoming webhook payload
+```
+
+**Output:** Fields from webhook payload, accessible via dot notation (e.g., `<Webhook.message>`)
+
+### schedule
+Trigger workflow execution on a schedule.
+
+**Data structure:**
+```typescript
+{
+  scheduleType: "minutes" | "hourly" | "daily" | "weekly" | "monthly" | "custom"
+  cronExpression?: string     // For custom schedule type
+  timezone?: string           // IANA timezone (e.g., "America/New_York")
+}
+```
+
+> **⚠️ Legacy triggers (`api_trigger`, `chat_trigger`, `manual_trigger`, `input_trigger`, `starter`) are hidden and deprecated. Always use `start_trigger` instead.**
 
 ## Agent Blocks
 

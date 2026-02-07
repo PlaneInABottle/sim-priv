@@ -1,12 +1,12 @@
 {
   "simple_agent": {
     "name": "Simple Agent Workflow",
-    "description": "Basic workflow with API trigger and AI agent",
+    "description": "Basic workflow with Start trigger and AI agent",
     "blocks": [
       {
         "id": "trigger_1",
-        "type": "api_trigger",
-        "name": "API Trigger",
+        "type": "start_trigger",
+        "name": "Start",
         "position": { "x": 100, "y": 100 },
         "data": {}
       },
@@ -51,8 +51,8 @@
     "blocks": [
       {
         "id": "trigger_1",
-        "type": "api_trigger",
-        "name": "API Trigger",
+        "type": "start_trigger",
+        "name": "Start",
         "position": { "x": 100, "y": 150 }
       },
       {
@@ -123,8 +123,8 @@
     "blocks": [
       {
         "id": "trigger_1",
-        "type": "api_trigger",
-        "name": "API Trigger",
+        "type": "start_trigger",
+        "name": "Start",
         "position": { "x": 100, "y": 100 }
       },
       {
@@ -187,8 +187,8 @@
     "blocks": [
       {
         "id": "trigger_1",
-        "type": "api_trigger",
-        "name": "API Trigger",
+        "type": "start_trigger",
+        "name": "Start",
         "position": { "x": 100, "y": 100 }
       },
       {
@@ -244,8 +244,8 @@
     "blocks": [
       {
         "id": "trigger_1",
-        "type": "api_trigger",
-        "name": "API Trigger",
+        "type": "start_trigger",
+        "name": "Start",
         "position": { "x": 100, "y": 100 }
       },
       {
@@ -299,8 +299,8 @@
     "blocks": [
       {
         "id": "trigger_1",
-        "type": "api_trigger",
-        "name": "API Trigger",
+        "type": "start_trigger",
+        "name": "Start",
         "position": { "x": 100, "y": 200 }
       },
       {
@@ -394,8 +394,8 @@
     "blocks": [
       {
         "id": "trigger_1",
-        "type": "api_trigger",
-        "name": "API Trigger",
+        "type": "start_trigger",
+        "name": "Start",
         "position": { "x": 100, "y": 150 }
       },
       {
