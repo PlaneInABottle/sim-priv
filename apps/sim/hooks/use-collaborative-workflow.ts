@@ -390,6 +390,26 @@ export function useCollaborativeWorkflow() {
               }
               break
           }
+        } else if (target === OPERATION_TARGETS.SUBBLOCK) {
+          switch (operation) {
+            case SUBBLOCK_OPERATIONS.UPDATE: {
+              const { blockId, subblockId, value } = payload
+              if (blockId && subblockId !== undefined) {
+                logger.info('Received subblock update from remote user', {
+                  userId,
+                  blockId,
+                  subblockId,
+                })
+                useSubBlockStore.getState().setValue(blockId, subblockId, value)
+                const blockType = useWorkflowStore.getState().blocks?.[blockId]?.type
+                if (activeWorkflowId && blockType === 'function' && subblockId === 'code') {
+                  useCodeUndoRedoStore.getState().clear(activeWorkflowId, blockId, subblockId)
+                }
+                logger.info('Successfully applied subblock update from remote user')
+              }
+              break
+            }
+          }
         }
 
         if (target === OPERATION_TARGETS.BLOCKS) {
