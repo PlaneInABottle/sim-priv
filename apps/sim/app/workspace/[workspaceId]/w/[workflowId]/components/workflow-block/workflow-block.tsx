@@ -1089,25 +1089,31 @@ export const WorkflowBlock = memo(function WorkflowBlock({
     if (type !== 'condition') return [] as { id: string; title: string; value: string }[]
 
     const conditionsValue = subBlockState.conditions?.value
-    const raw = typeof conditionsValue === 'string' ? conditionsValue : undefined
 
-    try {
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown
-        if (Array.isArray(parsed)) {
-          return parsed.map((item: unknown, index: number) => {
-            const conditionItem = item as { id?: string; value?: unknown }
-            const title = index === 0 ? 'if' : index === parsed.length - 1 ? 'else' : 'else if'
-            return {
-              id: conditionItem?.id ?? `${id}-cond-${index}`,
-              title,
-              value: typeof conditionItem?.value === 'string' ? conditionItem.value : '',
-            }
-          })
-        }
+    // Accept both native arrays (MCP) and JSON strings (UI)
+    let conditionsArray: unknown[] | null = null
+    if (Array.isArray(conditionsValue)) {
+      conditionsArray = conditionsValue
+    } else if (typeof conditionsValue === 'string') {
+      try {
+        const parsed = JSON.parse(conditionsValue)
+        if (Array.isArray(parsed)) conditionsArray = parsed
+      } catch {
+        /* fall through to fallback */
       }
-    } catch (error) {
-      logger.warn('Failed to parse condition subblock value', { error, blockId: id })
+    }
+
+    if (conditionsArray) {
+      return conditionsArray.map((item: unknown, index: number) => {
+        const conditionItem = item as { id?: string; value?: unknown }
+        const title =
+          index === 0 ? 'if' : index === conditionsArray!.length - 1 ? 'else' : 'else if'
+        return {
+          id: conditionItem?.id ?? `${id}-cond-${index}`,
+          title,
+          value: typeof conditionItem?.value === 'string' ? conditionItem.value : '',
+        }
+      })
     }
 
     return [
@@ -1125,24 +1131,29 @@ export const WorkflowBlock = memo(function WorkflowBlock({
     if (type !== 'router_v2') return [] as { id: string; value: string }[]
 
     const routesValue = subBlockState.routes?.value
-    const raw = typeof routesValue === 'string' ? routesValue : undefined
 
-    try {
-      if (raw) {
-        const parsed = JSON.parse(raw) as unknown
-        if (Array.isArray(parsed)) {
-          return parsed.map((item: unknown, index: number) => {
-            const routeItem = item as { id?: string; value?: string }
-            return {
-              // Use stable ID format that matches ConditionInput's generateStableId
-              id: routeItem?.id ?? `${id}-route${index + 1}`,
-              value: routeItem?.value ?? '',
-            }
-          })
-        }
+    // Accept both native arrays (MCP) and JSON strings (UI)
+    let routesArray: unknown[] | null = null
+    if (Array.isArray(routesValue)) {
+      routesArray = routesValue
+    } else if (typeof routesValue === 'string') {
+      try {
+        const parsed = JSON.parse(routesValue)
+        if (Array.isArray(parsed)) routesArray = parsed
+      } catch {
+        /* fall through to fallback */
       }
-    } catch (error) {
-      logger.warn('Failed to parse router routes value', { error, blockId: id })
+    }
+
+    if (routesArray) {
+      return routesArray.map((item: unknown, index: number) => {
+        const routeItem = item as { id?: string; value?: string }
+        return {
+          // Use stable ID format that matches ConditionInput's generateStableId
+          id: routeItem?.id ?? `${id}-route${index + 1}`,
+          value: routeItem?.value ?? '',
+        }
+      })
     }
 
     // Fallback must match ConditionInput's default: generateStableId(blockId, 'route1') = `${blockId}-route1`
