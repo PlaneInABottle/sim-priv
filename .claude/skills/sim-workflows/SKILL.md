@@ -64,7 +64,7 @@ add_blocks({
 | `blocks` | ✅ | Array of `{ type, name, position: {x,y}, data?, enabled?, id? }` |
 | `edges` | | Optional edges to create simultaneously |
 
-Blocks get auto-enriched with default subBlocks and outputs. You do NOT need to specify `data` for defaults to work.
+Blocks are created with empty subBlocks. Use `update_subblock` to configure each block after creation. SubBlock IDs are listed in the Block Types Reference below — they cannot be discovered via `get_block` on a freshly created block (subBlocks appear in `get_block` only after they've been set).
 
 **`add_edge`** — Connect two blocks
 ```
@@ -134,6 +134,10 @@ execute_workflow({
 | `useDraftState` | | `true` | Use draft (unsaved) state. Set `true` to run without deploying |
 
 **Key:** `useDraftState: true` (default) executes the current draft, so deployment is NOT required for testing.
+
+**Return values:**
+- **Success:** `{ success: true, executionId: "...", output: {...}, metadata: { duration, startTime, endTime } }`
+- **Error:** `{ code: "INTERNAL_ERROR", message: "Request failed with status code 500" }` — check execution logs for details
 
 ### Monitoring
 
@@ -252,15 +256,27 @@ Reference outputs from other blocks using angle brackets with the block's displa
 ```
 <Agent 1.content>          — Agent's text response
 <API Block.data>           — API response data
-<Webhook 1.body.message>   — Nested webhook field
-<Start.input>              — Trigger input data
-<Function 1.result>        — Function return value
+<API Trigger.message>      — Trigger input field
+<API Trigger.body>         — Full trigger body
+<Function 1.result>        — Function return value (always .result, not .output)
 ```
+
+**Output field names by block type:**
+
+| Block Type | Output Fields |
+|-----------|--------------|
+| `agent` | `.content` (response text) |
+| `function` | `.result` (return value), `.stdout` (console output) |
+| `api_trigger` | `.input` (full input object), `.body`, plus spread top-level fields |
+| `api` | `.data` (response body), `.status`, `.headers` |
+| `condition` | `.result` (pass-through from previous block) |
+| `response` | `.data`, `.status`, `.headers` |
 
 **Rules:**
 - Use the block's **display name** (not its ID)
 - Case-sensitive and space-sensitive
 - Supports dot notation for nested fields
+- In function block code, tags are **text-replaced** before execution (they become string literals)
 
 ### Workflow Variables
 
@@ -286,15 +302,56 @@ Every workflow needs exactly one trigger block as the entry point.
 | `chat_trigger` | Chat | Chat interface entry | (none — outputs: `input`, `conversationId`, `files`) |
 | `schedule` | Schedule | Time-based trigger | `scheduleType`, `cronExpression`, `timezone` |
 
+**⚠️ Trigger / execute_workflow compatibility:**
+- `triggerType: "api"` → requires `api_trigger` block (NOT `generic_webhook`)
+- `triggerType: "webhook"` → requires `generic_webhook` block
+- `triggerType: "chat"` → requires `chat_trigger` block
+- `triggerType: "manual"` → works with most trigger types
+
+Using the wrong trigger block type returns: `"No start block found. Add a start block to this workflow."`
+
 ### Core Logic Blocks
 
 | Type | Name | Purpose | Key SubBlocks |
 |------|------|---------|---------------|
 | `agent` | Agent | LLM with tool calling | `model`, `systemPrompt`, `messages`, `tools`, `responseFormat`, `temperature`, `maxTokens` |
 | `function` | Function | Execute JS/Python code | `language`, `code` |
+
+### Function Block Runtime Environment
+
+Inside function block code, these variables are available:
+- **`params`** — object containing block input parameters (often `{}` for first block after trigger)
+- **`<BlockName.field>`** — tag syntax for referencing other block outputs (text-replaced before execution)
+- **`console`** — sandboxed `console.log/error/warn/info`
+- **`fetch`** — sandboxed fetch function (SSRF-validated)
+- **`environmentVariables`** — object containing environment variables
+
+**Data flow between blocks:** Previous block outputs are NOT automatically passed via `params`. Use tag syntax `<BlockName.field>` embedded directly in the code string. Tags are text-replaced with actual values before the code executes.
+
+**Example:**
+```javascript
+// Tag syntax is resolved before execution
+const message = '<API Trigger.message>';  // becomes actual message value
+const result = '<Classifier.result>';     // becomes JSON string of classifier output
+return { processed: true, data: message };
+```
+
+**Output:** Function return values are wrapped as `{ result: <returnValue>, stdout: "" }`. Reference from other blocks using `<FunctionName.result>`.
 | `condition` | Condition | Boolean branching | `conditions` |
 | `router` | Router | Multi-path routing (LLM-based) | `prompt`, `model` |
-| `response` | Response | Return workflow output | `data`, `status`, `headers` |
+| `response` | Response | Return workflow output | `data`, `dataMode`, `builderData`, `status`, `headers` |
+
+### Response Block Modes
+
+The response block has two modes controlled by the `dataMode` subblock:
+- **`structured`** (default) — Uses `builderData` subblock with typed property rows
+- **`json`** — Uses `data` subblock as a raw JSON code editor with tag references
+
+**For programmatic use, set `dataMode` to `"json"` first**, then set the `data` subblock with your JSON containing tag references:
+```
+update_subblock(blockId, "dataMode", "json")
+update_subblock(blockId, "data", '{"result": "<Agent.content>", "meta": "<Function.result>"}')
+```
 | `api` | API | HTTP requests | `url`, `method`, `headers`, `body`, `params`, `timeout` |
 
 ### Agent Block SubBlocks (Most Common)
@@ -310,9 +367,30 @@ Every workflow needs exactly one trigger block as the entry point.
 | `maxTokens` | short-input | Max response tokens |
 | `apiKey` | short-input | Provider API key |
 
+**⚠️ Agent blocks REQUIRE `apiKey` and `model` for execution.** Missing either causes a pre-execution validation error (the workflow will not attempt to run). Set both before executing.
+
+**Messages format:** The `messages` subblock accepts an array of message objects:
+```
+[{ "role": "user", "content": "Your message here with <BlockName.field> tags" }]
+```
+
 ### Condition Block
 
-Source handles for edges: `"true"` and `"false"` (or custom condition names).
+The `conditions` subblock takes an array of condition objects:
+```
+[
+  { "id": "cond_1", "title": "if", "value": "<SomeBlock.result.field> === true" },
+  { "id": "cond_2", "title": "else if", "value": "<SomeBlock.result.field> === 'other'" },
+  { "id": "cond_3", "title": "else", "value": "" }
+]
+```
+
+Source handles for edges use the format `"condition-{id}"` where `{id}` matches the condition object's `id` field:
+- `"condition-cond_1"` → connects to the "if" path
+- `"condition-cond_2"` → connects to the "else if" path
+- `"condition-cond_3"` → connects to the "else" path
+
+**⚠️ Do NOT use `"true"` / `"false"` as sourceHandles** — those do not work. Always use `"condition-{conditionId}"`.
 
 ### Router Block
 
@@ -335,38 +413,35 @@ Source handles for edges: `"route-0"`, `"route-1"`, etc. based on route count.
 
 ## End-to-End Patterns
 
-### Pattern 1: Create and Build a Webhook → Agent → Response Workflow
+### Pattern 1: Create and Build an API Trigger → Agent → Response Workflow
 
 ```
 Step 1: Create the workflow
 create_workflow({ name: "Webhook Handler", workspaceId: "825eaf6a-..." })
 → returns { id: "wf_new" }
 
-Step 2: Get the workflow to find the starter block ID
-get_workflow({ workflowId: "wf_new" })
-→ returns blocks array with a default starter block
-
-Step 3: Remove the default starter, add webhook + agent + response
-remove_blocks({ workflowId: "wf_new", blockIds: ["default_starter_id"] })
+Step 2: Add blocks and edges (new workflows start empty — no default starter to remove)
 add_blocks({
   workflowId: "wf_new",
   blocks: [
-    { id: "webhook", type: "generic_webhook", name: "Webhook", position: { x: 100, y: 300 } },
+    { id: "trigger", type: "api_trigger", name: "API Trigger", position: { x: 100, y: 300 } },
     { id: "agent1", type: "agent", name: "Process", position: { x: 400, y: 300 } },
     { id: "resp", type: "response", name: "Response", position: { x: 700, y: 300 } }
   ],
   edges: [
-    { id: "e1", source: "webhook", target: "agent1" },
+    { id: "e1", source: "trigger", target: "agent1" },
     { id: "e2", source: "agent1", target: "resp" }
   ]
 })
 
-Step 4: Configure the agent
+Step 3: Configure the agent
 update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "systemPrompt", value: "Process the webhook payload and return a summary." })
 update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "model", value: "gpt-4o" })
 update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "apiKey", value: "sk-..." })
+update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "messages", value: [{ "role": "user", "content": "Process this: <API Trigger.body>" }] })
 
-Step 5: Configure the response
+Step 4: Configure the response (set json mode first, then data)
+update_subblock({ workflowId: "wf_new", blockId: "resp", subblockId: "dataMode", value: "json" })
 update_subblock({ workflowId: "wf_new", blockId: "resp", subblockId: "data", value: "<Process.content>" })
 ```
 
@@ -424,6 +499,7 @@ execute_workflow({ workflowId: "wf_abc", input: { ... } })
 ### Pattern 4: Conditional Branching
 
 ```
+Step 1: Add condition block, configure conditions, and connect with correct sourceHandles
 add_blocks({
   workflowId: "wf_abc",
   blocks: [
@@ -433,11 +509,24 @@ add_blocks({
   ],
   edges: [
     { id: "e1", source: "trigger_id", target: "cond" },
-    { id: "e2", source: "cond", target: "yes", sourceHandle: "true" },
-    { id: "e3", source: "cond", target: "no", sourceHandle: "false" }
+    { id: "e2", source: "cond", target: "yes", sourceHandle: "condition-is_high" },
+    { id: "e3", source: "cond", target: "no", sourceHandle: "condition-fallback" }
+  ]
+})
+
+Step 2: Configure conditions — each condition needs an id matching its edge sourceHandle
+update_subblock({
+  workflowId: "wf_abc",
+  blockId: "cond",
+  subblockId: "conditions",
+  value: [
+    { "id": "is_high", "title": "if", "value": "<PreviousBlock.result.priority> === 'high'" },
+    { "id": "fallback", "title": "else", "value": "" }
   ]
 })
 ```
+
+**Important:** The condition `id` must match the edge `sourceHandle` suffix after `"condition-"`. Example: condition `id: "is_high"` → edge `sourceHandle: "condition-is_high"`.
 
 ---
 
@@ -457,15 +546,16 @@ add_blocks({
 ## Best Practices
 
 ### Building Workflows
-- Always `get_workflow` first to understand current state before modifying
+- New workflows start empty — no default starter block to remove
 - Use `add_blocks` with edges array to create blocks and connections in one call
 - Let the system auto-generate block IDs unless you need to reference them in the same call
-- Blocks are auto-enriched with default subBlocks — only configure what you need to change
+- After adding blocks, configure them with `update_subblock` — blocks start with no subBlock values
 
 ### Configuring Blocks
-- Use `get_block` to inspect a block's available subBlocks before updating
+- SubBlock IDs must be known from this guide — `get_block` only shows subBlocks after they've been set
 - Each `update_subblock` call updates one subBlock — batch multiple calls for efficiency
 - The `model` subBlock on agent blocks uses format like `gpt-4o`, `claude-sonnet-4-20250514`, `gemini-2.0-flash`
+- Agent blocks **require** `apiKey` and `model` to be set before execution (pre-execution validation)
 
 ### Executing and Monitoring
 - `useDraftState: true` (default) means no deployment needed — execute the current draft directly
@@ -484,21 +574,30 @@ add_blocks({
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
+| "No start block found" | Wrong trigger type for `execute_workflow` | Use `api_trigger` with `triggerType: "api"`, `generic_webhook` with `triggerType: "webhook"` |
 | "Block not found" | Block was deleted or ID is wrong | Call `get_workflow` to verify current block IDs |
 | "Invalid block type" | Misspelled type name | Check the Block Types Reference table above |
 | "Edge already exists" | Duplicate source→target connection | Check existing edges with `get_workflow` first |
-| Execution returns no output | Missing response block or broken edge chain | Verify all blocks are connected in sequence |
-| Subblock update has no effect | Wrong `subblockId` | Use `get_block` to see available subBlock IDs |
+| Execution returns no output | Missing response block or broken edge chain | Verify all blocks are connected; set `dataMode` to `"json"` on response block |
+| "missing required fields: API Key" | Agent block missing API key | Set `apiKey` and `model` subBlocks — both required before execution |
+| Subblock update has no effect | Wrong `subblockId` | SubBlock IDs must be known from this guide (not discoverable via `get_block` on fresh blocks) |
 | Logs show no results | Wrong `workspaceId` or time range | Verify workspaceId; try without date filters first |
-| Agent block errors | Missing API key or invalid model | Set `apiKey` and `model` subBlocks correctly |
+| Condition never matches | Wrong sourceHandle format | Use `"condition-{conditionId}"` not `"true"` / `"false"` |
+| `inputData is not defined` | Wrong variable in function code | Use `params` for inputs and `<BlockName.field>` tag syntax for block references |
+| Response block returns `{}` | Default `structured` mode ignores `data` subblock | Set `dataMode` to `"json"` before setting `data` |
+| Function output not accessible | Wrong field name in tag | Function output uses `{ result: ..., stdout: "" }` — reference via `<FnName.result>` |
 
 ### Common Mistakes
 
 1. **Forgetting to connect blocks** — blocks without edges won't execute
 2. **Using block ID instead of display name in tags** — `<Agent 1.content>` uses the display name
-3. **Not setting API keys** — agent blocks need `apiKey` subBlock configured
+3. **Not setting API keys** — agent blocks need `apiKey` subBlock configured — **hard requirement**
 4. **Missing trigger block** — every workflow needs exactly one trigger
-5. **Wrong sourceHandle on conditions** — use `"true"` / `"false"` for condition blocks
+5. **Wrong sourceHandle on conditions** — use `"condition-{conditionId}"` format, NOT `"true"` / `"false"`
+6. **Wrong trigger type** — `api_trigger` for API execution, `generic_webhook` for webhook execution
+7. **Response block in structured mode** — set `dataMode` to `"json"` for tag-based responses
+8. **Using `inputData` in function blocks** — use `params` and tag syntax `<BlockName.field>` instead
+9. **Referencing function output as `.output`** — the correct field is `.result` (e.g., `<MyFunc.result>`)
 
 ---
 

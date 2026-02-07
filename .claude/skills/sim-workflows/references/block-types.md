@@ -156,8 +156,8 @@ Execute custom JavaScript/TypeScript code.
 }
 ```
 
-**Input:** Available as `input` variable
-**Output:** Return value from code
+**Input:** Available as `params` object. Previous block outputs accessed via tag syntax `<BlockName.field>` (text-replaced before execution).
+**Output:** Return value wrapped as `{ result: <returnValue>, stdout: "" }`
 
 ## Transform Blocks
 
