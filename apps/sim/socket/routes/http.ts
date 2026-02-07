@@ -134,6 +134,36 @@ export function createHttpHandler(roomManager: IRoomManager, logger: Logger) {
       return
     }
 
+    // Handle workflow operation broadcast notifications from the REST API
+    if (req.method === 'POST' && req.url === '/api/workflow-operation') {
+      try {
+        const body = await readRequestBody(req)
+        const { workflowId, operation, target, payload, operationId, timestamp } = JSON.parse(body)
+
+        const broadcastPayload = {
+          operation,
+          target,
+          payload,
+          timestamp,
+          senderId: 'rest-api',
+          userId: 'rest-api',
+          metadata: {
+            workflowId,
+            operationId: operationId || crypto.randomUUID(),
+            source: 'rest-api',
+          },
+        }
+
+        roomManager.emitToWorkflow(workflowId, 'workflow-operation', broadcastPayload)
+        await roomManager.updateRoomLastModified(workflowId)
+        sendSuccess(res)
+      } catch (error) {
+        logger.error('Error handling workflow operation broadcast:', error)
+        sendError(res, 'Failed to process operation broadcast')
+      }
+      return
+    }
+
     res.writeHead(404, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ error: 'Not found' }))
   }
