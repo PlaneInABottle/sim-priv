@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http'
 import { env } from '@/lib/core/config/env'
+import { BLOCKS_OPERATIONS, OPERATION_TARGETS } from '@/socket/constants'
+import { enrichBatchAddBlocksPayload } from '@/socket/database/operations'
 import type { IRoomManager } from '@/socket/rooms'
 
 interface Logger {
@@ -140,10 +142,16 @@ export function createHttpHandler(roomManager: IRoomManager, logger: Logger) {
         const body = await readRequestBody(req)
         const { workflowId, operation, target, payload, operationId, timestamp } = JSON.parse(body)
 
+        // Enrich BATCH_ADD_BLOCKS payloads with registry defaults before broadcasting
+        const enrichedPayload =
+          target === OPERATION_TARGETS.BLOCKS && operation === BLOCKS_OPERATIONS.BATCH_ADD_BLOCKS
+            ? enrichBatchAddBlocksPayload(payload)
+            : payload
+
         const broadcastPayload = {
           operation,
           target,
-          payload,
+          payload: enrichedPayload,
           timestamp,
           senderId: 'rest-api',
           userId: 'rest-api',

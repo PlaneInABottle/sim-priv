@@ -9,7 +9,7 @@ import {
   type VariableOperation,
   WORKFLOW_OPERATIONS,
 } from '@/socket/constants'
-import { persistWorkflowOperation } from '@/socket/database/operations'
+import { persistWorkflowOperation, enrichBatchAddBlocksPayload } from '@/socket/database/operations'
 import type { AuthenticatedSocket } from '@/socket/middleware/auth'
 import { checkRolePermission } from '@/socket/middleware/permissions'
 import type { IRoomManager, UserSession } from '@/socket/rooms'
@@ -319,10 +319,14 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
       }
 
       if (target === OPERATION_TARGETS.BLOCKS && operation === BLOCKS_OPERATIONS.BATCH_ADD_BLOCKS) {
+        // Enrich payload with registry defaults BEFORE both persistence and broadcast
+        // so DB and real-time clients receive the same enriched data
+        const enrichedPayload = enrichBatchAddBlocksPayload(payload)
+
         await persistWorkflowOperation(workflowId, {
           operation,
           target,
-          payload,
+          payload: enrichedPayload,
           timestamp: operationTimestamp,
           userId: session.userId,
         })
@@ -332,7 +336,7 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
         socket.to(workflowId).emit('workflow-operation', {
           operation,
           target,
-          payload,
+          payload: enrichedPayload,
           timestamp: operationTimestamp,
           senderId: socket.id,
           userId: session.userId,

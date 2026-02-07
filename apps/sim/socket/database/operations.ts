@@ -557,7 +557,8 @@ async function handleBlockOperationTx(
 }
 
 /**
- * Initializes subBlocks from the block registry when they are empty or missing.
+ * Initializes subBlocks from the block registry, merging with any existing subBlocks.
+ * Preserves existing subBlocks and adds only missing ones from registry.
  * This mirrors the UI's `prepareBlockState` logic to ensure blocks added via
  * server-side paths (e.g., MCP) have proper subBlock definitions.
  */
@@ -565,19 +566,18 @@ function initializeSubBlocksFromRegistry(
   blockType: string,
   existingSubBlocks: Record<string, unknown>
 ): Record<string, unknown> {
-  // Only initialize if subBlocks are empty
-  if (existingSubBlocks && Object.keys(existingSubBlocks).length > 0) {
-    return existingSubBlocks
-  }
-
   const blockConfig = getBlock(blockType)
   if (!blockConfig?.subBlocks) {
     return existingSubBlocks
   }
 
-  const initialized: Record<string, unknown> = {}
+  // Start with existing subBlocks, then add any missing ones from registry
+  const initialized: Record<string, unknown> = { ...(existingSubBlocks || {}) }
 
   for (const subBlock of blockConfig.subBlocks) {
+    // Skip if this subBlock already exists (preserve caller-provided values)
+    if (initialized[subBlock.id]) continue
+
     let initialValue: unknown = null
 
     if (typeof subBlock.value === 'function') {
@@ -610,6 +610,68 @@ function initializeSubBlocksFromRegistry(
   }
 
   return initialized
+}
+
+/**
+ * Enriches a BATCH_ADD_BLOCKS payload by initializing subBlocks and outputs from registry.
+ * This ensures both DB persistence and real-time broadcast use the same enriched data.
+ * Returns a new payload with enriched blocks (does not mutate the original).
+ */
+export function enrichBatchAddBlocksPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const { blocks, subBlockValues } = payload as {
+    blocks?: Array<Record<string, unknown>>
+    subBlockValues?: Record<string, Record<string, unknown>>
+  }
+
+  if (!blocks || blocks.length === 0) {
+    return payload
+  }
+
+  const enrichedBlocks = blocks.map((block) => {
+    const blockType = block.type as string
+    const blockId = block.id as string
+
+    // Auto-detect trigger blocks and set triggerMode
+    const blockConfig = getBlock(blockType)
+    const isTriggerBlock = blockConfig?.category === 'triggers'
+    const triggerMode = (block.triggerMode as boolean) || isTriggerBlock
+
+    // Initialize subBlocks from registry (merge mode: preserves existing, adds missing)
+    const initializedSubBlocks = initializeSubBlocksFromRegistry(
+      blockType,
+      (block.subBlocks as Record<string, unknown>) || {}
+    )
+
+    // Merge any caller-provided subBlockValues
+    const mergedSubBlocks = mergeSubBlockValues(
+      initializedSubBlocks,
+      subBlockValues?.[blockId]
+    )
+
+    // Resolve outputs from registry/trigger config when empty
+    const outputs = resolveBlockOutputs(
+      blockType,
+      triggerMode,
+      (block.outputs as Record<string, unknown>) || {}
+    )
+
+    return {
+      ...block,
+      subBlocks: mergedSubBlocks,
+      outputs,
+      triggerMode,
+      enabled: (block.enabled as boolean) ?? true,
+      horizontalHandles: (block.horizontalHandles as boolean) ?? true,
+      advancedMode: (block.advancedMode as boolean) ?? false,
+      height: (block.height as number) || 0,
+      locked: (block.locked as boolean) ?? false,
+    }
+  })
+
+  return {
+    ...payload,
+    blocks: enrichedBlocks,
+  }
 }
 
 /**
@@ -719,47 +781,23 @@ async function handleBlocksOperationTx(
           break
         }
 
+        // Blocks are pre-enriched by enrichBatchAddBlocksPayload() upstream,
+        // so subBlocks, outputs, and triggerMode are already populated.
         const blockValues = allowedBlocks.map((block: Record<string, unknown>) => {
-          const blockId = block.id as string
-          const blockType = block.type as string
-
-          // Auto-detect trigger blocks and set triggerMode
-          const blockConfig = getBlock(blockType)
-          const isTriggerBlock = blockConfig?.category === 'triggers'
-          const triggerMode = (block.triggerMode as boolean) || isTriggerBlock
-
-          // Initialize subBlocks from registry when empty (e.g., MCP-added blocks)
-          const initializedSubBlocks = initializeSubBlocksFromRegistry(
-            blockType,
-            (block.subBlocks as Record<string, unknown>) || {}
-          )
-
-          const mergedSubBlocks = mergeSubBlockValues(
-            initializedSubBlocks,
-            subBlockValues?.[blockId]
-          )
-
-          // Resolve outputs from registry/trigger config when empty
-          const outputs = resolveBlockOutputs(
-            blockType,
-            triggerMode,
-            (block.outputs as Record<string, unknown>) || {}
-          )
-
           return {
-            id: blockId,
+            id: block.id as string,
             workflowId,
-            type: blockType,
+            type: block.type as string,
             name: block.name as string,
             positionX: (block.position as { x: number; y: number }).x,
             positionY: (block.position as { x: number; y: number }).y,
             data: (block.data as Record<string, unknown>) || {},
-            subBlocks: mergedSubBlocks,
-            outputs,
+            subBlocks: (block.subBlocks as Record<string, unknown>) || {},
+            outputs: (block.outputs as Record<string, unknown>) || {},
             enabled: (block.enabled as boolean) ?? true,
             horizontalHandles: (block.horizontalHandles as boolean) ?? true,
             advancedMode: (block.advancedMode as boolean) ?? false,
-            triggerMode,
+            triggerMode: (block.triggerMode as boolean) ?? false,
             height: (block.height as number) || 0,
             locked: (block.locked as boolean) ?? false,
           }

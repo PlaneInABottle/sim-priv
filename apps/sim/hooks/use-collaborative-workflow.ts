@@ -25,7 +25,7 @@ import { useCodeUndoRedoStore, useUndoRedoStore } from '@/stores/undo-redo'
 import { useWorkflowDiffStore } from '@/stores/workflow-diff/store'
 import { useWorkflowRegistry } from '@/stores/workflows/registry/store'
 import { useSubBlockStore } from '@/stores/workflows/subblock/store'
-import { filterNewEdges, filterValidEdges, mergeSubblockState } from '@/stores/workflows/utils'
+import { filterNewEdges, filterValidEdges, mergeSubblockState, prepareBlockState } from '@/stores/workflows/utils'
 import { useWorkflowStore } from '@/stores/workflows/workflow/store'
 import type { BlockState, Loop, Parallel, Position } from '@/stores/workflows/workflow/types'
 
@@ -423,9 +423,31 @@ export function useCollaborativeWorkflow() {
               })
 
               if (blocks && blocks.length > 0) {
+                // Defensive hydration: if blocks arrive with empty subBlocks
+                // (e.g., enrichment was bypassed), hydrate from registry client-side
+                const hydratedBlocks = blocks.map((block: Record<string, unknown>) => {
+                  const subBlocks = block.subBlocks as Record<string, unknown> | undefined
+                  if (!subBlocks || Object.keys(subBlocks).length === 0) {
+                    const prepared = prepareBlockState({
+                      id: block.id as string,
+                      type: block.type as string,
+                      name: block.name as string,
+                      position: block.position as { x: number; y: number },
+                      data: block.data as Record<string, unknown>,
+                      triggerMode: block.triggerMode as boolean,
+                    })
+                    return {
+                      ...block,
+                      subBlocks: prepared.subBlocks,
+                      outputs: prepared.outputs,
+                    }
+                  }
+                  return block
+                })
+
                 useWorkflowStore
                   .getState()
-                  .batchAddBlocks(blocks, edges || [], addedSubBlockValues || {})
+                  .batchAddBlocks(hydratedBlocks, edges || [], addedSubBlockValues || {})
               }
 
               logger.info('Successfully applied batch-add-blocks from remote user')
