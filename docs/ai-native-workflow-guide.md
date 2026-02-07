@@ -1,16 +1,16 @@
 # AI-Native Workflow Guide
 
 > **Purpose:** Template for establishing AI-managed development workflows in any project.
-> **Last Updated:** 2026-02-07
-> **Status:** Phases 1–3 complete · Phase 4 in progress · Phase 5 planned
+> **Last Updated:** 2025-07-15
+> **Status:** Phases 1–4 complete · Phase 5 active
 
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1. Runtime Setup Analysis | ✅ Complete | Determine optimal dev environment |
 | 2. Skill Creation | ✅ Complete | Codify operational knowledge |
 | 3. Implementation & Verification | ✅ Complete | Validate end-to-end |
-| 4. Programmatic Operations | 🔄 In Progress | AI creates/modifies/executes features |
-| 5. Continuous Iteration | 📋 Future | Debugging, optimization, expansion |
+| 4. Programmatic Operations | ✅ Complete | AI creates/modifies/executes features |
+| 5. Continuous Iteration | 🔄 Active | Debugging, testing, optimization, skill refinement |
 
 ---
 
@@ -28,6 +28,8 @@ This differs from AI-*assisted* development (copilot suggestions, chat-based Q&A
 - **Consistency.** Codified skills eliminate "works on my machine" and forgotten steps.
 - **Scale.** Parallel agents analyze, implement, and verify simultaneously.
 - **Knowledge retention.** Skills capture operational knowledge that would otherwise live in a single engineer's head.
+- **Continuous validation.** Unit tests run alongside changes, catching regressions before they compound.
+- **Compounding expertise.** Every skill you create makes the next AI session more capable.
 
 ### When to Use This Guide
 
@@ -123,6 +125,10 @@ Record the decision with rationale. Include:
 
 **Analysis method:** Spawned parallel Opus agents to evaluate each option against Sim's characteristics. Agents returned structured comparisons; the coordinator made the final call.
 
+> **🎯 Skill Creation Checkpoint**
+>
+> After Phase 1, create a skill if you discovered non-obvious runtime characteristics. Examples: "Our app requires polling-based file watching in Docker," "Native binaries require Linux rebuild." Capture these findings now—they'll save hours in future sessions.
+
 ---
 
 ## 3. Phase 2: Skill Creation
@@ -216,6 +222,10 @@ The `sim-runtime` skill for Sim Studio covers:
 
 **Key learning:** Detached shells (`mode="async", detach=true`) are essential for servers. Attached shells terminate when the AI session ends, killing the dev environment.
 
+> **🎯 Skill Creation Checkpoint**
+>
+> Your runtime skill is the foundation. As you troubleshoot during Phase 3, update this skill with every failure mode you encounter. A skill that only covers the happy path is incomplete.
+
 ---
 
 ## 4. Phase 3: Implementation & Verification
@@ -288,15 +298,25 @@ The AI agent must be able to recover from failures without human intervention. T
 
 **Result:** All services operational, managed entirely by AI, persistent across sessions.
 
+> **🎯 Skill Creation Checkpoint**
+>
+> After Phase 3, you've learned things the skill didn't cover. Go back and update it: add failure modes you hit, edge cases you tested, timing nuances (e.g., "database needs 5 seconds before accepting connections"). This iterative refinement is how skills mature.
+
 ---
 
 ## 5. Phase 4: Programmatic Operations
 
-> **Status:** 🔄 In Progress
+> **Status:** ✅ Complete
 
 **Goal:** Enable AI agents to create, modify, execute, and test application features programmatically.
 
 **Deliverable:** AI can build and test features autonomously through available APIs and tools.
+
+**Completion Notes:**
+- Programmatic CRUD operations working through available APIs/tools
+- Real-time UI sync verified (changes made programmatically reflect immediately)
+- All available tools inventoried, tested, and documented
+- AI agents can build complete features end-to-end without human intervention
 
 ### Steps
 
@@ -341,44 +361,291 @@ Confirm the AI can observe system behavior:
 - Detect anomalies or errors
 - Correlate events across services
 
-### Example: Sim Studio (In Progress)
+### Example: Sim Studio
 
 Available tools: `sim-mcp` server with 20+ operations for workflow management, block configuration, edge management, variable operations, and custom tool creation.
 
-Current work: Testing workflow creation and modification through MCP tools, verifying AI can build complete workflows programmatically.
+**Results:** Workflow creation, modification, and execution fully operational through MCP tools. AI agents build complete workflows programmatically with real-time UI reflection. All tools verified and documented in dedicated skills.
+
+> **🎯 Skill Creation Checkpoint**
+>
+> After Phase 4, create a skill for your programmatic operations. Document the tool inventory, common operation patterns, error handling, and any workarounds you discovered. This skill becomes the API reference for future AI sessions.
 
 ---
 
 ## 6. Phase 5: Continuous Iteration
 
-> **Status:** 📋 Future
+> **Status:** 🔄 Active
 
-**Goal:** Establish a feedback loop where AI agents improve the development workflow over time.
+**Goal:** Establish sustainable development cycles where AI agents improve the project, create skills from discovered patterns, and validate changes through testing.
 
-### Planned Areas
+**Deliverable:** A self-improving development workflow with growing skill coverage and reliable test validation.
 
-- **Debugging workflows:** AI diagnoses and fixes failures in production workflows
-- **Performance optimization:** Identify bottlenecks and optimize hot paths
-- **Capability expansion:** Add new skills as the project grows
-- **Skill updates:** Incorporate learnings from failures back into skills
-- **Cross-project patterns:** Extract generalizable patterns into shared skills
+### 6.1 Test-Driven Development Cycle
+
+Testing is the backbone of AI-driven development. Without tests, AI agents have no way to verify their changes work or that they haven't broken existing functionality.
+
+#### Run Unit Tests Alongside Changes
+
+Every code change should be accompanied by running relevant unit tests:
+
+```
+1. Make a change to a module
+2. Run unit tests for that module immediately
+3. If tests fail → fix the code or update the tests
+4. If tests pass → proceed to the next change
+```
+
+This tight loop prevents regressions from compounding. An AI agent that makes five changes before testing will spend more time debugging than one that tests after each change.
+
+#### Fix Tests That Break Due to Changes
+
+When your change intentionally alters behavior, existing tests may fail. This is expected. The correct response:
+
+| Scenario | Action |
+|----------|--------|
+| Test fails because behavior changed intentionally | Update the test to reflect new behavior |
+| Test fails due to a bug in the change | Fix the code, not the test |
+| Test is flaky or unrelated to the change | Note it, but don't ignore it—file it for investigation |
+
+#### Add Tests for New Functionality
+
+When adding new features or capabilities:
+
+- Write tests that cover the expected behavior
+- Include edge cases (empty input, invalid data, boundary conditions)
+- Test error handling paths, not just happy paths
+- Ensure tests are deterministic—no timing dependencies or external service calls in unit tests
+
+#### Tests Validate AI-Driven Changes
+
+AI agents make changes rapidly. Tests are the primary safety net:
+
+```
+Agent makes change → runs tests → tests pass → change is safe
+Agent makes change → runs tests → tests fail → agent investigates and fixes
+```
+
+Without this loop, AI-driven development is just AI-driven guessing.
+
+### 6.2 Debugging Workflows
+
+When something breaks, AI agents should follow a structured debugging approach:
+
+#### Read Error Output First
+
+```
+1. Check the error message and stack trace
+2. Identify the failing component
+3. Inspect the relevant code or configuration
+4. Form a hypothesis
+5. Test the hypothesis with a targeted fix
+6. Verify the fix resolves the issue without introducing new failures
+```
+
+#### Use Verbose Logging and Inspection Tools
+
+- Enable debug-level logging when investigating issues
+- Use inspection tools to examine state (API responses, database contents, variable values)
+- Compare expected vs. actual behavior at each step in the pipeline
+- Check logs from all relevant services, not just the one that reported the error
+
+#### Diagnose Root Causes, Not Symptoms
+
+Fixing the immediate error often masks a deeper problem. AI agents should:
+
+- Trace the error back to its origin, not just the point of failure
+- Check if similar patterns exist elsewhere in the codebase
+- Verify the fix addresses the root cause, not just the symptom
+
+### 6.3 Performance Optimization
+
+Once features work correctly, optimize them:
+
+#### Establish Baselines
+
+Before optimizing, measure current performance:
+
+- Execution time for key operations
+- Resource usage (memory, CPU, network)
+- Response times for user-facing endpoints
+
+#### Optimize With Evidence
+
+- Profile before optimizing—don't guess at bottlenecks
+- Make one change at a time and measure the impact
+- Run tests after each optimization to ensure correctness is preserved
+- Document what was optimized, what the improvement was, and any tradeoffs
+
+### 6.4 Expanding Capabilities
+
+As the project grows, AI capabilities should grow with it:
+
+#### Identify Gaps
+
+During daily development, note where AI agents struggle:
+
+- Operations that require multiple manual steps
+- Knowledge that isn't captured in any skill
+- Tools or APIs that don't exist yet but would be useful
+- Repetitive tasks that could be automated
+
+#### Build Incrementally
+
+Don't try to automate everything at once. Prioritize by frequency and impact:
+
+| Priority | Criteria |
+|----------|----------|
+| High | Done daily, takes >5 minutes, error-prone |
+| Medium | Done weekly, moderate complexity |
+| Low | Rare, simple, or already fast enough |
+
+### 6.5 Creating Skills for Discovered Patterns
+
+This is where AI-native development compounds. Every pattern you discover and codify makes future work faster.
+
+#### When to Create a New Skill
+
+Create a skill when you notice:
+
+- You've explained the same process to an AI agent more than once
+- An operation requires non-obvious steps or workarounds
+- A debugging session revealed knowledge that isn't documented anywhere
+- A new tool or API was integrated and has usage patterns worth capturing
+
+#### Skill Creation Process
+
+```
+1. Identify the pattern or knowledge gap
+2. Document the core operations (commands, expected outputs, failure modes)
+3. Include real examples from your project
+4. Test the skill by having a fresh AI agent follow it
+5. Iterate based on where the agent gets stuck
+6. Commit the skill to version control
+```
+
+#### Keep Skills Focused
+
+One skill per concern. A skill that covers "everything about deployment" is too broad. Prefer:
+
+- `deployment-staging` — How to deploy to staging
+- `deployment-production` — How to deploy to production (different approvals, checks)
+- `deployment-rollback` — How to roll back a bad deploy
+
+#### Update Skills Continuously
+
+Skills are living documents. Update them when:
+
+- A process changes (new tool, new step, removed dependency)
+- A failure reveals a gap (add the failure mode and resolution)
+- A better approach is discovered (replace the old approach, note why)
+
+### 6.6 Monitoring and Observability
+
+Establish ongoing monitoring so AI agents can detect issues proactively:
+
+#### Health Dashboards
+
+- Define key health indicators for the project
+- Set up automated health checks that run on a schedule
+- Alert on degradation, not just outright failure
+
+#### Execution Log Analysis
+
+- Review execution logs periodically for error patterns
+- Track operation success rates over time
+- Identify slow operations that may need optimization
+
+#### Feedback Into Skills
+
+Monitoring findings should feed back into skills:
+
+```
+Monitor detects recurring error → 
+  Investigate root cause → 
+  Document in troubleshooting skill → 
+  AI agents handle it automatically next time
+```
 
 ---
 
-## 7. Best Practices
+## 7. Best Practices for AI-Native Development
+
+### Skill-First Approach: Document Before Automating
+
+Before building complex automation, capture what you know in a skill. Skills are cheaper than code—they're faster to write, easier to update, and immediately useful to any AI agent.
+
+**The pattern:**
+```
+Discover how something works → Write it down as a skill → 
+AI agents use the skill → Skill proves its value → 
+Automate further if needed
+```
+
+Don't skip straight to automation. A well-written skill often eliminates the need for custom tooling.
+
+### Test Continuously: Validate Every Change
+
+AI agents move fast. Tests are the guardrails that prevent fast movement from becoming fast failure.
+
+- **Unit tests after code changes.** Run the relevant test suite after modifying code. Don't batch changes without validation.
+- **Fix broken tests immediately.** A failing test is a signal, not noise. Investigate before moving on.
+- **Add tests for new functionality.** Untested features are undocumented assumptions.
+- **Use tests as documentation.** Well-named tests describe expected behavior better than comments.
+
+### Inspect State: Use Verbose Logging and Inspection
+
+When something doesn't work, inspect rather than guess:
+
+- Read the actual error output—don't assume you know what failed
+- Use API inspection tools to see the real state of entities
+- Enable verbose/debug logging during investigation
+- Compare expected vs. actual output at each step
+
+### Iterate Rapidly: AI Enables Fast Cycles
+
+AI-native development compresses the development loop:
+
+```
+Traditional:  Plan → Implement → Test → Debug → Deploy  (hours/days)
+AI-Native:    Intent → Implement → Test → Fix → Verify  (minutes)
+```
+
+Leverage this speed:
+- Make small, focused changes rather than large batches
+- Test immediately after each change
+- Fix issues while context is fresh
+- Commit working increments frequently
+
+### Build Reusable Skills: Don't Repeat Yourself
+
+Every time an AI agent figures something out from scratch, that's wasted effort. Skills compound:
+
+| Session | Without Skills | With Skills |
+|---------|---------------|-------------|
+| First | Agent discovers process (30 min) | Agent discovers process (30 min), creates skill (10 min) |
+| Second | Agent discovers process again (30 min) | Agent loads skill, executes immediately (2 min) |
+| Third | Agent discovers process again (30 min) | Agent loads skill, executes immediately (2 min) |
+| **Total** | **90 min** | **44 min** (and accelerating) |
+
+The investment in skill creation pays for itself after a single reuse.
+
+### Create Skills During Development, Not After
+
+Don't wait until a project is "done" to create skills. Create them as you go:
+
+- **After debugging:** Document the failure mode and resolution
+- **After integration:** Document the API patterns and gotchas
+- **After optimization:** Document what was slow, what fixed it, and how to measure
+- **After onboarding a new tool:** Document setup, configuration, and common operations
+
+Skills created in the moment capture details that are forgotten within days.
 
 ### Decision-Making
 
 - **Analyze before deciding.** Spawn agents to evaluate options in parallel. Never assume one approach fits all projects.
 - **Document decisions.** Record what was chosen, why, and what tradeoffs were accepted.
 - **Use sync agents for analysis.** Analysis and verification tasks should block until complete—don't fire and forget.
-
-### Skill Management
-
-- **Create skills for repeatable operations.** If an agent does it twice, it should be a skill.
-- **Write for machines.** Structured commands and expected outputs, not narrative prose.
-- **Version control skills.** They're project artifacts, not disposable notes.
-- **Update skills with learnings.** Every failure is a documentation gap.
 
 ### Runtime Operations
 
@@ -413,6 +680,8 @@ Current work: Testing workflow creation and modification through MCP tools, veri
 | Parallel agents for analysis | Evaluating multiple options, reviewing multiple files |
 | MCP/API tools for operations | CRUD operations on application entities |
 | SQL tracking for complex tasks | Multi-step operations with dependencies |
+| Unit tests after code changes | Every modification to application code |
+| Skill creation after discovery | New pattern found, debugging session completed, tool integrated |
 
 ### Startup Sequence Template
 
@@ -458,6 +727,10 @@ check_service "WebSocket"   "http://localhost:3001/health"
 | Log parsing for health checks | Fragile, slow, format-dependent | Expose HTTP health endpoints |
 | Manual service management | Not reproducible, not delegatable to AI | Script everything; put it in a skill |
 | Monolithic skills | Hard to maintain, hard to reuse | One skill per concern (runtime, testing, deployment) |
+| Batching changes without testing | Failures compound, root cause becomes unclear | Run unit tests after each meaningful change |
+| Deferring skill creation | Details forgotten, context lost | Create skills during development, not after |
+| Fixing symptoms, not root causes | Same issue recurs in different forms | Trace errors to origin; update skills with findings |
+| Testing only happy paths | Edge cases cause production failures | Include error cases, boundary conditions, invalid input |
 
 ---
 
@@ -518,6 +791,7 @@ Phase 1: Runtime Setup
   □ Evaluate Docker vs. native vs. hybrid
   □ Consider AI requirements (logs, health checks, process management)
   □ Document the decision and rationale
+  □ 🎯 Create skill if non-obvious runtime characteristics were discovered
 
 Phase 2: Skill Creation
   □ Initialize skill structure
@@ -526,6 +800,7 @@ Phase 2: Skill Creation
   □ Document troubleshooting for common failures
   □ Add automation scripts
   □ Commit skill to version control
+  □ 🎯 Verify skill covers all failure modes encountered so far
 
 Phase 3: Implementation & Verification
   □ Agent starts environment using skill (no human steps)
@@ -533,16 +808,23 @@ Phase 3: Implementation & Verification
   □ Services survive session boundaries (detached mode)
   □ Agent can stop and restart services
   □ Edge cases tested (port conflicts, missing config)
+  □ 🎯 Update skill with newly discovered failure modes and edge cases
 
 Phase 4: Programmatic Operations
   □ Inventory available APIs and tools
   □ Test CRUD through each interface
   □ Verify execution and monitoring capabilities
   □ Agent can build features end-to-end
+  □ Run unit tests to validate programmatic changes
+  □ 🎯 Create skill documenting tool inventory and operation patterns
 
 Phase 5: Continuous Iteration
-  □ Feedback loop established
-  □ Skills updated with learnings
+  □ Test-driven development cycle established
+  □ Unit tests run after code changes
+  □ Skills created for newly discovered patterns
+  □ Debugging follows structured approach
   □ Performance baselines tracked
+  □ Monitoring feeds findings back into skills
   □ New capabilities added incrementally
+  □ Existing skills updated with learnings
 ```
