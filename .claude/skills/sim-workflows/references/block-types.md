@@ -5,7 +5,7 @@ Comprehensive list of block types available in Sim workflows.
 ## Trigger Blocks
 
 ### api_trigger
-Starts workflow execution via API call. Provides request body, headers, and params as workflow input.
+Starts workflow execution via API call. Provides request data as workflow input.
 
 **Data structure:**
 ```typescript
@@ -14,7 +14,7 @@ Starts workflow execution via API call. Provides request body, headers, and para
 }
 ```
 
-**Output:** Request data (body, headers, params)
+**Output:** Spread top-level fields from inputFormat, `.input` (full input object), optional `.files`
 
 ## Agent Blocks
 
@@ -47,9 +47,14 @@ Branching logic based on JavaScript expression evaluation.
 }
 ```
 
+**Output fields:**
+- `conditionResult` (boolean) — whether a condition matched
+- `selectedPath` (object | null) — `{ blockId, blockType, blockTitle }` of matched path
+- `selectedOption` (string | null) — matched condition's ID
+- Also spreads source block output into its own output
+
 **Handles:**
-- `true` - Condition evaluates to true
-- `false` - Condition evaluates to false
+- `condition-{conditionId}` — routes to the target for each matching condition
 
 ### router
 Multi-way routing based on multiple conditions.
@@ -156,7 +161,7 @@ Execute custom JavaScript/TypeScript code.
 }
 ```
 
-**Input:** Available as `params` object. Previous block outputs accessed via tag syntax `<BlockName.field>` (text-replaced before execution).
+**Input:** `params` is always `{}` for regular function blocks (only populated for custom tool executions). Previous block outputs accessed via tag syntax `<BlockName.field>` (replaced with variable references before execution; block names in function code must not contain spaces).
 **Output:** Return value wrapped as `{ result: <returnValue>, stdout: "" }`
 
 ## Transform Blocks
@@ -272,7 +277,7 @@ Blocks support template expressions to reference workflow data:
 - `{{input}}` - Current block input
 - `{{variables.name}}` - Workflow variable
 - `{{blocks.blockId.output}}` - Output from specific block
-- `{{trigger.body}}` - Trigger request body
+- `{{trigger.input}}` - Trigger input data
 
 ### Position Layout
 Standard spacing for visual clarity:

@@ -256,8 +256,8 @@ Reference outputs from other blocks using angle brackets with the block's displa
 ```
 <Agent 1.content>          — Agent's text response
 <API Block.data>           — API response data
-<API Trigger.message>      — Trigger input field
-<API Trigger.body>         — Full trigger body
+<API Trigger.message>      — Trigger input field (from inputFormat)
+<API Trigger.input>        — Full trigger input object
 <Function 1.result>        — Function return value (always .result, not .output)
 ```
 
@@ -267,16 +267,17 @@ Reference outputs from other blocks using angle brackets with the block's displa
 |-----------|--------------|
 | `agent` | `.content` (response text) |
 | `function` | `.result` (return value), `.stdout` (console output) |
-| `api_trigger` | `.input` (full input object), `.body`, plus spread top-level fields |
+| `api_trigger` | `.input` (full input object), plus spread top-level fields from inputFormat, optional `.files` |
 | `api` | `.data` (response body), `.status`, `.headers` |
-| `condition` | `.result` (pass-through from previous block) |
+| `condition` | `.conditionResult` (boolean), `.selectedPath` (object with blockId/blockType/blockTitle), `.selectedOption` (matched condition ID); also spreads source block output |
 | `response` | `.data`, `.status`, `.headers` |
 
 **Rules:**
 - Use the block's **display name** (not its ID)
-- Case-sensitive and space-sensitive
+- Case-sensitive; spaces in block names work in agent/response fields but **not** inside function block code
 - Supports dot notation for nested fields
-- In function block code, tags are **text-replaced** before execution (they become string literals)
+- In function block code, tags are replaced with **safe variable references** before execution (e.g., `<Agent.content>` becomes a variable `__tag_Agent_0content` holding the actual value — NOT an inline string literal)
+- In function code, block names must use only `[a-zA-Z0-9_.]` — no spaces (use underscore names like `My_Block`)
 
 ### Workflow Variables
 
@@ -320,19 +321,19 @@ Using the wrong trigger block type returns: `"No start block found. Add a start 
 ### Function Block Runtime Environment
 
 Inside function block code, these variables are available:
-- **`params`** — object containing block input parameters (often `{}` for first block after trigger)
-- **`<BlockName.field>`** — tag syntax for referencing other block outputs (text-replaced before execution)
+- **`params`** — always `{}` for regular function blocks (only populated for custom tool executions)
+- **`<BlockName.field>`** — tag syntax for referencing other block outputs (replaced with variable references before execution)
 - **`console`** — sandboxed `console.log/error/warn/info`
 - **`fetch`** — sandboxed fetch function (SSRF-validated)
 - **`environmentVariables`** — object containing environment variables
 
-**Data flow between blocks:** Previous block outputs are NOT automatically passed via `params`. Use tag syntax `<BlockName.field>` embedded directly in the code string. Tags are text-replaced with actual values before the code executes.
+**Data flow between blocks:** Previous block outputs are NOT available via `params`. Use tag syntax `<BlockName.field>` embedded directly in the code string. Tags are replaced with safe variable references holding the actual values before the code executes.
 
 **Example:**
 ```javascript
-// Tag syntax is resolved before execution
-const message = '<API Trigger.message>';  // becomes actual message value
-const result = '<Classifier.result>';     // becomes JSON string of classifier output
+// Tags are replaced with variable references before execution
+const message = <API_Trigger.message>;  // becomes a variable holding the actual value
+const result = <Classifier.result>;     // becomes a variable holding classifier output
 return { processed: true, data: message };
 ```
 
@@ -367,7 +368,7 @@ update_subblock(blockId, "data", '{"result": "<Agent.content>", "meta": "<Functi
 | `maxTokens` | short-input | Max response tokens |
 | `apiKey` | short-input | Provider API key |
 
-**⚠️ Agent blocks REQUIRE `apiKey` and `model` for execution.** Missing either causes a pre-execution validation error (the workflow will not attempt to run). Set both before executing.
+**⚠️ Agent blocks REQUIRE `apiKey` and `model` for execution.** Missing either causes a runtime error when the block attempts to call the LLM provider (validated in `getApiKeyWithBYOK()` and the provider's `executeRequest()`). Set both before executing.
 
 **Messages format:** The `messages` subblock accepts an array of message objects:
 ```
@@ -438,7 +439,7 @@ Step 3: Configure the agent
 update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "systemPrompt", value: "Process the webhook payload and return a summary." })
 update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "model", value: "gpt-4o" })
 update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "apiKey", value: "sk-..." })
-update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "messages", value: [{ "role": "user", "content": "Process this: <API Trigger.body>" }] })
+update_subblock({ workflowId: "wf_new", blockId: "agent1", subblockId: "messages", value: [{ "role": "user", "content": "Process this: <API Trigger.input>" }] })
 
 Step 4: Configure the response (set json mode first, then data)
 update_subblock({ workflowId: "wf_new", blockId: "resp", subblockId: "dataMode", value: "json" })
@@ -555,7 +556,7 @@ update_subblock({
 - SubBlock IDs must be known from this guide — `get_block` only shows subBlocks after they've been set
 - Each `update_subblock` call updates one subBlock — batch multiple calls for efficiency
 - The `model` subBlock on agent blocks uses format like `gpt-4o`, `claude-sonnet-4-20250514`, `gemini-2.0-flash`
-- Agent blocks **require** `apiKey` and `model` to be set before execution (pre-execution validation)
+- Agent blocks **require** `apiKey` and `model` to be set before execution (runtime validation — fails when block runs, not pre-flight)
 
 ### Executing and Monitoring
 - `useDraftState: true` (default) means no deployment needed — execute the current draft directly
@@ -579,11 +580,11 @@ update_subblock({
 | "Invalid block type" | Misspelled type name | Check the Block Types Reference table above |
 | "Edge already exists" | Duplicate source→target connection | Check existing edges with `get_workflow` first |
 | Execution returns no output | Missing response block or broken edge chain | Verify all blocks are connected; set `dataMode` to `"json"` on response block |
-| "missing required fields: API Key" | Agent block missing API key | Set `apiKey` and `model` subBlocks — both required before execution |
+| "missing required fields: API Key" | Agent block missing API key | Set `apiKey` and `model` subBlocks — both required (validated at runtime when block executes) |
 | Subblock update has no effect | Wrong `subblockId` | SubBlock IDs must be known from this guide (not discoverable via `get_block` on fresh blocks) |
 | Logs show no results | Wrong `workspaceId` or time range | Verify workspaceId; try without date filters first |
 | Condition never matches | Wrong sourceHandle format | Use `"condition-{conditionId}"` not `"true"` / `"false"` |
-| `inputData is not defined` | Wrong variable in function code | Use `params` for inputs and `<BlockName.field>` tag syntax for block references |
+| `inputData is not defined` | Wrong variable in function code | Use `<BlockName.field>` tag syntax for block references (`params` is always `{}` for regular function blocks) |
 | Response block returns `{}` | Default `structured` mode ignores `data` subblock | Set `dataMode` to `"json"` before setting `data` |
 | Function output not accessible | Wrong field name in tag | Function output uses `{ result: ..., stdout: "" }` — reference via `<FnName.result>` |
 
@@ -596,7 +597,7 @@ update_subblock({
 5. **Wrong sourceHandle on conditions** — use `"condition-{conditionId}"` format, NOT `"true"` / `"false"`
 6. **Wrong trigger type** — `api_trigger` for API execution, `generic_webhook` for webhook execution
 7. **Response block in structured mode** — set `dataMode` to `"json"` for tag-based responses
-8. **Using `inputData` in function blocks** — use `params` and tag syntax `<BlockName.field>` instead
+8. **Using `inputData` or `params` for block data in function blocks** — `params` is always `{}` for regular function blocks; use tag syntax `<BlockName.field>` instead
 9. **Referencing function output as `.output`** — the correct field is `.result` (e.g., `<MyFunc.result>`)
 
 ---
