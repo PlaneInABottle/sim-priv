@@ -47,8 +47,8 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 ### Creation & Building
 
 - **`create_workflow`**`({ name, workspaceId })` → `{ id, name }`
-- **`add_blocks`**`({ workflowId, blocks: [{ type, name, position: {x,y} }], edges? })` — blocks start empty; configure with `update_subblock`
-- **`add_edge`**`({ workflowId, source, target, sourceHandle?, targetHandle? })`
+- **`add_blocks`**`({ workflowId, blocks: [{ type, name, position: {x,y} }] })` — blocks start empty; configure with `update_subblock`
+- **`add_edge`**`({ workflowId, source, target, sourceHandle?, targetHandle? })` — always use separate calls to connect blocks
 - **`add_variable`**`({ workflowId, name, type, value })` — reference as `<variable.name>`
 
 ### Configuration
@@ -81,9 +81,10 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 - For condition/router blocks: `sourceHandle` format is `"condition-{conditionId}"` or `"route-{routeId}"`
 - Edge IDs should be unique and descriptive
 
-**Two ways to create blocks with edges (both work):**
-1. Atomic: `add_blocks({ blocks: [...], edges: [...] })` — creates everything in one call
-2. Sequential: `add_blocks({ blocks: [...] })` then `add_edge(...)` — fine for existing blocks
+**Block and edge creation workflow:**
+1. Create blocks first: `add_blocks({ blocks: [...] })`
+2. Connect them separately: `add_edge({ source, target, sourceHandle?, targetHandle? })`
+3. Use multiple `add_edge` calls for each connection
 
 **Critical for condition blocks:**
 - Set conditions via `update_subblock` BEFORE adding edges
@@ -268,19 +269,19 @@ Step 1: Create the workflow
 create_workflow({ name: "My Workflow", workspaceId: "825eaf6a-..." })
 → returns { id: "wf_new" }
 
-Step 2: Add blocks and edges (new workflows start empty)
+Step 2: Add blocks (new workflows start empty)
 add_blocks({
   workflowId: "wf_new",
   blocks: [
     { id: "trigger", type: "start_trigger", name: "Start", position: { x: 100, y: 300 } },
     { id: "agent1", type: "agent", name: "Process", position: { x: 400, y: 300 } },
     { id: "resp", type: "response", name: "Response", position: { x: 700, y: 300 } }
-  ],
-  edges: [
-    { id: "e1", source: "trigger", target: "agent1" },
-    { id: "e2", source: "agent1", target: "resp" }
   ]
 })
+
+Step 2b: Connect blocks with edges
+add_edge({ workflowId: "wf_new", source: "trigger", target: "agent1" })
+add_edge({ workflowId: "wf_new", source: "agent1", target: "resp" })
 
 Step 3: Configure the agent
 update_subblock({ ..., blockId: "agent1", subblockId: "systemPrompt", value: "Process the payload." })
@@ -299,30 +300,29 @@ execute_workflow({ workflowId: "wf_new", input: { message: "Test" }, triggerType
 ### Conditional Branching Pattern
 
 ```
+// Step 1: Add blocks
 add_blocks({
   workflowId: "wf_abc",
   blocks: [
     { id: "cond", type: "condition", name: "Check", position: { x: 400, y: 300 } },
     { id: "yes", type: "agent", name: "Yes Path", position: { x: 700, y: 200 } },
     { id: "no", type: "agent", name: "No Path", position: { x: 700, y: 400 } }
-  ],
-  edges: [
-    { id: "e1", source: "trigger_id", target: "cond" },
-    { id: "e2", source: "cond", target: "yes", sourceHandle: "condition-is_high" },
-    { id: "e3", source: "cond", target: "no", sourceHandle: "condition-fallback" }
   ]
 })
 
-// Conditions use `context` object (auto-populated from source block output)
+// Step 2: Configure conditions (BEFORE adding edges)
 update_subblock({ ..., blockId: "cond", subblockId: "conditions", value: [
   { "id": "is_high", "title": "if", "value": "context.result.priority === 'high'" },
   { "id": "fallback", "title": "else", "value": "" }
 ]})
+
+// Step 3: Add edges (after conditions are configured)
+add_edge({ workflowId: "wf_abc", source: "trigger_id", target: "cond" })
+add_edge({ workflowId: "wf_abc", source: "cond", target: "yes", sourceHandle: "condition-is_high" })
+add_edge({ workflowId: "wf_abc", source: "cond", target: "no", sourceHandle: "condition-fallback" })
 ```
 
 **Key:** Condition `id` must match edge `sourceHandle` suffix after `"condition-"`.
-
-**⚠️ Custom block IDs:** Custom block IDs in atomic `add_blocks` may require UUID format. If custom IDs fail, omit them and let the system auto-generate IDs, then use `get_workflow` to discover the assigned IDs.
 
 > More patterns: [references/troubleshooting.md](references/troubleshooting.md) (Execute & Monitor, Debug Failures)
 
@@ -407,7 +407,7 @@ update_subblock({ ..., blockId: "cond", subblockId: "conditions", value: [
 ### Minimum Viable Workflow
 
 ```
-create_workflow → add_blocks (trigger + agent + response with edges) → update_subblock (model, apiKey, systemPrompt) → execute_workflow
+create_workflow → add_blocks (trigger + agent + response) → add_edge (connect blocks) → update_subblock (model, apiKey, systemPrompt) → execute_workflow
 ```
 
 ### Tag Syntax
