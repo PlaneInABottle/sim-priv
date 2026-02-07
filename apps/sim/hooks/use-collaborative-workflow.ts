@@ -279,6 +279,23 @@ export function useCollaborativeWorkflow() {
                   edgeId: payload.id,
                 })
                 useWorkflowStore.getState().batchRemoveEdges([payload.id])
+
+                const updatedBlocks = useWorkflowStore.getState().blocks
+                const updatedEdges = useWorkflowStore.getState().edges
+                const graph = {
+                  blocksById: updatedBlocks,
+                  edgesById: Object.fromEntries(updatedEdges.map((e) => [e.id, e])),
+                }
+
+                const undoRedoStore = useUndoRedoStore.getState()
+                const stackKeys = Object.keys(undoRedoStore.stacks)
+                stackKeys.forEach((key) => {
+                  const [wfId, uId] = key.split(':')
+                  if (wfId === activeWorkflowId) {
+                    undoRedoStore.pruneInvalidEntries(wfId, uId, graph)
+                  }
+                })
+
                 logger.info('Successfully applied remove-edge from remote user')
               }
               break
