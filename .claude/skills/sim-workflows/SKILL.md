@@ -63,6 +63,22 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 - **`update_subflow`**`({ workflowId, id, type, config })` — update existing loop/parallel
 - **`list_custom_tools`**`({ workspaceId })` · **`upsert_custom_tools`**`({ workspaceId, tools })`
 
+### Using MCP Tools Correctly
+
+**Always provide required parameters:**
+- Block IDs must be unique within a workflow
+- For condition/router blocks: `sourceHandle` format is `"condition-{conditionId}"` or `"route-{routeId}"`
+- Edge IDs should be unique and descriptive
+
+**Two ways to create blocks with edges (both work):**
+1. Atomic: `add_blocks({ blocks: [...], edges: [...] })` — creates everything in one call
+2. Sequential: `add_blocks({ blocks: [...] })` then `add_edge(...)` — fine for existing blocks
+
+**Critical for condition blocks:**
+- Set conditions via `update_subblock` BEFORE adding edges
+- sourceHandle must match condition IDs: `"condition-{conditionId}"`
+- Example: condition ID `"my-if"` → sourceHandle `"condition-my-if"`
+
 ---
 
 ## Data Reference Syntax
@@ -255,6 +271,41 @@ update_subblock({ ..., blockId: "cond", subblockId: "conditions", value: [
 
 ---
 
+## Debugging Workflows
+
+**When execution fails or blocks don't execute:**
+
+1. **Inspect full workflow state:**
+   ```javascript
+   get_workflow({ workflowId: "...", verbose: true })
+   ```
+   Check:
+   - Are all blocks present with correct types?
+   - Do edges exist with correct source/target/sourceHandle?
+   - Are subBlocks properly configured?
+
+2. **Check execution logs:**
+   ```javascript
+   get_execution_logs({ 
+     workflowId: "...", 
+     workspaceId: "...",
+     details: "full",
+     includeTraceSpans: true 
+   })
+   ```
+   Look for:
+   - Which blocks executed successfully?
+   - Where did execution stop?
+   - Any error messages in trace spans?
+
+3. **Common execution issues:**
+   - Missing edges: Block isolated, never receives execution flow
+   - Wrong sourceHandle: Condition/router can't route to target block
+   - Missing subBlocks: Block fails validation (e.g., agent without apiKey)
+   - Incorrect tag syntax: Function blocks can't resolve references
+
+---
+
 ## Best Practices
 
 - **New workflows start empty** — no default starter to remove
@@ -264,6 +315,7 @@ update_subblock({ ..., blockId: "cond", subblockId: "conditions", value: [
 - **`useDraftState: true`** (default) — no deployment needed for testing
 - **Prefer `get_workflow(verbose: false)` + `get_block`** over `verbose: true`
 - **Prefer targeted operations** over `replace_workflow_state`
+- **Debug systematically**: Use `get_workflow(verbose: true)` to inspect state before assuming bugs
 
 ### Block Positioning
 
