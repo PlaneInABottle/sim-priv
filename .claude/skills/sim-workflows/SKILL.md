@@ -124,8 +124,8 @@ Reference outputs using the block's **display name** (not ID):
 ### Workflow Variables
 
 ```
-<variable.myVar>           — In block tag references
-{{variable.myVar}}         — In template text fields
+<variable.myVar>           — Workflow variables (use angle brackets everywhere)
+{{ENV_VAR}}                — Environment variables only (double braces)
 ```
 
 ### Condition Block Context Object
@@ -414,8 +414,8 @@ create_workflow → add_blocks (trigger + agent + response) → add_edge (connec
 
 ```
 <BlockName.field>           Block output reference
-<variable.name>             Variable reference
-{{variable.name}}           Template variable in text
+<variable.name>             Workflow variable reference
+{{ENV_VAR}}                 Environment variable
 context.field               Condition block context (source output)
 ```
 
