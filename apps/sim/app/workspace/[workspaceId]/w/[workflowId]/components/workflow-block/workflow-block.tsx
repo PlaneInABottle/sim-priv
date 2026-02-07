@@ -367,8 +367,11 @@ export const getDisplayValue = (value: unknown): string => {
     if (entries.length === 0) return '-'
     if (entries.length === 1) {
       const [key, val] = entries[0]
-      const valStr = String(val).slice(0, 30)
-      return `${key}: ${valStr}${String(val).length > 30 ? '...' : ''}`
+      const valStr = typeof val === 'object' && val !== null 
+        ? JSON.stringify(val) 
+        : String(val)
+      const truncated = valStr.slice(0, 30)
+      return `${key}: ${truncated}${valStr.length > 30 ? '...' : ''}`
     }
     const preview = entries
       .slice(0, 2)
@@ -386,7 +389,11 @@ export const getDisplayValue = (value: unknown): string => {
     const getItemDisplayValue = (item: unknown): string => {
       if (typeof item === 'object' && item !== null) {
         const obj = item as Record<string, unknown>
-        return String(obj.title || obj.name || obj.label || obj.id || JSON.stringify(item))
+        const label = obj.title || obj.name || obj.label || obj.id
+        if (label !== undefined && label !== null) {
+          return typeof label === 'object' ? JSON.stringify(label) : String(label)
+        }
+        return JSON.stringify(item)
       }
       return String(item)
     }
