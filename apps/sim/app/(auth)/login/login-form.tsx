@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { client } from '@/lib/auth/auth-client'
-import { useBrandConfig } from '@/lib/branding/branding'
+import { useBrandConfig } from '@/ee/whitelabeling'
 import { getEnv, isFalsy, isTruthy } from '@/lib/core/config/env'
 import { isHosted } from '@/lib/core/config/feature-flags'
 import { cn } from '@/lib/core/utils/cn'
