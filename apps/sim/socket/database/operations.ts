@@ -576,7 +576,7 @@ function initializeSubBlocksFromRegistry(
 
   for (const subBlock of blockConfig.subBlocks) {
     // Skip if this subBlock already exists (preserve caller-provided values)
-    if (initialized[subBlock.id]) continue
+    if (subBlock.id in initialized) continue
 
     let initialValue: unknown = null
 
@@ -634,7 +634,7 @@ export function enrichBatchAddBlocksPayload(payload: Record<string, unknown>): R
     // Auto-detect trigger blocks and set triggerMode
     const blockConfig = getBlock(blockType)
     const isTriggerBlock = blockConfig?.category === 'triggers'
-    const triggerMode = (block.triggerMode as boolean) || isTriggerBlock
+    const triggerMode = (block.triggerMode as boolean) ?? isTriggerBlock
 
     // Initialize subBlocks from registry (merge mode: preserves existing, adds missing)
     const initializedSubBlocks = initializeSubBlocksFromRegistry(
