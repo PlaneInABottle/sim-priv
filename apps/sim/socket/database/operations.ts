@@ -9,6 +9,7 @@ import { env } from '@/lib/core/config/env'
 import { cleanupExternalWebhook } from '@/lib/webhooks/provider-subscriptions'
 import { loadWorkflowFromNormalizedTables } from '@/lib/workflows/persistence/utils'
 import { mergeSubBlockValues } from '@/lib/workflows/subblocks'
+import { getBlock } from '@/blocks/registry'
 import {
   BLOCK_OPERATIONS,
   BLOCKS_OPERATIONS,
@@ -20,6 +21,7 @@ import {
   VARIABLE_OPERATIONS,
   WORKFLOW_OPERATIONS,
 } from '@/socket/constants'
+import { getTrigger, isTriggerValid } from '@/triggers'
 
 const logger = createLogger('SocketDatabase')
 
@@ -554,6 +556,100 @@ async function handleBlockOperationTx(
   }
 }
 
+/**
+ * Initializes subBlocks from the block registry when they are empty or missing.
+ * This mirrors the UI's `prepareBlockState` logic to ensure blocks added via
+ * server-side paths (e.g., MCP) have proper subBlock definitions.
+ */
+function initializeSubBlocksFromRegistry(
+  blockType: string,
+  existingSubBlocks: Record<string, unknown>
+): Record<string, unknown> {
+  // Only initialize if subBlocks are empty
+  if (existingSubBlocks && Object.keys(existingSubBlocks).length > 0) {
+    return existingSubBlocks
+  }
+
+  const blockConfig = getBlock(blockType)
+  if (!blockConfig?.subBlocks) {
+    return existingSubBlocks
+  }
+
+  const initialized: Record<string, unknown> = {}
+
+  for (const subBlock of blockConfig.subBlocks) {
+    let initialValue: unknown = null
+
+    if (typeof subBlock.value === 'function') {
+      try {
+        initialValue = subBlock.value({})
+      } catch {
+        initialValue = null
+      }
+    } else if (subBlock.defaultValue !== undefined) {
+      initialValue = subBlock.defaultValue
+    } else if (subBlock.type === 'input-format' || subBlock.type === 'response-format') {
+      initialValue = [
+        {
+          id: crypto.randomUUID(),
+          name: '',
+          type: 'string',
+          value: '',
+          collapsed: false,
+        },
+      ]
+    } else if (subBlock.type === 'table') {
+      initialValue = []
+    }
+
+    initialized[subBlock.id] = {
+      id: subBlock.id,
+      type: subBlock.type,
+      value: initialValue,
+    }
+  }
+
+  return initialized
+}
+
+/**
+ * Resolves outputs for a block from the registry. For trigger-mode blocks,
+ * returns the trigger's outputs. Otherwise returns the block's static outputs.
+ */
+function resolveBlockOutputs(
+  blockType: string,
+  triggerMode: boolean,
+  existingOutputs: Record<string, unknown>
+): Record<string, unknown> {
+  // Only resolve if outputs are empty
+  if (existingOutputs && Object.keys(existingOutputs).length > 0) {
+    return existingOutputs
+  }
+
+  const blockConfig = getBlock(blockType)
+  if (!blockConfig) {
+    return existingOutputs
+  }
+
+  // For trigger blocks, get outputs from the trigger config
+  if (triggerMode && blockConfig.triggers?.enabled) {
+    const triggerId = blockConfig.triggers.available?.[0]
+    if (triggerId && isTriggerValid(triggerId)) {
+      const trigger = getTrigger(triggerId)
+      if (trigger.outputs) {
+        return trigger.outputs as Record<string, unknown>
+      }
+    }
+  }
+
+  // Fall back to block's static outputs
+  if (blockConfig.outputs && Object.keys(blockConfig.outputs).length > 0) {
+    return blockConfig.outputs as Record<string, unknown>
+  }
+
+  return existingOutputs
+}
+
 async function handleBlocksOperationTx(
   tx: any,
   workflowId: string,
@@ -625,25 +721,45 @@ async function handleBlocksOperationTx(
 
         const blockValues = allowedBlocks.map((block: Record<string, unknown>) => {
           const blockId = block.id as string
+          const blockType = block.type as string
+
+          // Auto-detect trigger blocks and set triggerMode
+          const blockConfig = getBlock(blockType)
+          const isTriggerBlock = blockConfig?.category === 'triggers'
+          const triggerMode = (block.triggerMode as boolean) || isTriggerBlock
+
+          // Initialize subBlocks from registry when empty (e.g., MCP-added blocks)
+          const initializedSubBlocks = initializeSubBlocksFromRegistry(
+            blockType,
+            (block.subBlocks as Record<string, unknown>) || {}
+          )
+
           const mergedSubBlocks = mergeSubBlockValues(
-            block.subBlocks as Record<string, unknown>,
+            initializedSubBlocks,
             subBlockValues?.[blockId]
+          )
+
+          // Resolve outputs from registry/trigger config when empty
+          const outputs = resolveBlockOutputs(
+            blockType,
+            triggerMode,
+            (block.outputs as Record<string, unknown>) || {}
           )
 
           return {
             id: blockId,
             workflowId,
-            type: block.type as string,
+            type: blockType,
             name: block.name as string,
             positionX: (block.position as { x: number; y: number }).x,
             positionY: (block.position as { x: number; y: number }).y,
             data: (block.data as Record<string, unknown>) || {},
             subBlocks: mergedSubBlocks,
-            outputs: (block.outputs as Record<string, unknown>) || {},
+            outputs,
             enabled: (block.enabled as boolean) ?? true,
             horizontalHandles: (block.horizontalHandles as boolean) ?? true,
             advancedMode: (block.advancedMode as boolean) ?? false,
-            triggerMode: (block.triggerMode as boolean) ?? false,
+            triggerMode,
             height: (block.height as number) || 0,
             locked: (block.locked as boolean) ?? false,
           }
