@@ -42,6 +42,13 @@ Native dev is 3-5x faster than Docker volumes on macOS (50-200ms HMR vs 200-800m
 
 ### Step 1: Start PostgreSQL
 
+**Check if already running:**
+```bash
+docker compose -f docker-compose.local.yml ps db
+```
+
+If already running and healthy, skip to Step 2. Otherwise:
+
 ```bash
 docker compose -f docker-compose.local.yml up db -d
 ```
