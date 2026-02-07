@@ -28,7 +28,8 @@ import { env } from '@/lib/core/config/env'
 import { generateRequestId } from '@/lib/core/utils/request'
 import { getWorkflowAccessContext, getWorkflowById } from '@/lib/workflows/utils'
 import { createErrorResponse, createSuccessResponse } from '@/app/api/workflows/utils'
-import { persistWorkflowOperation } from '@/socket/database/operations'
+import { enrichBatchAddBlocksPayload, persistWorkflowOperation } from '@/socket/database/operations'
+import { BLOCKS_OPERATIONS, OPERATION_TARGETS } from '@/socket/constants'
 import { getAllValidBlockTypes, WorkflowOperationSchema } from '@/socket/validation/schemas'
 
 const logger = createLogger('WorkflowOperationsAPI')
@@ -241,12 +242,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const operationId = validatedOperation.operationId
     const timestamp = validatedOperation.timestamp
 
-    // 5. Persist operation to database
+    // 5. Enrich BATCH_ADD_BLOCKS payloads with registry defaults (subBlocks, outputs, triggerMode)
+    //    This matches the WebSocket handler behaviour so REST and WS paths produce identical data.
+    const enrichedPayload =
+      validatedOperation.target === OPERATION_TARGETS.BLOCKS &&
+      validatedOperation.operation === BLOCKS_OPERATIONS.BATCH_ADD_BLOCKS
+        ? enrichBatchAddBlocksPayload(validatedOperation.payload as Record<string, unknown>)
+        : validatedOperation.payload
+
+    // 6. Persist operation to database
     try {
       await persistWorkflowOperation(workflowId, {
         operation: validatedOperation.operation,
         target: validatedOperation.target,
-        payload: validatedOperation.payload,
+        payload: enrichedPayload,
         timestamp,
         operationId,
         userId,
@@ -268,7 +277,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       target: validatedOperation.target,
     })
 
-    // 6. Optional: Broadcast to WebSocket clients
+    // 7. Optional: Broadcast to WebSocket clients
+    //    Send the enriched payload so socket server receives consistent data
+    //    (the socket http.ts handler also enriches, but sending pre-enriched
+    //    avoids double-enrichment overhead and keeps the paths consistent).
     let broadcastSent = false
     if (validatedOperation.broadcast) {
       try {
@@ -284,7 +296,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             workflowId,
             operation: validatedOperation.operation,
             target: validatedOperation.target,
-            payload: validatedOperation.payload,
+            payload: enrichedPayload,
             operationId,
             timestamp,
           }),
@@ -321,7 +333,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       })
     }
 
-    // 7. Return success response
+    // 8. Return success response
     return createSuccessResponse({
       success: true,
       operationId,
