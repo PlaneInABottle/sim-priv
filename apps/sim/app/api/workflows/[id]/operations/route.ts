@@ -274,12 +274,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       try {
         const socketUrl = env.SOCKET_SERVER_URL || 'http://localhost:3002'
 
-        const notifyResponse = await fetch(`${socketUrl}/api/copilot-workflow-edit`, {
+        const notifyResponse = await fetch(`${socketUrl}/api/workflow-operation`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': env.INTERNAL_API_SECRET,
+          },
           body: JSON.stringify({
             workflowId,
-            description: `API: ${validatedOperation.operation} on ${validatedOperation.target}`,
+            operation: validatedOperation.operation,
+            target: validatedOperation.target,
+            payload: validatedOperation.payload,
+            operationId,
+            timestamp,
           }),
           signal: AbortSignal.timeout(5000), // 5 second timeout
         })
