@@ -77,6 +77,20 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 - **`update_skill`**`({ workspaceId, skillId, name?, description?, content? })` — update an existing skill
 - **`delete_skill`**`({ workspaceId, skillId })` — delete a skill
 
+**⚠️ After deleting a skill:** Manually remove the skill reference from agent blocks using `update_subblock`. Deletion does NOT auto-remove skill references from workflows. Get the current skills array with `get_block`, filter out the deleted skill ID, then update:
+
+```javascript
+// Step 1: Get current skills
+const block = get_block({ workflowId: "wf_id", blockId: "agent_id" })
+const currentSkills = block.data.skills || []
+
+// Step 2: Remove deleted skill
+const updatedSkills = currentSkills.filter(s => s.skillId !== "deleted_skill_id")
+
+// Step 3: Update agent block
+update_subblock({ workflowId: "wf_id", blockId: "agent_id", subblockId: "skills", value: updatedSkills })
+```
+
 ### Advanced
 
 - **`replace_workflow_state`**`({ workflowId, state })` — full overwrite; prefer targeted ops

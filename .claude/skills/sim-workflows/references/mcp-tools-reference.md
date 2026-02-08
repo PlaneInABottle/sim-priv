@@ -423,4 +423,25 @@ delete_skill({ workspaceId: "ws_id", skillId: "skill-uuid" })
 
 **Returns:** `{ success: true }`
 
+**⚠️ IMPORTANT:** Deletion does NOT cascade to agent blocks. After deleting a skill, you must manually remove it from any agent blocks that reference it:
+
+```javascript
+// 1. Get agent block's current skills
+const block = get_block({ workflowId: "wf_id", blockId: "agent_id" })
+const currentSkills = block.data.skills || []
+
+// 2. Filter out deleted skill
+const updatedSkills = currentSkills.filter(s => s.skillId !== "deleted_skill_id")
+
+// 3. Update agent block
+update_subblock({ 
+  workflowId: "wf_id", 
+  blockId: "agent_id", 
+  subblockId: "skills", 
+  value: updatedSkills 
+})
+```
+
+**Why manual cleanup?** Skill deletion is server-side only and doesn't scan/update workflow blocks. Stale references won't cause execution errors (non-existent skills are silently skipped), but they clutter the UI and block data.
+
 **Note:** Deleting a skill does not affect workflows that reference it — the skill ID remains in the agent block's `skills` array but will be silently skipped during execution.
