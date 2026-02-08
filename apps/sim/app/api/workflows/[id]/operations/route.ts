@@ -389,9 +389,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
       } catch (broadcastError) {
         // Don't fail the operation if broadcast fails
-        logger.warn(`[${requestId}] Error broadcasting operation ${operationId}`, {
-          error: broadcastError,
+        // Reset broadcastSent since the broadcast did not complete fully
+        broadcastSent = false
+        logger.error(`[${requestId}] BROADCAST FAILED - UI will not sync`, {
+          error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError),
           workflowId,
+          socketUrl: env.SOCKET_SERVER_URL || 'http://localhost:3002',
           operation: validatedOperation.operation,
           target: validatedOperation.target,
         })
