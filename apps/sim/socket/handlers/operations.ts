@@ -480,7 +480,7 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
         target === OPERATION_TARGETS.BLOCKS &&
         operation === BLOCKS_OPERATIONS.BATCH_UPDATE_PARENT
       ) {
-        await persistWorkflowOperation(workflowId, {
+        const result = await persistWorkflowOperation(workflowId, {
           operation,
           target,
           payload,
@@ -500,6 +500,20 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
           userName: session.userName,
           metadata: { workflowId, operationId: crypto.randomUUID() },
         })
+
+        // Broadcast edge removals if the parent update cleaned up boundary edges
+        if (result?.removedEdgeIds && result.removedEdgeIds.length > 0) {
+          socket.to(workflowId).emit('workflow-operation', {
+            operation: EDGES_OPERATIONS.BATCH_REMOVE_EDGES,
+            target: OPERATION_TARGETS.EDGES,
+            payload: { ids: result.removedEdgeIds },
+            timestamp: operationTimestamp,
+            senderId: socket.id,
+            userId: session.userId,
+            userName: session.userName,
+            metadata: { workflowId, operationId: crypto.randomUUID() },
+          })
+        }
 
         if (operationId) {
           socket.emit('operation-confirmed', { operationId, serverTimestamp: Date.now() })
@@ -538,7 +552,7 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
       }
 
       // For non-position operations, persist first then broadcast
-      await persistWorkflowOperation(workflowId, {
+      const result = await persistWorkflowOperation(workflowId, {
         operation,
         target,
         payload,
@@ -563,6 +577,21 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
       }
 
       socket.to(workflowId).emit('workflow-operation', broadcastData)
+
+      // Broadcast edge removals if the operation cleaned up boundary edges
+      // (e.g., update-parent nesting a block into a container)
+      if (result?.removedEdgeIds && result.removedEdgeIds.length > 0) {
+        socket.to(workflowId).emit('workflow-operation', {
+          operation: EDGES_OPERATIONS.BATCH_REMOVE_EDGES,
+          target: OPERATION_TARGETS.EDGES,
+          payload: { ids: result.removedEdgeIds },
+          timestamp: operationTimestamp,
+          senderId: socket.id,
+          userId: session.userId,
+          userName: session.userName,
+          metadata: { workflowId, operationId: crypto.randomUUID() },
+        })
+      }
 
       if (operationId) {
         socket.emit('operation-confirmed', {

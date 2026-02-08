@@ -79,6 +79,172 @@ function isSubflowBlockType(blockType: string): blockType is SubflowType {
   return Object.values(SubflowType).includes(blockType as SubflowType)
 }
 
+/**
+ * Result metadata from workflow operations.
+ * Used to communicate side-effects (e.g., removed edges) back to callers
+ * so they can broadcast supplemental operations to connected clients.
+ */
+export interface OperationResult {
+  removedEdgeIds?: string[]
+}
+
+/**
+ * Remove cross-boundary edges when a block is reparented into or out of a container.
+ *
+ * When a block is added to a container (loop/parallel), any edges connecting it to
+ * blocks outside that container are removed. When a block is removed from a container,
+ * any edges connecting it to blocks still inside the old container are removed.
+ *
+ * @param tx - Database transaction
+ * @param workflowId - Workflow ID
+ * @param blockId - Block being reparented
+ * @param newParentId - New parent container ID (or null/undefined if removing from container)
+ * @param oldParentId - Previous parent container ID (or null/undefined if was standalone)
+ * @returns Array of removed edge IDs
+ */
+async function removeBoundaryEdges(
+  tx: any,
+  workflowId: string,
+  blockId: string,
+  newParentId: string | null | undefined,
+  oldParentId: string | null | undefined,
+  coMovingBlockIds?: Set<string>
+): Promise<string[]> {
+  const removedEdgeIds: string[] = []
+
+  if (newParentId) {
+    // Block is being ADDED to a container.
+    // Remove edges connecting to blocks OUTSIDE the new container.
+
+    // 1. Get all edges connected to this block
+    const connectedEdges = await tx
+      .select({
+        id: workflowEdges.id,
+        source: workflowEdges.sourceBlockId,
+        target: workflowEdges.targetBlockId,
+      })
+      .from(workflowEdges)
+      .where(
+        and(
+          eq(workflowEdges.workflowId, workflowId),
+          or(
+            eq(workflowEdges.sourceBlockId, blockId),
+            eq(workflowEdges.targetBlockId, blockId)
+          )
+        )
+      )
+
+    if (connectedEdges.length === 0) return removedEdgeIds
+
+    // 2. Get all blocks currently inside the target container
+    const containerChildren = await tx
+      .select({ id: workflowBlocks.id })
+      .from(workflowBlocks)
+      .where(
+        and(
+          eq(workflowBlocks.workflowId, workflowId),
+          sql`${workflowBlocks.data}->>'parentId' = ${newParentId}`
+        )
+      )
+
+    const containerChildIds = new Set(containerChildren.map((b: { id: string }) => b.id))
+    containerChildIds.add(blockId) // Include the block being moved
+
+    // Include all blocks being moved in the same batch to prevent
+    // incorrect deletion of edges between co-moving blocks
+    if (coMovingBlockIds) {
+      coMovingBlockIds.forEach((id) => containerChildIds.add(id))
+    }
+
+    // 3. Find boundary-crossing edges (other endpoint is outside container)
+    const boundaryEdges = connectedEdges.filter(
+      (edge: { id: string; source: string; target: string }) => {
+        const otherId = edge.source === blockId ? edge.target : edge.source
+        // Allow edges to/from the container itself (e.g., loop-start-source handle)
+        return otherId !== newParentId && !containerChildIds.has(otherId)
+      }
+    )
+
+    // 4. Delete boundary-crossing edges
+    if (boundaryEdges.length > 0) {
+      const boundaryEdgeIds = boundaryEdges.map((e: { id: string }) => e.id)
+      await tx
+        .delete(workflowEdges)
+        .where(
+          and(
+            eq(workflowEdges.workflowId, workflowId),
+            inArray(workflowEdges.id, boundaryEdgeIds)
+          )
+        )
+      removedEdgeIds.push(...boundaryEdgeIds)
+      logger.debug(
+        `Removed ${boundaryEdgeIds.length} boundary-crossing edge(s) for block ${blockId}: [${boundaryEdgeIds.join(', ')}]`
+      )
+    }
+  } else if (oldParentId) {
+    // Block is being REMOVED from a container.
+    // Remove edges connecting to blocks still inside the old container.
+
+    const connectedEdges = await tx
+      .select({
+        id: workflowEdges.id,
+        source: workflowEdges.sourceBlockId,
+        target: workflowEdges.targetBlockId,
+      })
+      .from(workflowEdges)
+      .where(
+        and(
+          eq(workflowEdges.workflowId, workflowId),
+          or(
+            eq(workflowEdges.sourceBlockId, blockId),
+            eq(workflowEdges.targetBlockId, blockId)
+          )
+        )
+      )
+
+    if (connectedEdges.length === 0) return removedEdgeIds
+
+    const containerChildren = await tx
+      .select({ id: workflowBlocks.id })
+      .from(workflowBlocks)
+      .where(
+        and(
+          eq(workflowBlocks.workflowId, workflowId),
+          sql`${workflowBlocks.data}->>'parentId' = ${oldParentId}`
+        )
+      )
+
+    const containerChildIds = new Set(containerChildren.map((b: { id: string }) => b.id))
+    containerChildIds.delete(blockId) // Exclude the block being removed
+
+    // Remove edges to/from the container itself or blocks still inside it
+    const internalEdges = connectedEdges.filter(
+      (edge: { id: string; source: string; target: string }) => {
+        const otherId = edge.source === blockId ? edge.target : edge.source
+        return otherId === oldParentId || containerChildIds.has(otherId)
+      }
+    )
+
+    if (internalEdges.length > 0) {
+      const internalEdgeIds = internalEdges.map((e: { id: string }) => e.id)
+      await tx
+        .delete(workflowEdges)
+        .where(
+          and(
+            eq(workflowEdges.workflowId, workflowId),
+            inArray(workflowEdges.id, internalEdgeIds)
+          )
+        )
+      removedEdgeIds.push(...internalEdgeIds)
+      logger.debug(
+        `Removed ${internalEdgeIds.length} internal edge(s) for block ${blockId}: [${internalEdgeIds.join(', ')}]`
+      )
+    }
+  }
+
+  return removedEdgeIds
+}
+
 export async function updateSubflowNodeList(dbOrTx: any, workflowId: string, parentId: string) {
   try {
     // Get all child blocks of this parent
@@ -165,7 +331,10 @@ export async function getWorkflowState(workflowId: string) {
   }
 }
 
-export async function persistWorkflowOperation(workflowId: string, operation: any) {
+export async function persistWorkflowOperation(
+  workflowId: string,
+  operation: any
+): Promise<OperationResult> {
   const startTime = Date.now()
   try {
     const { operation: op, target, payload, timestamp, userId } = operation
@@ -178,6 +347,8 @@ export async function persistWorkflowOperation(workflowId: string, operation: an
       })
     }
 
+    let result: OperationResult = {}
+
     await db.transaction(async (tx) => {
       await tx
         .update(workflow)
@@ -186,10 +357,10 @@ export async function persistWorkflowOperation(workflowId: string, operation: an
 
       switch (target) {
         case OPERATION_TARGETS.BLOCK:
-          await handleBlockOperationTx(tx, workflowId, op, payload)
+          result = (await handleBlockOperationTx(tx, workflowId, op, payload)) ?? {}
           break
         case OPERATION_TARGETS.BLOCKS:
-          await handleBlocksOperationTx(tx, workflowId, op, payload)
+          result = (await handleBlocksOperationTx(tx, workflowId, op, payload)) ?? {}
           break
         case OPERATION_TARGETS.EDGE:
           await handleEdgeOperationTx(tx, workflowId, op, payload)
@@ -234,6 +405,8 @@ export async function persistWorkflowOperation(workflowId: string, operation: an
         workflowId: `${workflowId.substring(0, 8)}...`,
       })
     }
+
+    return result
   } catch (error) {
     const duration = Date.now() - startTime
     logger.error(
@@ -286,7 +459,7 @@ async function handleBlockOperationTx(
   workflowId: string,
   operation: string,
   payload: any
-) {
+): Promise<OperationResult | void> {
   switch (operation) {
     case BLOCK_OPERATIONS.UPDATE_POSITION: {
       if (!payload.id || !payload.position) {
@@ -447,6 +620,16 @@ async function handleBlockOperationTx(
         throw new Error(`Block ${payload.id} not found in workflow ${workflowId}`)
       }
 
+      // Remove cross-boundary edges that would be invalid after reparenting
+      const removedEdgeIds = await removeBoundaryEdges(
+        tx,
+        workflowId,
+        payload.id,
+        payload.parentId ?? null,
+        existing?.parentId ?? null,
+        undefined // Single block operation, no co-moving blocks
+      )
+
       // If the block now has a parent, update the new parent's subflow node list
       if (payload.parentId) {
         await updateSubflowNodeList(tx, workflowId, payload.parentId)
@@ -461,7 +644,7 @@ async function handleBlockOperationTx(
           isRemovingFromParent ? ' (cleared data JSON)' : ''
         }`
       )
-      break
+      return { removedEdgeIds }
     }
 
     case BLOCK_OPERATIONS.UPDATE_ADVANCED_MODE: {
@@ -717,7 +900,7 @@ async function handleBlocksOperationTx(
   workflowId: string,
   operation: string,
   payload: any
-) {
+): Promise<OperationResult | void> {
   switch (operation) {
     case BLOCKS_OPERATIONS.BATCH_UPDATE_POSITIONS: {
       const { updates } = payload
@@ -1258,6 +1441,12 @@ async function handleBlocksOperationTx(
         return false
       }
 
+      const allRemovedEdgeIds: string[] = []
+
+      // Collect all block IDs being moved in this batch so removeBoundaryEdges
+      // can treat them as already inside the target container
+      const allMovingBlockIds = new Set(updates.map((u: { id: string }) => u.id))
+
       for (const update of updates) {
         const { id, parentId, position } = update
         if (!id) continue
@@ -1318,6 +1507,17 @@ async function handleBlocksOperationTx(
           })
           .where(and(eq(workflowBlocks.id, id), eq(workflowBlocks.workflowId, workflowId)))
 
+        // Remove cross-boundary edges that would be invalid after reparenting
+        const removedEdgeIds = await removeBoundaryEdges(
+          tx,
+          workflowId,
+          id,
+          parentId ?? null,
+          existingParentId ?? null,
+          allMovingBlockIds
+        )
+        allRemovedEdgeIds.push(...removedEdgeIds)
+
         // If the block now has a parent, update the new parent's subflow node list
         if (parentId) {
           await updateSubflowNodeList(tx, workflowId, parentId)
@@ -1329,7 +1529,7 @@ async function handleBlocksOperationTx(
       }
 
       logger.debug(`Batch updated parent for ${updates.length} blocks`)
-      break
+      return { removedEdgeIds: allRemovedEdgeIds }
     }
 
     default:

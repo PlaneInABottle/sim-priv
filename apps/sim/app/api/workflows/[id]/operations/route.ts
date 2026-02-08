@@ -29,7 +29,7 @@ import { generateRequestId } from '@/lib/core/utils/request'
 import { getWorkflowAccessContext, getWorkflowById } from '@/lib/workflows/utils'
 import { createErrorResponse, createSuccessResponse } from '@/app/api/workflows/utils'
 import { enrichBatchAddBlocksPayload, persistWorkflowOperation } from '@/socket/database/operations'
-import { BLOCKS_OPERATIONS, OPERATION_TARGETS } from '@/socket/constants'
+import { BLOCKS_OPERATIONS, EDGES_OPERATIONS, OPERATION_TARGETS } from '@/socket/constants'
 import { getAllValidBlockTypes, WorkflowOperationSchema } from '@/socket/validation/schemas'
 
 const logger = createLogger('WorkflowOperationsAPI')
@@ -251,8 +251,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         : validatedOperation.payload
 
     // 6. Persist operation to database
+    let operationResult: { removedEdgeIds?: string[] } = {}
     try {
-      await persistWorkflowOperation(workflowId, {
+      operationResult = await persistWorkflowOperation(workflowId, {
         operation: validatedOperation.operation,
         target: validatedOperation.target,
         payload: enrichedPayload,
@@ -317,6 +318,37 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             statusText: notifyResponse.statusText,
           })
         }
+
+        // Broadcast edge removals as a separate operation so connected clients
+        // remove the now-invalid edges from their local state.
+        if (
+          operationResult.removedEdgeIds &&
+          operationResult.removedEdgeIds.length > 0
+        ) {
+          const edgeRemovalResponse = await fetch(`${socketUrl}/api/workflow-operation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': env.INTERNAL_API_SECRET,
+            },
+            body: JSON.stringify({
+              workflowId,
+              operation: EDGES_OPERATIONS.BATCH_REMOVE_EDGES,
+              target: OPERATION_TARGETS.EDGES,
+              payload: { ids: operationResult.removedEdgeIds },
+              operationId: crypto.randomUUID(),
+              timestamp,
+            }),
+            signal: AbortSignal.timeout(5000),
+          })
+
+          if (edgeRemovalResponse.ok) {
+            logger.info(
+              `[${requestId}] Broadcast edge removal for ${operationResult.removedEdgeIds.length} edge(s)`,
+              { workflowId }
+            )
+          }
+        }
       } catch (broadcastError) {
         // Don't fail the operation if broadcast fails
         logger.warn(`[${requestId}] Error broadcasting operation ${operationId}`, {
@@ -339,6 +371,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       operationId,
       timestamp,
       broadcastSent,
+      ...(operationResult.removedEdgeIds?.length && {
+        removedEdgeIds: operationResult.removedEdgeIds,
+      }),
     })
   } catch (error) {
     logger.error(`[${requestId}] Failed to process operation`, { error, workflowId })
