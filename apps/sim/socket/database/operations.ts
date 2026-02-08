@@ -96,6 +96,10 @@ export interface OperationResult {
     targetHandle: string | null
     type: string
   }>
+  /** Accurate count of blocks actually removed (for soft validation in batch remove). */
+  blocksRemoved?: number
+  /** Warnings for non-existent or otherwise skipped block IDs. */
+  warnings?: string[]
 }
 
 /**
@@ -1213,6 +1217,9 @@ async function handleBlocksOperationTx(
         allBlocks.map((b: BlockRecord) => [b.id, b])
       )
 
+      // Soft validation: track which requested IDs don't exist in the workflow
+      const notFoundIds = ids.filter((id: string) => !blocksById[id])
+
       // Helper to check if a block is protected (locked or inside locked parent)
       const isProtected = (blockId: string): boolean => {
         const block = blocksById[blockId]
@@ -1228,8 +1235,13 @@ async function handleBlocksOperationTx(
       // Filter out protected blocks from deletion request
       const deletableIds = ids.filter((id) => !isProtected(id))
       if (deletableIds.length === 0) {
-        logger.info('All requested blocks are protected, skipping deletion')
-        return
+        logger.info('All requested blocks are protected or not found, skipping deletion')
+        return {
+          blocksRemoved: 0,
+          ...(notFoundIds.length > 0 && {
+            warnings: notFoundIds.map((id: string) => `Block '${id}' not found`),
+          }),
+        }
       }
 
       if (deletableIds.length < ids.length) {
@@ -1328,10 +1340,21 @@ async function handleBlocksOperationTx(
         await updateSubflowNodeList(tx, workflowId, parentId)
       }
 
+      // Soft validation: count only requested blocks that actually existed and were deletable
+      const blocksActuallyRemoved = deletableIds.filter(
+        (id: string) => blocksById[id]
+      ).length
+
       logger.info(
-        `Successfully batch removed ${blockIdsArray.length} blocks from workflow ${workflowId}`
+        `Successfully batch removed ${blocksActuallyRemoved} blocks (${blockIdsArray.length} total including children) from workflow ${workflowId}`
       )
-      break
+
+      return {
+        blocksRemoved: blocksActuallyRemoved,
+        ...(notFoundIds.length > 0 && {
+          warnings: notFoundIds.map((id: string) => `Block '${id}' not found`),
+        }),
+      }
     }
 
     case BLOCKS_OPERATIONS.BATCH_TOGGLE_ENABLED: {
