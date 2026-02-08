@@ -415,6 +415,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       ...(operationResult.addedEdgeIds?.length && {
         addedEdgeIds: operationResult.addedEdgeIds,
       }),
+      ...(operationResult.blocksRemoved !== undefined && {
+        blocksRemoved: operationResult.blocksRemoved,
+      }),
+      ...(operationResult.warnings?.length && {
+        warnings: operationResult.warnings,
+      }),
     })
   } catch (error) {
     const errMsg = error instanceof Error 
