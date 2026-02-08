@@ -870,7 +870,8 @@ async function handleBlockOperationTx(
  */
 function initializeSubBlocksFromRegistry(
   blockType: string,
-  existingSubBlocks: Record<string, unknown>
+  existingSubBlocks: Record<string, unknown>,
+  blockId?: string
 ): Record<string, unknown> {
   const blockConfig = getBlock(blockType)
   if (!blockConfig?.subBlocks) {
@@ -906,6 +907,12 @@ function initializeSubBlocksFromRegistry(
       ]
     } else if (subBlock.type === 'table') {
       initialValue = []
+    } else if (subBlock.type === 'condition-input' && blockId) {
+      // Auto-generate default if/else conditions (matches UI behavior)
+      initialValue = JSON.stringify([
+        { id: `${blockId}-if`, title: 'if', value: '' },
+        { id: `${blockId}-else`, title: 'else', value: '' },
+      ])
     }
 
     initialized[subBlock.id] = {
@@ -945,7 +952,8 @@ export function enrichBatchAddBlocksPayload(payload: Record<string, unknown>): R
     // Initialize subBlocks from registry (merge mode: preserves existing, adds missing)
     const initializedSubBlocks = initializeSubBlocksFromRegistry(
       blockType,
-      (block.subBlocks as Record<string, unknown>) || {}
+      (block.subBlocks as Record<string, unknown>) || {},
+      blockId
     )
 
     // Merge any caller-provided subBlockValues
