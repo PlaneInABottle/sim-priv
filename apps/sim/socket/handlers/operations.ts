@@ -515,6 +515,20 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
           })
         }
 
+        // Broadcast auto-connected edges so clients add them to local state
+        if (result?.addedEdges && result.addedEdges.length > 0) {
+          socket.to(workflowId).emit('workflow-operation', {
+            operation: EDGES_OPERATIONS.BATCH_ADD_EDGES,
+            target: OPERATION_TARGETS.EDGES,
+            payload: { edges: result.addedEdges },
+            timestamp: operationTimestamp,
+            senderId: socket.id,
+            userId: session.userId,
+            userName: session.userName,
+            metadata: { workflowId, operationId: crypto.randomUUID() },
+          })
+        }
+
         if (operationId) {
           socket.emit('operation-confirmed', { operationId, serverTimestamp: Date.now() })
         }
@@ -585,6 +599,20 @@ export function setupOperationsHandlers(socket: AuthenticatedSocket, roomManager
           operation: EDGES_OPERATIONS.BATCH_REMOVE_EDGES,
           target: OPERATION_TARGETS.EDGES,
           payload: { ids: result.removedEdgeIds },
+          timestamp: operationTimestamp,
+          senderId: socket.id,
+          userId: session.userId,
+          userName: session.userName,
+          metadata: { workflowId, operationId: crypto.randomUUID() },
+        })
+      }
+
+      // Broadcast auto-connected edges so clients add them to local state
+      if (result?.addedEdges && result.addedEdges.length > 0) {
+        socket.to(workflowId).emit('workflow-operation', {
+          operation: EDGES_OPERATIONS.BATCH_ADD_EDGES,
+          target: OPERATION_TARGETS.EDGES,
+          payload: { edges: result.addedEdges },
           timestamp: operationTimestamp,
           senderId: socket.id,
           userId: session.userId,

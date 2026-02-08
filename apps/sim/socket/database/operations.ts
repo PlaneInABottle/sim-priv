@@ -86,6 +86,16 @@ function isSubflowBlockType(blockType: string): blockType is SubflowType {
  */
 export interface OperationResult {
   removedEdgeIds?: string[]
+  addedEdgeIds?: string[]
+  /** Full edge payloads for broadcasting auto-connected edges to connected clients. */
+  addedEdges?: Array<{
+    id: string
+    source: string
+    target: string
+    sourceHandle: string | null
+    targetHandle: string | null
+    type: string
+  }>
 }
 
 /**
@@ -243,6 +253,100 @@ async function removeBoundaryEdges(
   }
 
   return removedEdgeIds
+}
+
+interface AutoConnectResult {
+  edgeIds: string[]
+  edges: Array<{
+    id: string
+    source: string
+    target: string
+    sourceHandle: string | null
+    targetHandle: string | null
+    type: string
+  }>
+}
+
+/**
+ * Auto-connect a block to its container's start handle when it has no incoming edges.
+ *
+ * Mirrors the UI's `tryCreateAutoConnectEdge()` behavior: when a block is moved
+ * into a loop or parallel container and has no incoming edges after boundary-edge
+ * cleanup, an edge is created from the container's start handle to the block.
+ *
+ * @param tx - Database transaction
+ * @param workflowId - Workflow ID
+ * @param blockId - Block that was just reparented into a container
+ * @param parentId - Container block ID (loop or parallel)
+ * @returns Edge IDs and full edge payloads for broadcasting
+ */
+async function autoConnectToContainerStart(
+  tx: any,
+  workflowId: string,
+  blockId: string,
+  parentId: string
+): Promise<AutoConnectResult> {
+  const empty: AutoConnectResult = { edgeIds: [], edges: [] }
+
+  // Check if block has any incoming edges after boundary-edge cleanup
+  const incomingEdges = await tx
+    .select({ id: workflowEdges.id })
+    .from(workflowEdges)
+    .where(
+      and(eq(workflowEdges.workflowId, workflowId), eq(workflowEdges.targetBlockId, blockId))
+    )
+
+  if (incomingEdges.length > 0) {
+    return empty // Block already has incoming edges — no auto-connect needed
+  }
+
+  // Fetch container block type to determine start handle
+  const [containerBlock] = await tx
+    .select({ type: workflowBlocks.type })
+    .from(workflowBlocks)
+    .where(and(eq(workflowBlocks.id, parentId), eq(workflowBlocks.workflowId, workflowId)))
+    .limit(1)
+
+  if (!containerBlock) {
+    logger.warn(`Auto-connect skipped: container block ${parentId} not found`)
+    return empty
+  }
+
+  const containerType = containerBlock.type
+  if (containerType !== 'loop' && containerType !== 'parallel') {
+    logger.warn(`Auto-connect skipped: block ${parentId} is type '${containerType}', not a container`)
+    return empty
+  }
+
+  const startHandle = containerType === 'loop' ? 'loop-start-source' : 'parallel-start-source'
+  const autoEdgeId = crypto.randomUUID()
+
+  await tx.insert(workflowEdges).values({
+    id: autoEdgeId,
+    workflowId,
+    sourceBlockId: parentId,
+    targetBlockId: blockId,
+    sourceHandle: startHandle,
+    targetHandle: 'target',
+  })
+
+  logger.info('Auto-connected block to container start', {
+    blockId,
+    containerId: parentId,
+    edgeId: autoEdgeId,
+    handle: startHandle,
+  })
+
+  const edgePayload = {
+    id: autoEdgeId,
+    source: parentId,
+    target: blockId,
+    sourceHandle: startHandle,
+    targetHandle: 'target',
+    type: 'workflowEdge',
+  }
+
+  return { edgeIds: [autoEdgeId], edges: [edgePayload] }
 }
 
 export async function updateSubflowNodeList(dbOrTx: any, workflowId: string, parentId: string) {
@@ -630,6 +734,21 @@ async function handleBlockOperationTx(
         undefined // Single block operation, no co-moving blocks
       )
 
+      // Auto-connect: if block is entering a container and has no incoming edges,
+      // connect it from the container's start handle (mirrors UI tryCreateAutoConnectEdge)
+      let addedEdgeIds: string[] = []
+      let addedEdges: OperationResult['addedEdges'] = []
+      if (payload.parentId) {
+        const autoConnect = await autoConnectToContainerStart(
+          tx,
+          workflowId,
+          payload.id,
+          payload.parentId
+        )
+        addedEdgeIds = autoConnect.edgeIds
+        addedEdges = autoConnect.edges
+      }
+
       // If the block now has a parent, update the new parent's subflow node list
       if (payload.parentId) {
         await updateSubflowNodeList(tx, workflowId, payload.parentId)
@@ -644,7 +763,7 @@ async function handleBlockOperationTx(
           isRemovingFromParent ? ' (cleared data JSON)' : ''
         }`
       )
-      return { removedEdgeIds }
+      return { removedEdgeIds, addedEdgeIds, addedEdges }
     }
 
     case BLOCK_OPERATIONS.UPDATE_ADVANCED_MODE: {
@@ -1442,6 +1561,8 @@ async function handleBlocksOperationTx(
       }
 
       const allRemovedEdgeIds: string[] = []
+      const allAddedEdgeIds: string[] = []
+      const allAddedEdges: NonNullable<OperationResult['addedEdges']> = []
 
       // Collect all block IDs being moved in this batch so removeBoundaryEdges
       // can treat them as already inside the target container
@@ -1518,6 +1639,14 @@ async function handleBlocksOperationTx(
         )
         allRemovedEdgeIds.push(...removedEdgeIds)
 
+        // Auto-connect: if block is entering a container and has no incoming edges,
+        // connect it from the container's start handle
+        if (parentId) {
+          const autoConnect = await autoConnectToContainerStart(tx, workflowId, id, parentId)
+          allAddedEdgeIds.push(...autoConnect.edgeIds)
+          allAddedEdges.push(...autoConnect.edges)
+        }
+
         // If the block now has a parent, update the new parent's subflow node list
         if (parentId) {
           await updateSubflowNodeList(tx, workflowId, parentId)
@@ -1529,7 +1658,7 @@ async function handleBlocksOperationTx(
       }
 
       logger.debug(`Batch updated parent for ${updates.length} blocks`)
-      return { removedEdgeIds: allRemovedEdgeIds }
+      return { removedEdgeIds: allRemovedEdgeIds, addedEdgeIds: allAddedEdgeIds, addedEdges: allAddedEdges }
     }
 
     default:

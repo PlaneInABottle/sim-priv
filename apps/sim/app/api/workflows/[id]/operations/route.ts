@@ -28,7 +28,11 @@ import { env } from '@/lib/core/config/env'
 import { generateRequestId } from '@/lib/core/utils/request'
 import { getWorkflowAccessContext, getWorkflowById } from '@/lib/workflows/utils'
 import { createErrorResponse, createSuccessResponse } from '@/app/api/workflows/utils'
-import { enrichBatchAddBlocksPayload, persistWorkflowOperation } from '@/socket/database/operations'
+import {
+  enrichBatchAddBlocksPayload,
+  persistWorkflowOperation,
+  type OperationResult,
+} from '@/socket/database/operations'
 import { BLOCKS_OPERATIONS, EDGES_OPERATIONS, OPERATION_TARGETS } from '@/socket/constants'
 import { getAllValidBlockTypes, WorkflowOperationSchema } from '@/socket/validation/schemas'
 
@@ -251,7 +255,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         : validatedOperation.payload
 
     // 6. Persist operation to database
-    let operationResult: { removedEdgeIds?: string[] } = {}
+    let operationResult: OperationResult = {}
     try {
       operationResult = await persistWorkflowOperation(workflowId, {
         operation: validatedOperation.operation,
@@ -349,6 +353,37 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             )
           }
         }
+
+        // Broadcast auto-connected edges so connected clients add the new edges
+        // to their local state (mirrors the UI's tryCreateAutoConnectEdge behavior).
+        if (
+          operationResult.addedEdges &&
+          operationResult.addedEdges.length > 0
+        ) {
+          const edgeAddResponse = await fetch(`${socketUrl}/api/workflow-operation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': env.INTERNAL_API_SECRET,
+            },
+            body: JSON.stringify({
+              workflowId,
+              operation: EDGES_OPERATIONS.BATCH_ADD_EDGES,
+              target: OPERATION_TARGETS.EDGES,
+              payload: { edges: operationResult.addedEdges },
+              operationId: crypto.randomUUID(),
+              timestamp,
+            }),
+            signal: AbortSignal.timeout(5000),
+          })
+
+          if (edgeAddResponse.ok) {
+            logger.info(
+              `[${requestId}] Broadcast auto-connect edge addition for ${operationResult.addedEdges.length} edge(s)`,
+              { workflowId }
+            )
+          }
+        }
       } catch (broadcastError) {
         // Don't fail the operation if broadcast fails
         logger.warn(`[${requestId}] Error broadcasting operation ${operationId}`, {
@@ -373,6 +408,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       broadcastSent,
       ...(operationResult.removedEdgeIds?.length && {
         removedEdgeIds: operationResult.removedEdgeIds,
+      }),
+      ...(operationResult.addedEdgeIds?.length && {
+        addedEdgeIds: operationResult.addedEdgeIds,
       }),
     })
   } catch (error) {
