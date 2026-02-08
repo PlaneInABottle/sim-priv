@@ -1544,6 +1544,12 @@ async function handleEdgeOperationTx(tx: any, workflowId: string, operation: str
         throw new Error('Missing required fields for add edge operation')
       }
 
+      // Prevent self-loops
+      if (payload.source === payload.target) {
+        logger.error(`Rejected self-loop edge: ${payload.source} -> ${payload.target}`)
+        throw new Error('Self-loop edges are not allowed')
+      }
+
       const edgeBlocks = await tx
         .select({
           id: workflowBlocks.id,
@@ -1593,6 +1599,44 @@ async function handleEdgeOperationTx(tx: any, workflowId: string, operation: str
         }
       }
 
+      // Validate both blocks exist
+      if (!blocksById[payload.source]) {
+        logger.error(`Source block '${payload.source}' does not exist in workflow ${workflowId}`)
+        throw new Error(`Source block '${payload.source}' does not exist`)
+      }
+      if (!blocksById[payload.target]) {
+        logger.error(`Target block '${payload.target}' does not exist in workflow ${workflowId}`)
+        throw new Error(`Target block '${payload.target}' does not exist`)
+      }
+
+      // Validate container boundaries
+      const sourceParentId = (blocksById[payload.source]?.data as Record<string, unknown> | null)
+        ?.parentId as string | undefined
+      const targetParentId = (blocksById[payload.target]?.data as Record<string, unknown> | null)
+        ?.parentId as string | undefined
+
+      // Allow edges FROM container start handles TO their children
+      const isContainerStartHandle =
+        payload.sourceHandle === 'loop-start-source' ||
+        payload.sourceHandle === 'parallel-start-source'
+      const isStartToChild = isContainerStartHandle && targetParentId === payload.source
+
+      // Reject cross-boundary edges (different containers or one in/one out)
+      if (!isStartToChild) {
+        if (
+          (sourceParentId && !targetParentId) ||
+          (!sourceParentId && targetParentId) ||
+          (sourceParentId && targetParentId && sourceParentId !== targetParentId)
+        ) {
+          logger.error(
+            `Rejected cross-boundary edge: ${payload.source} (parent: ${sourceParentId}) -> ${payload.target} (parent: ${targetParentId})`
+          )
+          throw new Error(
+            `Cannot create edge across container boundaries (source parent: ${sourceParentId || 'none'}, target parent: ${targetParentId || 'none'})`
+          )
+        }
+      }
+
       const isBlockProtected = (blockId: string): boolean => {
         const block = blocksById[blockId]
         if (!block) return false
@@ -1604,8 +1648,8 @@ async function handleEdgeOperationTx(tx: any, workflowId: string, operation: str
         return false
       }
 
-      if (isBlockProtected(payload.target)) {
-        logger.info(`Skipping edge add - target block is protected`)
+      if (isBlockProtected(payload.source) || isBlockProtected(payload.target)) {
+        logger.info(`Skipping edge add - source or target block is protected`)
         break
       }
 
@@ -1627,7 +1671,7 @@ async function handleEdgeOperationTx(tx: any, workflowId: string, operation: str
         throw new Error('Missing edge ID for remove operation')
       }
 
-      // Get the edge to check if target block is protected
+      // Get the edge to check if connected blocks are protected
       const [edgeToRemove] = await tx
         .select({
           sourceBlockId: workflowEdges.sourceBlockId,
@@ -1641,7 +1685,7 @@ async function handleEdgeOperationTx(tx: any, workflowId: string, operation: str
         throw new Error(`Edge ${payload.id} not found in workflow ${workflowId}`)
       }
 
-      // Check if target block is protected
+      // Check if source or target blocks are protected
       const connectedBlocks = await tx
         .select({
           id: workflowBlocks.id,
@@ -1703,8 +1747,11 @@ async function handleEdgeOperationTx(tx: any, workflowId: string, operation: str
         return false
       }
 
-      if (isBlockProtected(edgeToRemove.targetBlockId)) {
-        logger.info(`Skipping edge remove - target block is protected`)
+      if (
+        isBlockProtected(edgeToRemove.sourceBlockId) ||
+        isBlockProtected(edgeToRemove.targetBlockId)
+      ) {
+        logger.info(`Skipping edge remove - source or target block is protected`)
         break
       }
 
@@ -1825,11 +1872,14 @@ async function handleEdgesOperationTx(
       }
 
       const safeEdgeIds = edgesToRemove
-        .filter((e: EdgeToRemove) => !isBlockProtected(e.targetBlockId))
+        .filter(
+          (e: EdgeToRemove) =>
+            !isBlockProtected(e.sourceBlockId) && !isBlockProtected(e.targetBlockId)
+        )
         .map((e: EdgeToRemove) => e.id)
 
       if (safeEdgeIds.length === 0) {
-        logger.info('All edges target protected blocks, skipping removal')
+        logger.info('All edges are connected to protected blocks, skipping removal')
         return
       }
 
@@ -1921,13 +1971,62 @@ async function handleEdgesOperationTx(
         return false
       }
 
-      // Filter edges - only add edges where target block is not protected
-      const safeEdges = (edges as Array<Record<string, unknown>>).filter(
-        (e) => !isBlockProtected(e.target as string)
-      )
+      // Validate and filter edges
+      const safeEdges = (edges as Array<Record<string, unknown>>).filter((e) => {
+        const source = e.source as string
+        const target = e.target as string
+
+        // Reject self-loops
+        if (source === target) {
+          logger.error(`Batch: rejected self-loop edge: ${source} -> ${target}`)
+          return false
+        }
+
+        // Reject edges referencing non-existent blocks
+        if (!blocksById[source]) {
+          logger.error(`Batch: source block '${source}' does not exist in workflow ${workflowId}`)
+          return false
+        }
+        if (!blocksById[target]) {
+          logger.error(`Batch: target block '${target}' does not exist in workflow ${workflowId}`)
+          return false
+        }
+
+        // Reject cross-boundary edges
+        const sourceParentId = (blocksById[source]?.data as Record<string, unknown> | null)
+          ?.parentId as string | undefined
+        const targetParentId = (blocksById[target]?.data as Record<string, unknown> | null)
+          ?.parentId as string | undefined
+
+        const sourceHandle = e.sourceHandle as string | undefined
+        const isContainerStartHandle =
+          sourceHandle === 'loop-start-source' || sourceHandle === 'parallel-start-source'
+        const isStartToChild = isContainerStartHandle && targetParentId === source
+
+        if (!isStartToChild) {
+          if (
+            (sourceParentId && !targetParentId) ||
+            (!sourceParentId && targetParentId) ||
+            (sourceParentId && targetParentId && sourceParentId !== targetParentId)
+          ) {
+            logger.error(
+              `Batch: rejected cross-boundary edge: ${source} (parent: ${sourceParentId}) -> ${target} (parent: ${targetParentId})`
+            )
+            return false
+          }
+        }
+
+        // Reject protected blocks
+        if (isBlockProtected(source) || isBlockProtected(target)) {
+          logger.info(`Batch: skipping edge - source or target block is protected`)
+          return false
+        }
+
+        return true
+      })
 
       if (safeEdges.length === 0) {
-        logger.info('All edges target protected blocks, skipping add')
+        logger.info('All edges were rejected by validation, skipping batch add')
         return
       }
 
