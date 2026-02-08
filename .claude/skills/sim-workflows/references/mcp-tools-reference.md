@@ -140,6 +140,28 @@ toggle_block_enabled({ workflowId: "wf_abc", blockId: "block_1", enabled: true }
 
 **Use cases:** Disable email/Slack/webhook blocks during testing, A/B test branches, isolate failures. See [SKILL.md Best Practices](../SKILL.md#disabling-blocks-for-safe-testing) for patterns.
 
+### `update_block_parent`
+
+Set or remove a block's parent container for nesting inside loop/parallel blocks.
+
+| Param | Required | Type | Description |
+|-------|----------|------|-------------|
+| `workflowId` | ✅ | string | ID of the workflow containing the block |
+| `blockId` | ✅ | string | ID of the block to update |
+| `parentId` | ✅ | string \| null | ID of parent container (loop/parallel) or `null` to remove |
+
+**Returns:** `{ success: boolean, operationId: string }`
+
+```
+// Nest a block inside a loop
+update_block_parent({ workflowId: "wf_abc", blockId: "agent_1", parentId: "loop_1" })
+
+// Remove from container
+update_block_parent({ workflowId: "wf_abc", blockId: "agent_1", parentId: null })
+```
+
+**Use cases:** Programmatically build loop/parallel workflows, move blocks between containers.
+
 ---
 
 ## Execution

@@ -56,6 +56,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 - **`update_subblock`**`({ workflowId, blockId, subblockId, value })` — primary block configuration tool
 - **`update_block_name`**`({ workflowId, blockId, name })`
 - **`toggle_block_enabled`**`({ workflowId, blockId, enabled })`
+- **`update_block_parent`**`({ workflowId, blockId, parentId })` — nest block inside loop/parallel container, or pass `null` to remove
 
 ### Execution & Monitoring
 
@@ -412,6 +413,32 @@ get_workflow({ workflowId: "wf_abc", verbose: false })
 ```
 
 **Important:** `toggle_block_enabled` emits a Socket.io broadcast (`broadcastSent: true`), so the UI updates in real-time when blocks are toggled programmatically.
+
+### Nesting Blocks in Loop/Parallel Containers
+
+Use `update_block_parent` to programmatically nest blocks inside loop or parallel containers. This sets the block's `parentId` so it appears visually inside the container on the canvas.
+
+```
+// Step 1: Create a loop block and a regular block
+add_blocks({
+  workflowId: "wf_abc",
+  blocks: [
+    { id: "loop1", type: "loop", name: "Process Items", position: { x: 400, y: 300 } },
+    { id: "agent1", type: "agent", name: "Process Agent", position: { x: 450, y: 350 } }
+  ]
+})
+
+// Step 2: Nest agent inside loop
+update_block_parent({ workflowId: "wf_abc", blockId: "agent1", parentId: "loop1" })
+
+// Step 3: Remove nesting (make standalone again)
+update_block_parent({ workflowId: "wf_abc", blockId: "agent1", parentId: null })
+```
+
+**Works with both container types:**
+- `parentId: "loop-block-id"` — nest inside a loop
+- `parentId: "parallel-block-id"` — nest inside a parallel
+- `parentId: null` — remove from container (standalone)
 
 ### Block Positioning
 
