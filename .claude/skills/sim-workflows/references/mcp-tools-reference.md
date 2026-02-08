@@ -1,6 +1,6 @@
 # MCP Tools Parameter Reference
 
-Detailed parameter tables for all 21 sim-mcp tools. See [SKILL.md](../SKILL.md) for usage patterns and examples.
+Detailed parameter tables for all 25 sim-mcp tools. See [SKILL.md](../SKILL.md) for usage patterns and examples.
 
 ---
 
@@ -342,3 +342,85 @@ upsert_custom_tools({
   }]
 })
 ```
+
+---
+
+## Skill Management
+
+Manage workspace skills — reusable instruction sets for agent blocks using progressive disclosure.
+
+### `list_skills`
+
+List all skills in a workspace.
+
+```
+list_skills({ workspaceId: "ws_id" })
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `workspaceId` | ✅ | Workspace ID to list skills from |
+
+**Returns:** Array of skills with id, name, description, content, createdAt, updatedAt.
+
+### `create_skill`
+
+Create a new skill in a workspace.
+
+```
+create_skill({
+  workspaceId: "ws_id",
+  name: "sql-expert",
+  description: "Expert in SQL query optimization",
+  content: "You are a SQL expert specializing in..."
+})
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `workspaceId` | ✅ | Workspace ID |
+| `name` | ✅ | Skill name (kebab-case, max 64 chars) |
+| `description` | ✅ | Skill description |
+| `content` | ✅ | Skill instructions (max 50KB) |
+
+**Returns:** Created skill with generated UUID.
+
+### `update_skill`
+
+Update an existing skill.
+
+```
+update_skill({
+  workspaceId: "ws_id",
+  skillId: "skill-uuid",
+  description: "Updated description",
+  content: "Updated instructions..."
+})
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `workspaceId` | ✅ | Workspace ID |
+| `skillId` | ✅ | Skill ID to update |
+| `name` | | New name |
+| `description` | | New description |
+| `content` | | New content |
+
+**Returns:** Updated skill.
+
+### `delete_skill`
+
+Delete a skill from a workspace.
+
+```
+delete_skill({ workspaceId: "ws_id", skillId: "skill-uuid" })
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `workspaceId` | ✅ | Workspace ID |
+| `skillId` | ✅ | Skill ID to delete |
+
+**Returns:** `{ success: true }`
+
+**Note:** Deleting a skill does not affect workflows that reference it — the skill ID remains in the agent block's `skills` array but will be silently skipped during execution.

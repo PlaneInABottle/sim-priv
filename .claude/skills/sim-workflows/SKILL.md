@@ -6,14 +6,14 @@ license: Complete terms in LICENSE.txt
 
 # AI-Native Workflow Management
 
-Autonomous guide for creating, building, executing, and monitoring Sim Studio workflows via the 21 sim-mcp tools. All operations update the UI in real-time.
+Autonomous guide for creating, building, executing, and monitoring Sim Studio workflows via the 25 sim-mcp tools. All operations update the UI in real-time.
 
 > **Reference docs:** [MCP Tools Reference](references/mcp-tools-reference.md) · [Block Types](references/block-types.md) · [Function Patterns](references/function-block-patterns.md) · [API Patterns](references/api-block-patterns.md) · [Troubleshooting](references/troubleshooting.md) · [Workflow Templates](examples/workflow-templates.json)
 
 ### When to Read References
 
 **Read these when you need:**
-- **Detailed tool parameters** → [MCP Tools Reference](references/mcp-tools-reference.md) — full parameter tables for all 21 tools
+- **Detailed tool parameters** → [MCP Tools Reference](references/mcp-tools-reference.md) — full parameter tables for all 25 tools
 - **Subblock configurations** → [Block Types](references/block-types.md) — subblock IDs, formats, and examples for all block types
 - **Function block code** → [Function Patterns](references/function-block-patterns.md) — sandbox APIs, tag usage, common patterns, error handling
 - **API block setup** → [API Patterns](references/api-block-patterns.md) — headers format, body handling, tag resolution, public test APIs
@@ -36,6 +36,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 | **Monitor** | `get_execution_logs`, `get_execution_log_detail` | Retrieve logs, trace spans, costs |
 | **Inspect** | `list_workflows`, `get_workflow`, `get_block` | Read workflow state |
 | **Manage** | `remove_blocks`, `remove_edge`, `remove_variable` | Remove components |
+| **Skills** | `list_skills`, `create_skill`, `update_skill`, `delete_skill` | Manage workspace skills for agents |
 | **Advanced** | `replace_workflow_state`, `update_subflow`, `list_custom_tools`, `upsert_custom_tools` | Bulk ops, loops, custom tools |
 
 ---
@@ -68,6 +69,13 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 
 - **`list_workflows`**`({ workspaceId })` · **`get_workflow`**`({ workflowId, verbose: false })` · **`get_block`**`({ workflowId, blockId })`
 - **`remove_blocks`**`({ workflowId, blockIds })` · **`remove_edge`**`({ workflowId, edgeId })` · **`remove_variable`**`({ workflowId, variableId })`
+
+### Skill Management
+
+- **`list_skills`**`({ workspaceId })` — list all workspace skills
+- **`create_skill`**`({ workspaceId, name, description, content })` — create a new skill
+- **`update_skill`**`({ workspaceId, skillId, name?, description?, content? })` — update an existing skill
+- **`delete_skill`**`({ workspaceId, skillId })` — delete a skill
 
 ### Advanced
 
@@ -194,7 +202,7 @@ return Boolean(yourExpression)
 
 ### Agent Block
 
-SubBlocks: `model`, `systemPrompt`, `messages`, `tools`, `responseFormat`, `temperature`, `maxTokens`, `apiKey`
+SubBlocks: `model`, `systemPrompt`, `messages`, `tools`, `responseFormat`, `temperature`, `maxTokens`, `apiKey`, `skills`
 
 **⚠️ REQUIRES `apiKey` and `model` before execution** — runtime error if missing.
 
@@ -244,6 +252,33 @@ SubBlocks: `data`, `dataMode`, `builderData`, `status`, `headers`
 update_subblock(blockId, "dataMode", "json")
 update_subblock(blockId, "data", '{"result": "<Agent.content>"}')
 ```
+
+### Setting Agent Skills
+
+Skills are reusable instruction sets loaded on-demand during agent execution via progressive disclosure.
+
+```
+// Attach skills to an agent
+update_subblock({
+  workflowId: "wf_abc",
+  blockId: "agent1",
+  subblockId: "skills",
+  value: [
+    { "skillId": "code-reviewer-skill-id", "name": "code-reviewer" },
+    { "skillId": "sql-expert-skill-id", "name": "sql-expert" }
+  ]
+})
+
+// Clear all skills
+update_subblock({
+  workflowId: "wf_abc",
+  blockId: "agent1",
+  subblockId: "skills",
+  value: []
+})
+```
+
+**Note:** Use `list_skills` to discover available skill IDs in your workspace. Skills are workspace-level resources; skill names must be kebab-case; deleted skills are silently skipped at runtime.
 
 ### Other Blocks
 

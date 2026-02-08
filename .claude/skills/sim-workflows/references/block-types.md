@@ -59,10 +59,24 @@ AI agent with LLM capabilities, tool access, and knowledge base integration.
   maxTokens?: number        // Maximum response length
   tools?: string[]          // Tool IDs to enable
   knowledgeBase?: string    // Knowledge base ID
+  skills?: Array<{ skillId: string, name?: string }>  // Agent skills (progressive disclosure)
 }
 ```
 
 **Output:** Agent response text and tool calls
+
+#### Skills
+
+Agent blocks support **progressive disclosure skills** — reusable instruction sets that are loaded on-demand when the LLM requests them via the `load_skill` tool.
+
+Skills are stored at the workspace level and attached to agent blocks via the `skills` sub-block. At execution time:
+1. Available skills are listed in the system prompt
+2. The LLM receives a `load_skill` tool
+3. When called, the full skill content is provided to the LLM
+
+**Format:** Array of `{ skillId: string, name?: string }`
+- `skillId` references a skill in the workspace (UUID)
+- `name` is optional (used as fallback display name if skill is deleted)
 
 ## Logic Blocks
 
