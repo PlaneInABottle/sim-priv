@@ -2307,7 +2307,7 @@ async function handleSubblockOperationTx(
       }
 
       const [block] = await tx
-        .select({ subBlocks: workflowBlocks.subBlocks })
+        .select({ subBlocks: workflowBlocks.subBlocks, type: workflowBlocks.type })
         .from(workflowBlocks)
         .where(
           and(eq(workflowBlocks.id, payload.blockId), eq(workflowBlocks.workflowId, workflowId))
@@ -2316,6 +2316,23 @@ async function handleSubblockOperationTx(
 
       if (!block) {
         throw new Error(`Block ${payload.blockId} not found in workflow ${workflowId}`)
+      }
+
+      // Validate subblockId against block schema to prevent phantom subblock creation
+      const blockDef = getBlock(block.type)
+      if (blockDef) {
+        const validSubblockIds = blockDef.subBlocks.map((sb) => sb.id)
+        // Deduplicate IDs (some blocks define conditional variants with the same ID)
+        const uniqueValidIds = [...new Set(validSubblockIds)]
+        if (!uniqueValidIds.includes(payload.subblockId)) {
+          throw new Error(
+            `Invalid subblockId '${payload.subblockId}' for block type '${block.type}'. Valid subblock IDs: ${uniqueValidIds.join(', ')}`
+          )
+        }
+      } else {
+        logger.warn(
+          `No block definition found for type '${block.type}', skipping subblock validation`
+        )
       }
 
       const subBlocks = (block.subBlocks as Record<string, any>) || {}
