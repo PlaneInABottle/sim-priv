@@ -115,7 +115,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // When using template (copy mode), regenerate all IDs to avoid conflicts
     const templateState = templateData.state as RegenerateStateInput
     const workflowState = connectToTemplate
-      ? templateState
+      ? (JSON.parse(JSON.stringify(templateState)) as RegenerateStateInput)
       : regenerateWorkflowStateIds(templateState)
 
     // Step 3: Remap variableId references in block subBlocks so they point to the new variable IDs
