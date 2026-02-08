@@ -83,6 +83,24 @@ Skills are stored at the workspace level and attached to agent blocks via the `s
 - `skillId` references a skill in the workspace (UUID)
 - `name` is optional (used as fallback display name if skill is deleted)
 
+#### Attaching Skills to Agent Blocks
+
+```
+// Attach skills
+update_subblock({
+  workflowId: "wf_abc", blockId: "agent1", subblockId: "skills",
+  value: [
+    { "skillId": "code-reviewer-skill-id", "name": "code-reviewer" },
+    { "skillId": "sql-expert-skill-id", "name": "sql-expert" }
+  ]
+})
+
+// Clear all skills
+update_subblock({ ..., subblockId: "skills", value: [] })
+```
+
+Use `list_skills` to discover available skill IDs. Names must be kebab-case. Deleted skills are silently skipped at runtime.
+
 ## Logic Blocks
 
 ### condition
@@ -172,6 +190,29 @@ edge: source="cond", target="default_agent", sourceHandle="condition-fallback"
 "typeof context.result === 'object'"
 "Array.isArray(context.data.items)"
 ```
+
+### Condition Context Object
+
+The `context` object is auto-populated from the source block's output (spread flat):
+
+| Source Block | `context` Fields | Example Expression |
+|-------------|-----------------|-------------------|
+| `function` | `context.result`, `context.stdout` | `context.result.priority === 'high'` |
+| `agent` | `context.content`, `context.tokens`, `context.model` | `context.content.includes('urgent')` |
+| `api` | `context.data`, `context.status`, `context.headers` | `context.status === 200` |
+| `start_trigger` | `context.input`, `context.conversationId`, `context.files`, + inputFormat fields | `context.input.priority === 'high'` |
+| `condition` | Inherits upstream source fields | `context.result > 100` |
+
+**Both syntaxes work:**
+- `context.field` — immediate source block only (auto-populated)
+- `<BlockName.field>` — any upstream block by display name (resolved server-side)
+
+```json
+// Combining both
+{ "value": "context.status === 200 && <Start.input.retryEnabled> === true" }
+```
+
+> ⚠️ Tags use display names only: `<Agent 1.content>` not `<PreviousBlock.content>`.
 
 ### router
 Multi-way routing based on multiple conditions.
@@ -403,6 +444,36 @@ Standard spacing for visual clarity:
 - Middle blocks: x=300-700
 - End blocks: x=800+
 - Vertical spacing: 100-150px between parallel paths
+
+### Block Output Fields
+
+| Block Type | Output Fields |
+|-----------|--------------|
+| `agent` | `.content` (response text) |
+| `function` | `.result` (return value), `.stdout` (console output) |
+| `start_trigger` | `.input` (full input), `.conversationId`, `.files`, + inputFormat fields |
+| `api` | `.data` (response body), `.status`, `.headers` |
+| `condition` | `.conditionResult`, `.selectedPath`, `.selectedOption`; spreads source output |
+| `response` | `.data`, `.status`, `.headers` |
+
+### Tag Syntax Details
+
+**Nested property access:** `<Function 1.result.user.name>`, `<API Call.data.items[0].id>`
+If a nested path is `undefined`, the tag resolves to `undefined` (not an error).
+
+**Null / Undefined references:**
+- If a referenced block hasn't executed yet → `undefined`
+- If a field doesn't exist on the output → `undefined`
+- Use condition checks: `context.result !== undefined && context.result.field === 'value'`
+
+**Tags in function block code:**
+Tags are replaced with safe variable names before execution (`<My API.data>` → `__tag_my_api_0data`).
+Prefer block names without spaces in function code for clarity.
+
+**Tags vs context in conditions:**
+- `context.field` — immediate source block only; auto-populated
+- `<BlockName.field>` — any upstream block by display name; resolved server-side
+- Both can combine: `context.status === 200 && <Start.input.mode> === 'strict'`
 
 ### Error Handling
 Enable error handlers on critical blocks:

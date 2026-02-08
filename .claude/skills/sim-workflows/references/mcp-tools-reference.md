@@ -140,6 +140,27 @@ toggle_block_enabled({ workflowId: "wf_abc", blockId: "block_1", enabled: true }
 
 **Use cases:** Disable email/Slack/webhook blocks during testing, A/B test branches, isolate failures. See [SKILL.md Best Practices](../SKILL.md#disabling-blocks-for-safe-testing) for patterns.
 
+#### Disabling Blocks for Safe Testing
+
+Disabled blocks preserve configuration and connections but are skipped by the executor.
+
+**Common use cases:**
+- Test without side effects (disable email/Slack/webhook blocks)
+- A/B test paths (disable one branch)
+- Isolate failures (disable downstream blocks)
+- Staging workflows (disable production integrations)
+
+**Pattern:** Disable → Execute → Verify logs → Re-enable
+
+```
+toggle_block_enabled({ workflowId: "wf_abc", blockId: "slack_notify", enabled: false })
+execute_workflow({ workflowId: "wf_abc", input: { message: "Test" } })
+get_execution_logs({ workspaceId: "ws_123", workflowId: "wf_abc", details: "full", includeTraceSpans: true })
+toggle_block_enabled({ workflowId: "wf_abc", blockId: "slack_notify", enabled: true })
+```
+
+Emits Socket.io broadcast — UI updates in real-time.
+
 ### `update_block_parent`
 
 Set or remove a block's parent container for nesting inside loop/parallel blocks.
@@ -161,6 +182,18 @@ update_block_parent({ workflowId: "wf_abc", blockId: "agent_1", parentId: null }
 ```
 
 **Use cases:** Programmatically build loop/parallel workflows, move blocks between containers.
+
+#### Nesting Blocks in Containers
+
+```
+// Nest agent inside loop
+update_block_parent({ workflowId: "wf_abc", blockId: "agent1", parentId: "loop1" })
+
+// Remove from container
+update_block_parent({ workflowId: "wf_abc", blockId: "agent1", parentId: null })
+```
+
+Works with both `loop` and `parallel` container types.
 
 ---
 
