@@ -209,7 +209,7 @@ update_subblock({
 API Call → Condition (check status) → Success Path / Error Path
 ```
 
-Condition expression: `context.status === 200`
+Condition expression: `<API Call.status> === 200`
 
 ### With onError Configuration
 ```javascript
@@ -218,7 +218,7 @@ Condition expression: `context.status === 200`
   "continueOnError": true      // Don't stop workflow on error
 }
 ```
-When `continueOnError` is true, the API block will still produce output even on HTTP errors, allowing downstream blocks to check `context.status`.
+When `continueOnError` is true, the API block will still produce output even on HTTP errors, allowing downstream condition blocks to check `<API Call.status>`.
 
 ---
 

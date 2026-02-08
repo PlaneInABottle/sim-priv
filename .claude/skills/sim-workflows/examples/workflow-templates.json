@@ -47,7 +47,7 @@
 
   "conditional_routing": {
     "name": "Conditional Routing",
-    "description": "Route to different agents based on condition. Uses context object for expressions and condition-{id} sourceHandles.",
+    "description": "Route to different agents based on condition. Uses <BlockName.field> tag syntax for expressions and condition-{id} sourceHandles.",
     "blocks": [
       {
         "id": "trigger_1",
@@ -62,7 +62,7 @@
         "position": { "x": 350, "y": 150 },
         "data": {
           "conditions": [
-            { "id": "is_high", "title": "if", "value": "context.input.priority === 'high'" },
+            { "id": "is_high", "title": "if", "value": "<Start.input.priority> === 'high'" },
             { "id": "fallback", "title": "else", "value": "" }
           ]
         }
@@ -416,7 +416,7 @@
         "position": { "x": 600, "y": 150 },
         "data": {
           "conditions": [
-            { "id": "success", "title": "if", "value": "context.status === 200" },
+            { "id": "success", "title": "if", "value": "<External API Call.status> === 200" },
             { "id": "error", "title": "else", "value": "" }
           ]
         }

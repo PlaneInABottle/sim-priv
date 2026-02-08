@@ -112,28 +112,25 @@ Branching logic based on JavaScript expression evaluation.
   conditions: Array<{
     id: string                // Unique condition ID (used in edge sourceHandle)
     title: string             // "if", "else if", or "else"
-    value: string             // JavaScript expression using `context` object
+    value: string             // JavaScript expression using `<BlockName.field>` tag syntax
   }>
 }
 ```
 
 **Condition expression syntax:**
-The `context` object is auto-populated from the source block's output (spread flat). You can also use `<BlockName.field>` tag syntax.
+Use `<BlockName.field>` tag syntax to reference upstream block outputs by display name.
 
 ```typescript
 // Examples by source block type:
-"context.result.priority === 'high'"          // source = function block
-"context.content.includes('urgent')"          // source = agent block
-"context.status === 200"                       // source = api block
-"context.data.items.length > 0"               // source = api block
-"context.input.mode === 'strict'"             // source = start_trigger
-
-// Using tag syntax (any upstream block):
-"<Function 1.result.score> >= 80"
+"<Function 1.result.priority> === 'high'"      // source = function block
+"<Agent 1.content>.includes('urgent')"          // source = agent block
+"<API Call.status> === 200"                      // source = api block
+"<API Call.data.items>.length > 0"              // source = api block
+"<Start.input.mode> === 'strict'"              // source = start_trigger
 
 // Multi-condition chain:
-// condition 1 (if):     "context.status === 200 && context.data.valid === true"
-// condition 2 (else if): "context.status === 200"
+// condition 1 (if):     "<API Call.status> === 200 && <API Call.data.valid> === true"
+// condition 2 (else if): "<API Call.status> === 200"
 // condition 3 (else):    ""   ← empty = catch-all fallback
 ```
 
@@ -151,8 +148,8 @@ The `context` object is auto-populated from the source block's output (spread fl
 **Multi-condition chains (if / else-if / else):**
 ```json
 [
-  { "id": "high", "title": "if", "value": "context.result.priority === 'high'" },
-  { "id": "medium", "title": "else if", "value": "context.result.priority === 'medium'" },
+  { "id": "high", "title": "if", "value": "<Function 1.result.priority> === 'high'" },
+  { "id": "medium", "title": "else if", "value": "<Function 1.result.priority> === 'medium'" },
   { "id": "fallback", "title": "else", "value": "" }
 ]
 ```
@@ -168,49 +165,42 @@ edge: source="cond", target="default_agent", sourceHandle="condition-fallback"
 **Complex expressions:**
 ```javascript
 // Boolean logic (&&, ||)
-"context.status === 200 && context.data.items.length > 0"
-"context.result.type === 'A' || context.result.type === 'B'"
+"<API Call.status> === 200 && <API Call.data.items>.length > 0"
+"<Function 1.result.type> === 'A' || <Function 1.result.type> === 'B'"
 
 // Nested property checks
-"context.data.user.role === 'admin'"
-"context.result.scores[0] >= 80"
+"<API Call.data.user.role> === 'admin'"
+"<Function 1.result.scores>[0] >= 80"
 
 // Null-safe checks
-"context.data && context.data.results && context.data.results.length > 0"
+"<API Call.data> && <API Call.data.results> && <API Call.data.results>.length > 0"
 
 // String methods
-"context.content.toLowerCase().includes('error')"
-"context.data.email.endsWith('@company.com')"
+"<Agent 1.content>.toLowerCase().includes('error')"
+"<API Call.data.email>.endsWith('@company.com')"
 
 // Numeric comparisons
-"context.result.confidence >= 0.95"
-"context.data.items.length > 0 && context.data.items.length <= 100"
+"<Function 1.result.confidence> >= 0.95"
+"<API Call.data.items>.length > 0 && <API Call.data.items>.length <= 100"
 
 // Type checks
-"typeof context.result === 'object'"
-"Array.isArray(context.data.items)"
+"typeof <Function 1.result> === 'object'"
+"Array.isArray(<API Call.data.items>)"
 ```
 
 ### Condition Context Object
 
-The `context` object is auto-populated from the source block's output (spread flat):
+Use `<BlockName.field>` tag syntax in condition expressions to reference upstream block outputs by display name:
 
-| Source Block | `context` Fields | Example Expression |
+| Source Block | Available Fields | Example Expression |
 |-------------|-----------------|-------------------|
-| `function` | `context.result`, `context.stdout` | `context.result.priority === 'high'` |
-| `agent` | `context.content`, `context.tokens`, `context.model` | `context.content.includes('urgent')` |
-| `api` | `context.data`, `context.status`, `context.headers` | `context.status === 200` |
-| `start_trigger` | `context.input`, `context.conversationId`, `context.files`, + inputFormat fields | `context.input.priority === 'high'` |
-| `condition` | Inherits upstream source fields | `context.result > 100` |
+| `function` | `.result`, `.stdout` | `<Function 1.result.priority> === 'high'` |
+| `agent` | `.content`, `.tokens`, `.model` | `<Agent 1.content>.includes('urgent')` |
+| `api` | `.data`, `.status`, `.headers` | `<API Call.status> === 200` |
+| `start_trigger` | `.input`, `.conversationId`, `.files`, + inputFormat fields | `<Start.input.priority> === 'high'` |
+| `condition` | Inherits upstream source fields | `<Function 1.result> > 100` |
 
-**Both syntaxes work:**
-- `context.field` — immediate source block only (auto-populated)
-- `<BlockName.field>` — any upstream block by display name (resolved server-side)
-
-```json
-// Combining both
-{ "value": "context.status === 200 && <Start.input.retryEnabled> === true" }
-```
+> ⚠️ **Deprecated:** The `context.field` syntax (e.g., `context.status === 200`) is still supported at runtime but should not be used. Always use `<BlockName.field>` for clarity and consistency.
 
 > ⚠️ Tags use display names only: `<Agent 1.content>` not `<PreviousBlock.content>`.
 
@@ -434,7 +424,7 @@ Pause workflow and wait for human approval or input.
 Blocks support tag expressions to reference workflow data:
 - `<BlockName.field>` - Output from a specific block (uses display name)
 - `<variable.name>` - Workflow variable reference
-- In **condition blocks**, use `context.field` for source block output (auto-populated)
+- In **condition blocks**, use `<BlockName.field>` tags to reference upstream block outputs
 - In **function blocks**, tags become safe variable references (not inline strings)
 - **Do NOT use** `{{blocks.blockId.output}}` or `{{input}}` — these are not valid syntax
 
@@ -464,16 +454,15 @@ If a nested path is `undefined`, the tag resolves to `undefined` (not an error).
 **Null / Undefined references:**
 - If a referenced block hasn't executed yet → `undefined`
 - If a field doesn't exist on the output → `undefined`
-- Use condition checks: `context.result !== undefined && context.result.field === 'value'`
+- Use condition checks: `<Function 1.result> !== undefined && <Function 1.result.field> === 'value'`
 
 **Tags in function block code:**
 Tags are replaced with safe variable names before execution (`<My API.data>` → `__tag_my_api_0data`).
 Prefer block names without spaces in function code for clarity.
 
-**Tags vs context in conditions:**
-- `context.field` — immediate source block only; auto-populated
-- `<BlockName.field>` — any upstream block by display name; resolved server-side
-- Both can combine: `context.status === 200 && <Start.input.mode> === 'strict'`
+**Tags in conditions:**
+- `<BlockName.field>` — reference any upstream block by display name; resolved server-side
+- Always use explicit block names for clarity: `<API Call.status> === 200 && <Start.input.mode> === 'strict'`
 
 ### Error Handling
 Enable error handlers on critical blocks:

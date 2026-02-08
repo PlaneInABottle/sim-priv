@@ -100,9 +100,9 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 {{ENV_VAR}}                — Environment variable (double braces)
 ```
 
-**Condition context:** `context.field` references the source block's output (auto-populated). `<BlockName.field>` tags reference ANY upstream block. Both work in condition expressions.
+**Condition expressions:** Use `<BlockName.field>` tags to reference any upstream block's output by display name. Example: `<Function 1.result.priority> === 'high'`.
 
-> [Full output fields table, tag edge cases, condition context details](references/block-types.md#block-output-fields)
+> [Full output fields table, tag edge cases, condition expression details](references/block-types.md#block-output-fields)
 
 ---
 
@@ -134,7 +134,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 
 **Function:** Output is `{ result, stdout }` → reference as `<FnName.result>`. [Sandbox details](references/function-block-patterns.md)
 
-**Condition:** sourceHandle = `"condition-{conditionId}"`. [Context object details](references/block-types.md#condition-context-object)
+**Condition:** sourceHandle = `"condition-{conditionId}"`. [Condition syntax details](references/block-types.md#condition-context-object)
 
 **Response:** ⚠️ Set `dataMode` to `"json"` BEFORE setting `data` for programmatic use.
 
@@ -223,7 +223,7 @@ execute_workflow({ workflowId: "wf_new", input: { message: "Test" }, triggerType
 create_workflow → add_blocks (trigger + agent + response) → add_edge × 2 → update_subblock (model, apiKey, messages, dataMode, data) → execute_workflow
 ```
 
-**Tag syntax:** `<BlockName.field>` (block output) · `<variable.name>` (workflow var) · `{{ENV_VAR}}` (env) · `context.field` (condition source)
+**Tag syntax:** `<BlockName.field>` (block output) · `<variable.name>` (workflow var) · `{{ENV_VAR}}` (env)
 
 **Trigger types:** `api` | `manual` | `schedule` | `chat` | `webhook` | `mcp` | `a2a`
 
