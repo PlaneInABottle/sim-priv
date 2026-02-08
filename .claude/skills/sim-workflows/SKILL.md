@@ -216,11 +216,20 @@ return Boolean(yourExpression)
 
 ### Agent Block
 
-SubBlocks: `model`, `systemPrompt`, `messages`, `tools`, `responseFormat`, `temperature`, `maxTokens`, `apiKey`, `skills`
+SubBlocks: `model`, `messages`, `tools`, `responseFormat`, `temperature`, `maxTokens`, `apiKey`, `skills`
 
 **⚠️ REQUIRES `apiKey` and `model` before execution** — runtime error if missing.
 
-Messages format: `[{ "role": "user", "content": "Text with <BlockName.field> tags" }]`
+**⚠️ IMPORTANT — System Prompts:** The agent block does NOT have a `systemPrompt` subblock. Use the `messages` subblock instead:
+
+```json
+[
+  { "role": "system", "content": "Your instructions here" },
+  { "role": "user", "content": "<Start.input>" }
+]
+```
+
+The `messages` array can contain multiple messages with roles: `system`, `user`, `assistant`. The server validates subblock IDs and will reject unknown IDs like `systemPrompt`.
 
 ### Function Block
 
@@ -334,10 +343,9 @@ add_edge({ workflowId: "wf_new", source: "trigger", target: "agent1" })
 add_edge({ workflowId: "wf_new", source: "agent1", target: "resp" })
 
 Step 3: Configure the agent
-update_subblock({ ..., blockId: "agent1", subblockId: "systemPrompt", value: "Process the payload." })
 update_subblock({ ..., blockId: "agent1", subblockId: "model", value: "gpt-4o" })
 update_subblock({ ..., blockId: "agent1", subblockId: "apiKey", value: "sk-..." })
-update_subblock({ ..., blockId: "agent1", subblockId: "messages", value: [{ "role": "user", "content": "Process: <Start.input>" }] })
+update_subblock({ ..., blockId: "agent1", subblockId: "messages", value: [{ "role": "system", "content": "Process the payload." }, { "role": "user", "content": "Process: <Start.input>" }] })
 
 Step 4: Configure response (json mode first, then data)
 update_subblock({ ..., blockId: "resp", subblockId: "dataMode", value: "json" })
@@ -522,7 +530,7 @@ update_block_parent({ workflowId: "wf_abc", blockId: "agent1", parentId: null })
 ### Minimum Viable Workflow
 
 ```
-create_workflow → add_blocks (trigger + agent + response) → add_edge (connect blocks) → update_subblock (model, apiKey, systemPrompt) → execute_workflow
+create_workflow → add_blocks (trigger + agent + response) → add_edge (connect blocks) → update_subblock (model, apiKey, messages) → execute_workflow
 ```
 
 ### Tag Syntax

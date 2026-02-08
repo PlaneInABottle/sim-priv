@@ -54,7 +54,10 @@ AI agent with LLM capabilities, tool access, and knowledge base integration.
 ```typescript
 {
   model: string              // e.g., "gpt-4", "claude-3-opus"
-  systemPrompt: string       // System instructions
+  messages: Array<{          // Conversation messages (includes system prompt)
+    role: "system" | "user" | "assistant"
+    content: string
+  }>
   temperature?: number       // 0-1, controls randomness
   maxTokens?: number        // Maximum response length
   tools?: string[]          // Tool IDs to enable
@@ -62,6 +65,8 @@ AI agent with LLM capabilities, tool access, and knowledge base integration.
   skills?: Array<{ skillId: string, name?: string }>  // Agent skills (progressive disclosure)
 }
 ```
+
+**⚠️ No `systemPrompt` subblock** — use the `messages` array with `{ "role": "system", "content": "..." }` instead.
 
 **Output:** Agent response text and tool calls
 
