@@ -266,14 +266,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         userId,
       })
     } catch (dbError) {
-      logger.error(`[${requestId}] Failed to persist operation to database`, {
+      const errMsg = dbError instanceof Error 
+        ? dbError.message 
+        : 'Failed to persist operation to database'
+      logger.error(`[${requestId}] ${errMsg}`, {
         error: dbError,
         workflowId,
         operationId,
         operation: validatedOperation.operation,
         target: validatedOperation.target,
       })
-      return createErrorResponse('Failed to persist operation to database', 500)
+      return createErrorResponse(errMsg, 500)
     }
 
     logger.info(`[${requestId}] Persisted operation ${operationId}`, {
@@ -414,7 +417,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }),
     })
   } catch (error) {
-    logger.error(`[${requestId}] Failed to process operation`, { error, workflowId })
-    return createErrorResponse('Failed to process operation', 500)
+    const errMsg = error instanceof Error 
+      ? error.message 
+      : 'Failed to process operation'
+    logger.error(`[${requestId}] ${errMsg}`, { error, workflowId })
+    return createErrorResponse(errMsg, 500)
   }
 }
