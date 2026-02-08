@@ -120,11 +120,25 @@ update_block_name({ workflowId: "wf_abc", blockId: "block_1", name: "Customer Su
 
 ### `toggle_block_enabled`
 
-Enable/disable a block (disabled blocks are skipped during execution).
+Enable or disable a block in a workflow. Disabled blocks are skipped during workflow execution but retain their configuration, connections, and position.
+
+| Param | Required | Type | Description |
+|-------|----------|------|-------------|
+| `workflowId` | ✅ | string | ID of the workflow containing the block |
+| `blockId` | ✅ | string | ID of the block to toggle |
+| `enabled` | ✅ | boolean | `true` to enable, `false` to disable |
+
+**Returns:** `{ success: boolean, operationId: string }`
 
 ```
+// Disable a block
 toggle_block_enabled({ workflowId: "wf_abc", blockId: "block_1", enabled: false })
+
+// Re-enable a block
+toggle_block_enabled({ workflowId: "wf_abc", blockId: "block_1", enabled: true })
 ```
+
+**Use cases:** Disable email/Slack/webhook blocks during testing, A/B test branches, isolate failures. See [SKILL.md Best Practices](../SKILL.md#disabling-blocks-for-safe-testing) for patterns.
 
 ---
 

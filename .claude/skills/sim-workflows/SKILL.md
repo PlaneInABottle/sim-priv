@@ -373,6 +373,45 @@ add_edge({ workflowId: "wf_abc", source: "cond", target: "no", sourceHandle: "co
 - **Prefer `get_workflow(verbose: false)` + `get_block`** over `verbose: true`
 - **Prefer targeted operations** over `replace_workflow_state`
 - **Debug systematically**: Use `get_workflow(verbose: true)` to inspect state before assuming bugs
+- **Use `toggle_block_enabled` for safe testing** — disable blocks like email/Slack senders during development to test workflow logic without side effects
+
+### Disabling Blocks for Safe Testing
+
+Use `toggle_block_enabled` to skip blocks during execution without removing them. Disabled blocks preserve their configuration and connections but are skipped by the executor.
+
+**Common use cases:**
+- **Test without side effects**: Disable email, Slack, or webhook blocks to test workflow logic without sending real messages
+- **A/B test paths**: Disable one branch to force execution through another
+- **Isolate failures**: Disable downstream blocks to test upstream logic in isolation
+- **Staging workflows**: Disable production integrations while developing
+
+**Pattern: Disable → Test → Re-enable**
+
+```
+// Step 1: Disable the Slack notification block
+toggle_block_enabled({ workflowId: "wf_abc", blockId: "slack_notify", enabled: false })
+
+// Step 2: Execute the workflow — Slack block is skipped
+execute_workflow({ workflowId: "wf_abc", input: { message: "Test" }, triggerType: "api" })
+
+// Step 3: Verify via logs that upstream blocks ran correctly
+get_execution_logs({ workspaceId: "ws_123", workflowId: "wf_abc", details: "full", includeTraceSpans: true })
+
+// Step 4: Re-enable when ready for production
+toggle_block_enabled({ workflowId: "wf_abc", blockId: "slack_notify", enabled: true })
+```
+
+**Checking block enabled state:**
+```
+// Use get_block to verify current enabled state
+get_block({ workflowId: "wf_abc", blockId: "slack_notify" })
+// → { block: { id: "slack_notify", enabled: false, ... } }
+
+// Or use get_workflow (verbose: false) to see all blocks' enabled status
+get_workflow({ workflowId: "wf_abc", verbose: false })
+```
+
+**Important:** `toggle_block_enabled` emits a Socket.io broadcast (`broadcastSent: true`), so the UI updates in real-time when blocks are toggled programmatically.
 
 ### Block Positioning
 
