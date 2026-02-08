@@ -191,6 +191,36 @@ export function useCollaborativeWorkflow() {
                 .getState()
                 .setBlockCanonicalMode(payload.id, payload.canonicalId, payload.canonicalMode)
               break
+            case BLOCK_OPERATIONS.TOGGLE_ENABLED: {
+              const block = useWorkflowStore.getState().blocks[payload.id]
+              if (block) {
+                useWorkflowStore.getState().setBlockEnabled(payload.id, !block.enabled)
+              }
+              break
+            }
+            case BLOCK_OPERATIONS.UPDATE_POSITION: {
+              if (payload.id && payload.position) {
+                useWorkflowStore
+                  .getState()
+                  .batchUpdatePositions([{ id: payload.id, position: payload.position }])
+              }
+              break
+            }
+            case BLOCK_OPERATIONS.UPDATE_PARENT: {
+              const block = useWorkflowStore.getState().blocks[payload.id]
+              if (block) {
+                useWorkflowStore.getState().batchUpdateBlocksWithParent([
+                  { id: payload.id, position: block.position, parentId: payload.parentId },
+                ])
+              }
+              break
+            }
+            case BLOCK_OPERATIONS.TOGGLE_HANDLES: {
+              if (payload.id && payload.horizontalHandles !== undefined) {
+                useWorkflowStore.getState().setBlockHandles(payload.id, payload.horizontalHandles)
+              }
+              break
+            }
           }
         } else if (target === OPERATION_TARGETS.BLOCKS) {
           switch (operation) {
