@@ -1,5 +1,6 @@
 import { getEffectiveBlockOutputs } from '@/lib/workflows/blocks/block-outputs'
 import { hasTriggerCapability } from '@/lib/workflows/triggers/trigger-utils'
+import { extractFieldsFromSchema, parseResponseFormatSafely } from '@/lib/core/utils/response-format'
 import { getBlock } from '@/blocks/registry'
 import { isTriggerBehavior, normalizeName } from '@/executor/constants'
 import type { ExecutionContext } from '@/executor/types'
@@ -10,6 +11,7 @@ import {
   isBranchNodeId,
 } from '@/executor/utils/subflow-utils'
 import type { SerializedBlock } from '@/serializer/types'
+import type { ToolConfig } from '@/tools/types'
 
 export interface BlockDataCollection {
   blockData: Record<string, unknown>
@@ -33,7 +35,27 @@ function paramsToSubBlocks(
   return subBlocks
 }
 
-function getRegistrySchema(block: SerializedBlock): OutputSchema | undefined {
+function getResponseFormatSchema(block: SerializedBlock): OutputSchema | undefined {
+  const responseFormatValue = block.config?.params?.responseFormat
+  if (!responseFormatValue) return undefined
+
+  const parsed = parseResponseFormatSafely(responseFormatValue, block.id)
+  if (!parsed) return undefined
+
+  const fields = extractFieldsFromSchema(parsed)
+  if (fields.length === 0) return undefined
+
+  const schema: OutputSchema = { ...(block.outputs as OutputSchema) }
+  for (const field of fields) {
+    schema[field.name] = { type: field.type || 'any' }
+  }
+  return schema
+}
+
+export function getBlockSchema(
+  block: SerializedBlock,
+  toolConfig?: ToolConfig
+): OutputSchema | undefined {
   const blockType = block.metadata?.id
   if (!blockType) return undefined
 
@@ -51,10 +73,6 @@ function getRegistrySchema(block: SerializedBlock): OutputSchema | undefined {
     return undefined
   }
   return outputs
-}
-
-export function getBlockSchema(block: SerializedBlock): OutputSchema | undefined {
-  return getRegistrySchema(block)
 }
 
 export function collectBlockData(
