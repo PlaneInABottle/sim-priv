@@ -476,14 +476,8 @@ async function executeWebhookJobInternal(
               executionId,
             }
 
-            // Generic webhook input uses { body, headers } namespace — file fields are inside body
-            const inputBody =
-              'body' in input && typeof input.body === 'object' && input.body !== null
-                ? (input.body as Record<string, unknown>)
-                : (input as Record<string, unknown>)
-
             for (const fileField of fileFields) {
-              const fieldValue = inputBody[fileField.name]
+              const fieldValue = input[fileField.name]
 
               if (fieldValue && typeof fieldValue === 'object') {
                 const uploadedFiles = await processExecutionFiles(
@@ -494,7 +488,7 @@ async function executeWebhookJobInternal(
                 )
 
                 if (uploadedFiles.length > 0) {
-                  inputBody[fileField.name] = uploadedFiles
+                  input[fileField.name] = uploadedFiles
                   logger.info(
                     `[${requestId}] Successfully processed ${uploadedFiles.length} file(s) for field: ${fileField.name}`
                   )

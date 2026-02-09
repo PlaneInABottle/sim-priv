@@ -1096,24 +1096,7 @@ export async function formatWebhookInput(
   }
 
   if (foundWebhook.provider === 'generic') {
-    const providerConfig = (foundWebhook.providerConfig as Record<string, any>) || {}
-    const secretHeaderName: string | undefined = providerConfig.secretHeaderName?.trim()
-
-    // Only pass the specifically configured secret header — never leak infrastructure headers
-    if (secretHeaderName) {
-      const headerValue = request.headers.get(secretHeaderName) // case-insensitive per HTTP spec
-      return {
-        body: body ?? {},
-        headers: {
-          [secretHeaderName.toLowerCase()]: headerValue ?? '',
-        },
-      }
-    }
-
-    // No secret header configured — return body only, no headers
-    return {
-      body: body ?? {},
-    }
+    return body
   }
 
   if (foundWebhook.provider === 'google_forms') {
