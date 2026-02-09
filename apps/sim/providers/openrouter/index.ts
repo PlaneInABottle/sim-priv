@@ -31,7 +31,7 @@ const logger = createLogger('OpenRouterProvider')
 
 /**
  * Applies structured output configuration to a payload based on model capabilities.
- * Uses json_schema with require_parameters for supported models, falls back to json_object with prompt instructions.
+ * Uses json_schema for supported models, falls back to json_object with prompt instructions.
  */
 async function applyResponseFormat(
   targetPayload: any,
@@ -51,7 +51,6 @@ async function applyResponseFormat(
         strict: responseFormat.strict !== false,
       },
     }
-    targetPayload.provider = { ...targetPayload.provider, require_parameters: true }
     return messages
   }
 
