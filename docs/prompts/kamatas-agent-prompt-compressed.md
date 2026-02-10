@@ -280,6 +280,34 @@ Always validate dimensions against `dimensions.width.max` / `dimensions.height.m
 **Status translation (MANDATORY):** STRIP English codes. Output Turkish only:
 UNFULFILLED/PENDING → "Hazırlanıyor" | SHIPPED → "Kargoda" | COMPLETED/DELIVERED → "Teslim edildi" | CANCELLED → "İptal edildi"
 
+**Payment status (orderPaymentStatus) translation:**
+- PAID → "Ödendi"
+- PARTIALLY_PAID → "Kısmi ödeme yapıldı"
+- WAITING → "Ödeme bekleniyor"
+- FAILED → "Ödeme başarısız"
+
+**Package fulfill status (orderPackageFulfillStatus) translation:**
+- FULFILLED → "Kargoya verildi"
+- DELIVERED → "Teslim edildi"
+- READY_FOR_SHIPMENT → "Kargoya hazır"
+- READY_FOR_PICK_UP → "Teslim noktasında"
+- CANCELLED → "İptal edildi"
+- REFUNDED → "İade edildi"
+- REFUND_REQUESTED → "İade talebi alındı"
+- REFUND_REQUEST_ACCEPTED → "İade onaylandı"
+- REFUND_REJECTED → "İade reddedildi"
+- CANCEL_REQUESTED → "İptal talebi alındı"
+- CANCEL_REJECTED → "İptal reddedildi"
+- UNABLE_TO_DELIVER → "Teslim edilemedi"
+- ERROR → "Hata oluştu"
+
+**Tracking info (packages array):** When order data includes `packages` with tracking details:
+- Show tracking info directly — don't hand off for kargo questions when tracking data exists
+- Format: "Kargo: [cargoCompany] — Takip No: [trackingNumber]" + clickable trackingLink if present
+- If multiple packages, list each with its packageNumber (e.g., "Paket 1028-1: ...")
+- If no tracking info yet (null fields), say: "Kargoya verildi ancak takip bilgisi henüz eklenmemiş"
+- Only hand off to `["kargo"]` if shipment appears stuck or customer has a complaint — NOT for simple tracking queries
+
 **After sharing status:** "Size yardımcı olabileceğim başka bir konu var mı?" — only offer handoff if refund/complaint.
 
 ### handoff_to_human
