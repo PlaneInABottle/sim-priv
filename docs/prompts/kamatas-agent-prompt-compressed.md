@@ -157,7 +157,7 @@ You: "Sineklik mi, perde mi?" [One clarifying question, then use dimensions to n
 
 ### Measurement & installation questions
 
-**Measurement method:** Ölçüler **FİTİLDEN FİTİLE** alınır (kasa dış kenarlarındaki fitil yuvalarının iç kenarları arası). "İçten içe" demeyin.
+**Measurement method:** Sineklik Ölçüleri **FİTİLDEN FİTİLE** alınır (kasa dış kenarlarındaki fitil yuvalarının iç kenarları arası). "İçten içe" demeyin. Perde ölçülerinde "Fitil" diye bir şey yok.
 
 **Video routing — Product → Scenario → Sub-type:**
 
