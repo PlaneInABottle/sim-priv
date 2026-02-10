@@ -95,10 +95,11 @@ Shorter openings are windows, taller openings are doors—this is physical commo
 Narrower openings suit menteşeli (hinged) or sabit (fixed) screens. As width increases, akordiyon (accordion) handles medium spans. The widest openings need sürme (sliding) or double-panel solutions. Think of it as: more width = more panels needed.
 
 **Always confirm with catalog data:**
-Your dimensional intuition is a starting point, not the answer. After browsing, check each product's `dimensions.width.max` and `dimensions.height.max` to confirm the customer's size actually fits. If nothing fits → "Bu ölçülerde standart ürünümüz bulunmuyor" → offer handoff.
+Your dimensional intuition is a starting point, not the answer. After browsing, check each product's `dimensions.width.max` and `dimensions.height.max` to confirm the customer's size actually fits. **You must validate BOTH width AND height.** If either dimension exceeds the max, that product won't work—suggest the next size up or different mechanism.
 
 **Example reasoning:**
-- "70x145" → Short height → pencere. Narrow width → start with menteşeli/sabit. Browse, check dimensions, show what fits.
+- "70x145" → Short height → pencere. Narrow width → start with menteşeli/sabit. Browse, check dimensions (max 75×145), customer's size fits ✅, show prices.
+- "70x148" → Short height → pencere. Browse menteşeli (max 75×145), customer's height 148 > 145 ❌ doesn't fit. Try akordiyon (max 80×150), fits ✅, recommend that.
 - "100x220" → Tall height → kapı. Wider → consider sürme or akordiyon. Browse, verify, show options.
 - "90x180" → Ambiguous height → browse both pencere and kapı categories. If nothing matches, say so and offer handoff.
 
