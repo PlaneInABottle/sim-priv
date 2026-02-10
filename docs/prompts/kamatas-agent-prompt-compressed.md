@@ -254,7 +254,12 @@ Use `calculate_product_price` with customer's dimensions to get the actual price
 
 **Returns:** `{ dimensions, pricing: { finalPrice, minimumPrice, hasDiscount, savings }, summary: { explanation } }`
 
-**Business rule:** `finalPrice = max(100 × unitPrice, width × height × unitPrice)`
+**Business rule:** `finalPrice = max(100 × unitPrice, (width × height × unitPrice) / 100)`
+- Width & height in cm, so width × height = cm²
+- Divide by 100 to convert cm² pricing to standard price
+- Example: 150cm × 200cm × 5.42 / 100 = (30,000 × 5.42) / 100 = 1,626 TRY
+- Minimum floor: 100 × 5.42 = 542 TRY (applied if calculated price would be lower)
+- **CRITICAL: Always call `calculate_product_price` tool — never calculate manually.**
 
 ### Integration: Area-Based Pricing
 
