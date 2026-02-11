@@ -628,18 +628,30 @@ If the agent session is interrupted mid-test:
 
 ### Selective Rollback (From Snapshot)
 
-```python
-# 1. Query snapshot
-# SELECT block_id, original_enabled FROM block_snapshots WHERE run_id = '<RUN_ID>'
+1. Query the block_snapshots table to get all disabled blocks and their original_enabled values:
+   ```
+   SELECT blockId, original_enabled FROM block_snapshots WHERE run_id='<RUN_ID>' AND restored=0
+   ```
 
-# 2. Restore each to original state
-for block_id, original_enabled in snapshot_rows:
-    toggle_block_enabled(
-        workflowId="<WORKFLOW_ID>",
-        blockId=block_id,
-        enabled=bool(original_enabled)
-    )
-```
+2. For each row returned:
+   ```
+   toggle_block_enabled(
+       workflowId="<WORKFLOW_ID>",
+       blockId="<BLOCK_ID>",
+       enabled=<ORIGINAL_ENABLED>
+   )
+   ```
+
+3. After each toggle, update the snapshot:
+   ```
+   UPDATE block_snapshots SET restored=1 WHERE run_id='<RUN_ID>' AND blockId='<BLOCK_ID>'
+   ```
+
+4. Verify all blocks are restored:
+   ```
+   SELECT COUNT(*) as unrestored FROM block_snapshots WHERE run_id='<RUN_ID>' AND restored=0
+   -- Should return 0
+   ```
 
 ---
 

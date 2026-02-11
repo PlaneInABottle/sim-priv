@@ -360,12 +360,25 @@ GROUP BY test_group;
 
 If something goes wrong mid-test, restore ALL blocks immediately:
 
-```python
-# Get all blocks from workflow
-workflow = get_workflow(workflowId="53408cc2-...", verbose=False)
-for block in workflow.blocks:
-    toggle_block_enabled(workflowId="53408cc2-...", blockId=block.id, enabled=True)
-```
+1. Fetch workflow:
+   ```
+   get_workflow(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", verbose=false)
+   ```
+
+2. For each block in the response:
+   ```
+   toggle_block_enabled(
+       workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4",
+       blockId="<BLOCK_ID>",
+       enabled=true
+   )
+   ```
+
+3. Verify restoration:
+   ```
+   get_workflow(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", verbose=false)
+   -- Check: no blocks with enabled=false
+   ```
 
 Or restore from snapshot:
 ```sql
