@@ -374,3 +374,67 @@ FROM block_snapshots
 WHERE run_id = 'run-001' AND restored = 0;
 -- Then toggle each block back to original_enabled state
 ```
+
+---
+
+## Known Limitations
+
+### Workflow Design Constraints
+
+- **Wait Blocks:** Workflows with `debounceWait` or `Wait` blocks may cause test timeouts. Set realistic timeouts in your wait blocks (default: 45s) or use CONDITION_ONLY / PATH_ISOLATION profiles to skip them.
+- **Non-deterministic Paths:** Parallel branches (e.g., fetchCustomerInformation + storeUserMessage) may execute in any order. Trace assertions should allow flexibility.
+- **Conditional Block Execution:** If a downstream block's behavior depends on runtime data (e.g., Store IKAS Context only executes if context exists), the trace may vary. Document conditional expectations.
+
+### External Dependencies
+
+- **Chatwoot API:** Media Handoff tests make real Chatwoot API calls (POST /conversations/{id}/toggle_status, /labels, /messages). Use test conversation IDs to avoid production impact.
+- **ikas API:** Functions that call ikas APIs may fail if credentials are not configured. Ensure all oauth tokens and API keys are valid.
+- **Environment Variables:** Function blocks may reference env vars (e.g., `RAVEN_URL`). Tests will fail if these are undefined. Pre-populate env vars in test execution context.
+
+### Workflow Traffic
+
+- **Live Traffic Race Conditions:** If the workflow receives real user messages during testing, execution logs may be interleaved. Use the `executionId` filter to isolate your test's logs.
+- **High-Traffic Workflows:** On workflows with 100+ executions/day, the snapshot-disable-execute-restore cycle takes longer. Plan test windows accordingly.
+
+### Testing Scope
+
+- **Draft State Only:** Tests execute against draft workflow state, not deployed snapshots. Changes are not visible to production until workflow is deployed.
+- **No Webhook Trigger Support:** Tests use `useDraftState=true` which bypasses webhook trigger validation. Actual webhook delivery tests require deployed workflows.
+
+### Payload Limitations
+
+- **Numeric message_type:** Payloads use string `"incoming"` for compatibility. Real Chatwoot sends numeric `0=incoming, 1=outgoing`. This doesn't affect test results but isn't production-realistic.
+- **Attachments:** Attachments are simulated with `data_url` fields. Real Chatwoot sends S3 URLs. Tests don't validate actual file downloads.
+
+---
+
+## Roadmap & Future Expansion
+
+### Phase 1 (Current) ✅ Complete
+
+- Single-workflow testing framework for Kamatas PROD
+- Three test profiles (CONDITION_ONLY, PATH_ISOLATION, FULL_INTEGRATION)
+- Manual scenario definition and payload management
+- SQL-based test tracking and reporting
+
+### Phase 2 (Planned) — Multi-Company Framework
+
+- **Auto-Discovery:** AI agent inspects any Sim workflow and generates test scenarios automatically
+- **Template-Based Payloads:** Extensible payload generator for different companies (Kamatas, future e-commerce partners)
+- **Scenario Registry:** Shared scenario patterns across companies (e.g., "text greeting", "media handoff", "order lookup")
+- **Cross-Workflow Testing:** Test multiple related workflows in sequence (e.g., order workflow → tracking workflow)
+
+### Phase 3 (Planned) — CI/CD & Monitoring Integration
+
+- **Regression Scheduling:** Automated test runs on workflow deployment (pre-deploy gate)
+- **Performance Baseline:** Track execution times and costs across test runs
+- **CI Integration:** GitHub Actions / Render hooks to run tests on push
+- **Cost Tracking:** Monitor AI agent costs and external API spend per test profile
+- **Historical Comparison:** Identify performance regressions (test got slower, trace added 3 more blocks, etc.)
+
+### Contributing to the Roadmap
+
+To request a feature, add a scenario, or extend to a new company:
+1. Check if a Phase 2 / Phase 3 feature covers your need
+2. Open an issue with the use case
+3. Tag as `testing-framework` for visibility

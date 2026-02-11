@@ -3,7 +3,7 @@
 Test matrix for the Kamatas PROD workflow (`53408cc2-52fa-46e5-85d7-402d2f42f3a4`).
 
 **Workspace:** `ac7ec7a6-f09a-4035-8e96-e9e95b75221b`
-**Total Scenarios:** 23 (13 Condition Routing + 5 Media Handoff + 3 Text Flow + 2 Full Integration)
+**Total Scenarios:** 24 (14 Condition Routing + 5 Media Handoff + 3 Text Flow + 2 Full Integration)
 **Block Count:** 21
 
 ---
@@ -173,17 +173,17 @@ Complete block inventory with full UUIDs for use in sim-mcp tool calls.
 | **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = true` |
 | **Notes** | Even with text content, presence of media attachment routes to media path. Important edge case. |
 
-#### CR-10: Document Attachment → Check Behavior
+#### CR-10: Document Attachment → Dropped (Not Media)
 
 | Field | Value |
 |-------|-------|
 | **Scenario ID** | CR-10 |
 | **Payload Ref** | S-10 |
 | **Input** | `message_type: "incoming"`, `content: ""`, `attachments: [document]` |
-| **Expected Routing** | Incoming Only → ELSE → Is Media Message? → depends on condition logic |
+| **Expected Routing** | Incoming Only → ELSE → Is Media Message? → ELSE (dropped) |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = ?` |
-| **Notes** | Document files (PDF) may or may not be treated as "media". This test discovers the actual behavior. Record the result. |
+| **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = false` |
+| **Notes** | Documents/PDFs (file_type="file") are NOT treated as media. They are dropped — same behavior as pre-feature. The condition logic checks `fileType === 'audio' || fileType === 'image' || fileType === 'video'` — "file" matches none, so hasMedia=false. |
 
 #### CR-11: Multiple Image Attachments → Media Path
 
@@ -221,6 +221,18 @@ Complete block inventory with full UUIDs for use in sim-mcp tool calls.
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 | **Function Assertions** | `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.success EQUALS true` |
 | **Notes** | Tests audio > image priority. mediaType should resolve to "voice" even though image is present. |
+
+#### CR-14: Team-Assigned Conversation → Dropped
+
+| Field | Value |
+|-------|-------|
+| **Scenario ID** | CR-14 |
+| **Payload Ref** | S-15 |
+| **Input** | `message_type: "incoming"`, `content: "Merhaba"`, `team: {"id": 1, "name": "Support Team"}` |
+| **Expected Routing** | Incoming Only → ELSE (hasTeam=true) |
+| **Expected Trace** | `["Webhook 1", "Incoming Only"]` |
+| **Condition Assertions** | `Incoming Only.conditionResult = false` |
+| **Notes** | Team-assigned conversations are dropped. Only personal conversations (hasTeam=false) are processed. |
 
 ---
 
@@ -440,7 +452,7 @@ KEEP ENABLED:
 | **Expected Trace** | Full text path: `["Webhook 1", "Incoming Only", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait", "getLatestMessageId", "checkIfTheMessageLatest", "Loop 1", "Support Agent", "AgentVariable", "getLatestMessageId2", "checkIfTheMessageLatest2", "Extract IKAS Context", "Has IKAS Context?", "Memory 1"]` |
 | **Output Assertions** | `Support Agent.output.content` is a Turkish greeting response, appropriate for Kamatas customer service |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Notes** | Most expensive test. Validates full end-to-end behavior. Agent should respond with a warm Turkish greeting mentioning Kamatas. May include: "Merhaba! Kamatas'a hoş geldiniz" or similar. |
+| **Notes** | Most expensive test. Validates full end-to-end behavior. Agent should respond with a warm Turkish greeting mentioning Kamatas. May include: "Merhaba! Kamatas'a hoş geldiniz" or similar. **Parallel execution:** fetchCustomerInformation and storeUserMessage execute in parallel. Trace may show them in either order: `['fetchCustomerInformation', 'storeUserMessage']` OR `['storeUserMessage', 'fetchCustomerInformation']`. Both are valid. **Conditional trace:** Trace assumes no existing IKAS context from fetchCustomerInformation. If fetchCustomerInformation returns ikas data, 'Store IKAS Context' will appear between 'Has IKAS Context?' and 'Memory 1'. |
 
 #### FI-02: Full Media Flow — Voice Handoff
 
@@ -566,8 +578,8 @@ keep_blocks = [
 Recommended order for running the complete test suite:
 
 ```
-Phase 1: CONDITION_ONLY (13 scenarios)
-├── CR-01 through CR-13
+Phase 1: CONDITION_ONLY (14 scenarios)
+├── CR-01 through CR-14
 ├── Cheapest ($0.00), safest
 ├── Validates all routing logic
 └── If any fail → STOP, fix routing before proceeding
@@ -591,6 +603,6 @@ Phase 4: FULL_INTEGRATION (2 scenarios)
 └── Run only after Phases 1-3 pass
 ```
 
-**Total:** 23 scenarios (can expand with new scenarios as features are added)
+**Total:** 24 scenarios (can expand with new scenarios as features are added)
 **Estimated Cost:** $0.02–0.10 for full suite
 **Estimated Time:** 5–15 minutes (depends on wait blocks and API response times)

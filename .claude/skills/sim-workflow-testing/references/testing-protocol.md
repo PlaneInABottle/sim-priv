@@ -162,6 +162,18 @@ Disable:
   - All text path blocks (fetchCustomerInfo through Send to Chatwoot)
 ```
 
+**⚠️ Side-Effect Warning (PATH_ISOLATION media):**
+
+The Media Handoff function block makes real Chatwoot API calls:
+  - POST to `/conversations/{id}/toggle_status`
+  - POST to `/conversations/{id}/labels`
+  - POST to `/conversations/{id}/messages` (internal note)
+
+To minimize production impact during testing:
+  - Use **test conversation IDs** (e.g., `conversation.id=99999`) in your payloads
+  - Or accept these calls as part of integration testing and monitor Chatwoot logs
+  - These are destructive operations (status changes, label additions), not read-only
+
 **PATH_ISOLATION (text path)** — Keep only the text path enabled:
 
 ```
@@ -443,9 +455,11 @@ For each block, restore to original state:
 toggle_block_enabled(
     workflowId="<WORKFLOW_ID>",
     blockId="<BLOCK_ID>",
-    enabled=true  -- or original_enabled value
+    enabled=<ORIGINAL_ENABLED>  -- from block_snapshots.original_enabled
 )
 ```
+
+Always restore to the ORIGINAL state recorded in the snapshot, not always to `true`. If a block was disabled before testing, restoring to `true` changes production state.
 
 Update snapshot:
 
@@ -583,28 +597,34 @@ If the agent session is interrupted mid-test:
 
 ## Rollback Procedure
 
-### Full Rollback (Emergency)
+### Emergency Full Rollback (If Restore Phase Fails Catastrophically)
 
-If you need to immediately restore the workflow to its pre-test state:
+**Situation:** All blocks remain disabled; restore operations failed completely.
 
-```python
-# 1. Fetch current workflow state
-workflow = get_workflow(workflowId="<WORKFLOW_ID>", verbose=False)
+**Procedure:**
 
-# 2. Enable ALL blocks (safe default — production state has all blocks enabled)
-for block in workflow.blocks:
-    if not block.enabled:
-        toggle_block_enabled(
-            workflowId="<WORKFLOW_ID>",
-            blockId=block.id,
-            enabled=True
-        )
+1. Fetch the workflow state:
+   ```
+   get_workflow(workflowId="<WORKFLOW_ID>", verbose=false)
+   ```
 
-# 3. Verify
-workflow = get_workflow(workflowId="<WORKFLOW_ID>", verbose=False)
-disabled_count = sum(1 for b in workflow.blocks if not b.enabled)
-assert disabled_count == 0, f"Still have {disabled_count} disabled blocks!"
-```
+2. For each block returned where enabled=false (or where it should be true):
+   ```
+   toggle_block_enabled(
+       workflowId="<WORKFLOW_ID>",
+       blockId="<BLOCK_ID>",
+       enabled=true
+   )
+   ```
+   Repeat for all blocks that should be enabled.
+
+3. Verify full restore:
+   ```
+   get_workflow(workflowId="<WORKFLOW_ID>", verbose=false)
+   ```
+   Check: zero blocks with enabled=false
+
+4. Report: "Emergency rollback complete. All blocks restored to enabled=true."
 
 ### Selective Rollback (From Snapshot)
 
@@ -631,13 +651,27 @@ When running multiple scenarios under the same test profile:
 2. **Disable once** — Same blocks disabled for all scenarios in the profile
 3. **Execute each scenario** — One at a time, capturing each execution ID
 4. **Verify each result** — Independently check trace spans per scenario
-5. **Restore once** — After all scenarios complete (or on first error)
+5. **Restore once** — After ALL scenarios complete
 
 ```
 PREPARE → CONFIGURE → [EXECUTE → VERIFY] × N scenarios → RESTORE → RECORD
 ```
 
 This saves time by avoiding repeated disable/restore cycles for the same profile.
+
+### Error Handling During Batch
+
+If a scenario errors (execute_workflow fails, assertion fails, etc.):
+
+1. Record the error in test_results
+2. **CONTINUE to the next scenario** (do NOT restore yet, do NOT abort)
+3. Keep all blocks disabled for the next scenario
+4. Only restore after ALL scenarios complete OR on a CRITICAL error
+
+**CRITICAL Error** = toggle_block_enabled fails, workflow structure changed mid-batch, sim-mcp API error
+**NON-CRITICAL Error** = execute_workflow timeout, assertion mismatch, empty response
+
+Example: 3 scenarios, Scenario 1 fails assertion → continue to Scenario 2, keep disabled, test Scenario 2, restore after Scenario 3 completes.
 
 ---
 

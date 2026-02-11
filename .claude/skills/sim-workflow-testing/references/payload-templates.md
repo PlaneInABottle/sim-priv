@@ -112,6 +112,7 @@ fields are shown — all other fields use base defaults.
 | S-12 | Empty content no attach | `"incoming"` | `""` | `"text"` | `[]` | Edge case: empty msg |
 | S-13 | Measurement question | `"incoming"` | `"Sineklik ölçüsünü nasıl alırım?"` | `"text"` | `[]` | Measurement routing |
 | S-14 | Mixed audio+image | `"incoming"` | `""` | `"text"` | `[voice_attachment, image_attachment]` | Audio > image priority |
+| S-15 | Team-assigned conversation | `"incoming"` | `"Merhaba"` | `"text"` | `[]` | Team → dropped (override: `conversation.meta.team`) |
 
 ### Attachment Objects
 
@@ -494,6 +495,67 @@ Customer sends a voice note along with an image — tests media priority logic (
 
 ---
 
+### Example 6: Team-Assigned Conversation (S-15)
+
+An incoming text message from a conversation assigned to a team — should be dropped by Incoming Only.
+
+```json
+{
+    "event": "message_created",
+    "id": 99015,
+    "content": "Merhaba",
+    "content_type": "text",
+    "message_type": "incoming",
+    "created_at": "2026-02-11T10:05:00.000Z",
+    "private": false,
+    "source_id": null,
+    "content_attributes": {},
+    "sender": {
+        "id": 12345,
+        "name": "Test Müşteri",
+        "phone_number": "+905551234567",
+        "email": null,
+        "type": "contact"
+    },
+    "conversation": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+            "id": 100,
+            "source_id": "wa:905551234567"
+        },
+        "id": 42,
+        "inbox_id": 1,
+        "messages": [],
+        "meta": {
+            "sender": {
+                "id": 12345,
+                "name": "Test Müşteri",
+                "phone_number": "+905551234567",
+                "type": "contact"
+            },
+            "team": {
+                "id": 1,
+                "name": "Support Team"
+            }
+        },
+        "status": "pending",
+        "unread_count": 1
+    },
+    "account": {
+        "id": 1,
+        "name": "Kamatas"
+    },
+    "attachments": []
+}
+```
+
+**Expected routing:** Incoming Only (ELSE) → dropped (hasTeam=true)
+> Team-assigned conversations are dropped. Only personal conversations (hasTeam=false) are processed.
+
+---
+
 ## Variable Reference
 
 ### Payload Variables
@@ -570,7 +632,7 @@ For each scenario, document:
 ### Example: Adding a Sticker Scenario
 
 ```
-Scenario: S-15 — Sticker message
+Scenario: S-16 — Sticker message
 Overrides:
   - content: ""
   - attachments: [{"file_type": "image", "data_url": "...", "extension": "webp"}]
