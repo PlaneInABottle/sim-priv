@@ -1,0 +1,421 @@
+---
+name: sim-workflow-testing
+description: Comprehensive framework for testing Sim Studio workflows via MCP tools. Use when you need to verify workflow routing logic, condition blocks, media handling, or end-to-end execution correctness — especially for Chatwoot webhook-driven workflows like Kamatas PROD.
+---
+
+# Sim Workflow Testing Framework
+
+A structured, repeatable methodology for AI agents to test Sim Studio workflows using
+sim-mcp tools. Test workflows by selectively disabling blocks, injecting payloads,
+executing against draft state, and verifying trace spans — all without deploying.
+
+## Table of Contents
+
+1. [Key Concepts](#key-concepts)
+2. [Architecture Overview](#architecture-overview)
+3. [Test Profiles](#test-profiles)
+4. [Quick Start](#quick-start)
+5. [Reference Files](#reference-files)
+6. [SQL Tracking Schema](#sql-tracking-schema)
+7. [Safety Rules](#safety-rules)
+
+---
+
+## Key Concepts
+
+### What This Skill Does
+
+This skill teaches AI agents how to **systematically test Sim workflows** by:
+
+1. **Injecting controlled payloads** — Simulated Chatwoot webhooks with specific field overrides
+2. **Disabling blocks** — Isolating specific execution paths by toggling blocks off
+3. **Executing against draft state** — Running workflows without deployment (`useDraftState: true`)
+4. **Verifying trace spans** — Checking which blocks executed and what they produced
+5. **Recording results** — Tracking pass/fail in SQL for session-level reporting
+
+### Why Not Just Execute and Check Output?
+
+Production workflows have **side effects** — they send messages to Chatwoot, call external APIs,
+write to memory stores, and trigger child workflows. Testing the full path every time is:
+
+- **Expensive** — AI agent blocks consume tokens ($0.01–0.05 per execution)
+- **Destructive** — Sends real messages to real conversations
+- **Flaky** — External API responses vary
+
+Instead, we use **test profiles** to control exactly what executes.
+
+### Core Testing Flow
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│  1. SNAPSHOT │ ──▶ │  2. DISABLE  │ ──▶ │  3. EXECUTE  │ ──▶ │  4. VERIFY   │ ──▶ │  5. RESTORE  │
+│  Save state  │     │  Toggle off   │     │  Run payload │     │  Check trace │     │  Re-enable   │
+└─────────────┘     └──────────────┘     └─────────────┘     └──────────────┘     └─────────────┘
+```
+
+1. **Snapshot** — Record which blocks are currently enabled/disabled
+2. **Disable** — Toggle off blocks per the test profile
+3. **Execute** — Send a crafted payload via `execute_workflow`
+4. **Verify** — Inspect execution logs and trace spans
+5. **Restore** — Re-enable all disabled blocks to original state
+
+---
+
+## Architecture Overview
+
+### Workflow Under Test: Kamatas PROD
+
+```
+                                    ┌─────────────────────────────────────────────────┐
+                                    │              KAMATAS PROD WORKFLOW               │
+                                    │         53408cc2-52fa-46e5-85d7-402d2f42f3a4    │
+                                    └─────────────────────────────────────────────────┘
+
+    ┌────────────┐      ┌──────────────┐
+    │  Webhook 1 │─────▶│ Incoming Only│──── IF (incoming text) ──────────────────────┐
+    │ (trigger)  │      │ (condition)  │                                               │
+    └────────────┘      └──────┬───────┘                                               │
+                               │                                               ┌───────┴────────┐
+                          ELSE │                                               │                 │
+                               ▼                                               ▼                 ▼
+                     ┌──────────────────┐                          ┌─────────────────┐  ┌──────────────┐
+                     │ Is Media Message?│                          │fetchCustomerInfo│  │storeUserMsg  │
+                     │   (condition)    │                          │ (workflow_input)│  │  (memory)    │
+                     └────────┬─────────┘                          └────────┬────────┘  └──────┬───────┘
+                              │                                            │                   │
+                     IF media │                                            │                   ▼
+                              ▼                                            │           ┌──────────────┐
+                     ┌──────────────────┐                                  │           │    API 1     │
+                     │  Media Handoff   │                                  │           │  (api call)  │
+                     │   (function)     │                                  │           └──────┬───────┘
+                     └──────────────────┘                                  │                  │
+                                                                           │                  ▼
+                                                                           │           ┌──────────────┐
+                                                                           │           │ debounceWait │
+                                                                           │           │   (wait)     │
+                                                                           │           └──────┬───────┘
+                                                                           │                  │
+                                                                           │                  ▼
+                                                                           │          ┌───────────────────┐
+                                                                           │          │getLatestMessageId │
+                                                                           │          │     (api)         │
+                                                                           │          └───────┬───────────┘
+                                                                           │                  │
+                                                                           │                  ▼
+                                                                           │     ┌───────────────────────┐
+                                                                           │     │checkIfTheMessageLatest│
+                                                                           │     │     (condition)       │
+                                                                           │     └───────────┬───────────┘
+                                                                           │            IF latest
+                                                                           │                 │
+                                                                           ▼                 ▼
+                                                                   ┌─────────────────────────────────────┐
+                                                                   │              Loop 1                 │
+                                                                   │  ┌──────────────┐  ┌─────────────┐  │
+                                                                   │  │Support Agent │─▶│AgentVariable│  │
+                                                                   │  │   (agent)    │  │ (variables) │  │
+                                                                   │  │              │─▶│             │  │
+                                                                   │  │   (on error) │  └─────────────┘  │
+                                                                   │  │      │       │                   │
+                                                                   │  │      ▼       │                   │
+                                                                   │  │   Wait 2     │                   │
+                                                                   │  └──────────────┘                   │
+                                                                   └───────────────┬─────────────────────┘
+                                                                                   │
+                                                                                   ▼
+                                                                        ┌────────────────────┐
+                                                                        │getLatestMessageId2 │
+                                                                        │      (api)         │
+                                                                        └─────────┬──────────┘
+                                                                                  │
+                                                                                  ▼
+                                                                   ┌───────────────────────────┐
+                                                                   │checkIfTheMessageLatest2   │
+                                                                   │       (condition)         │
+                                                                   └────────────┬──────────────┘
+                                                                           IF latest
+                                                                                │
+                                                                                ▼
+                                                                   ┌────────────────────┐
+                                                                   │Extract IKAS Context│
+                                                                   │    (function)      │
+                                                                   └─────────┬──────────┘
+                                                                             │
+                                                                             ▼
+                                                                   ┌──────────────────┐
+                                                                   │Has IKAS Context? │
+                                                                   │   (condition)    │
+                                                                   └───┬──────────┬───┘
+                                                                IF yes│          │ELSE
+                                                                      ▼          │
+                                                            ┌──────────────┐     │
+                                                            │Store IKAS   │     │
+                                                            │Context (mem)│     │
+                                                            └──────┬──────┘     │
+                                                                   │            │
+                                                                   ▼            ▼
+                                                              ┌──────────────────┐
+                                                              │    Memory 1      │
+                                                              │   (memory)       │
+                                                              └────────┬─────────┘
+                                                                       │
+                                                                       ▼
+                                                              ┌────────────────────────┐
+                                                              │Send to Chatwoot        │
+                                                              │(No Files) 1 (function) │
+                                                              └────────────────────────┘
+```
+
+### Block Quick Reference
+
+| # | Block Name | Block ID | Type |
+|---|-----------|----------|------|
+| 1 | Webhook 1 | `f3d0bdbd` | generic_webhook |
+| 2 | Incoming Only | `dcad3f5b` | condition |
+| 3 | Is Media Message? | `block-9f9c16f6` | condition |
+| 4 | Media Handoff | `block-b0a9fec7` | function |
+| 5 | fetchCustomerInformation | `5c001454` | workflow_input |
+| 6 | storeUserMessage | `d4b467d3` | memory |
+| 7 | API 1 | `ca5acc54` | api |
+| 8 | debounceWait | `bc6cc87d` | wait |
+| 9 | getLatestMessageId | `c18d418f` | api |
+| 10 | checkIfTheMessageLatest | `a057131e` | condition |
+| 11 | Loop 1 | `f2c10d85` | loop |
+| 12 | Support Agent | `35a00fab` | agent |
+| 13 | AgentVariable | `2c432318` | variables |
+| 14 | Wait 2 | `598e048a` | wait |
+| 15 | getLatestMessageId2 | `cfeba002` | api |
+| 16 | checkIfTheMessageLatest2 | `892e0602` | condition |
+| 17 | Extract IKAS Context | `89d6feb8` | function |
+| 18 | Has IKAS Context? | `77f980fc` | condition |
+| 19 | Store IKAS Context | `84cc0a48` | memory |
+| 20 | Memory 1 | `e38be766` | memory |
+| 21 | Send to Chatwoot (No Files) 1 | `3275b7a8` | function |
+
+> **Note:** Block IDs shown as short prefixes for readability. Full UUIDs are in `references/company-tests/kamatas-test-suite.md`.
+
+---
+
+## Test Profiles
+
+Three isolation levels control how much of the workflow executes during a test:
+
+### CONDITION_ONLY
+
+**Purpose:** Test routing logic without side effects.
+**Disables:** All blocks after condition nodes (agents, API calls, functions, memory writes).
+**Verifies:** Which condition path was selected (IF vs ELSE).
+**Cost:** $0.00 (no AI or API calls).
+
+```
+Blocks enabled:  Webhook 1, Incoming Only, Is Media Message?
+Blocks disabled: Everything else (18 blocks)
+```
+
+### PATH_ISOLATION
+
+**Purpose:** Test a specific execution path with controlled side effects.
+**Disables:** Blocks on *other* paths + expensive blocks (AI agent, external APIs).
+**Verifies:** Correct block sequence executed on the target path.
+**Cost:** $0.00–0.01 (function blocks only).
+
+Example — isolating the media path:
+```
+Blocks enabled:  Webhook 1, Incoming Only, Is Media Message?, Media Handoff
+Blocks disabled: All text path blocks (17 blocks)
+```
+
+### FULL_INTEGRATION
+
+**Purpose:** End-to-end test with real AI agent and API calls.
+**Disables:** Only the final send block (prevents real Chatwoot messages).
+**Verifies:** Full output, tool calls, response quality.
+**Cost:** $0.01–0.05 (AI tokens consumed).
+
+```
+Blocks enabled:  All except Send to Chatwoot
+Blocks disabled: Send to Chatwoot (No Files) 1
+```
+
+---
+
+## Quick Start
+
+### Step 1: Load the Test Suite
+
+Identify which company workflow you're testing:
+
+```
+→ For Kamatas PROD: see references/company-tests/kamatas-test-suite.md
+```
+
+### Step 2: Choose a Test Profile
+
+- **Verifying routing logic?** → Use CONDITION_ONLY
+- **Testing a specific path?** → Use PATH_ISOLATION
+- **Validating full behavior?** → Use FULL_INTEGRATION
+
+### Step 3: Follow the Protocol
+
+See `references/testing-protocol.md` for the complete step-by-step execution flow:
+
+1. Snapshot current block states
+2. Disable blocks per profile
+3. Build payload from `references/payload-templates.md`
+4. Execute workflow
+5. Verify trace spans per `references/verification-rules.md`
+6. Restore all blocks
+7. Record results in SQL
+
+### Step 4: Run a Test
+
+Here's a minimal example — testing that a voice message routes to Media Handoff:
+
+```python
+# 1. Snapshot (record current state)
+# 2. Disable text path blocks
+toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=False)
+toggle_block_enabled(workflowId="53408cc2-...", blockId="d4b467d3-...", enabled=False)
+# ... (disable all text path blocks)
+
+# 3. Execute with voice message payload
+execute_workflow(
+  workflowId="53408cc2-...",
+  triggerType="webhook",
+  input={
+    "event": "message_created",
+    "message_type": "incoming",
+    "content": "",
+    "content_type": "text",
+    "attachments": [{"file_type": "audio", "data_url": "https://example.com/voice.ogg"}],
+    "conversation": {"id": 42}
+  }
+)
+
+# 4. Check execution logs for trace spans
+get_execution_logs(
+  workspaceId="ac7ec7a6-...",
+  workflowId="53408cc2-...",
+  details="full",
+  includeTraceSpans=True,
+  limit=1
+)
+
+# 5. Verify: trace should include "Is Media Message?" (IF) → "Media Handoff"
+# 6. Restore all blocks to enabled
+```
+
+For the complete walkthrough, see `examples/test-session-example.md`.
+
+---
+
+## Reference Files
+
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| [`references/testing-protocol.md`](references/testing-protocol.md) | Step-by-step execution protocol | Every test run |
+| [`references/payload-templates.md`](references/payload-templates.md) | Webhook payloads + scenario overrides | Building test inputs |
+| [`references/verification-rules.md`](references/verification-rules.md) | Assertion types + expected outputs | Validating results |
+| [`references/company-tests/kamatas-test-suite.md`](references/company-tests/kamatas-test-suite.md) | Complete Kamatas PROD test matrix | Testing Kamatas |
+| [`examples/test-session-example.md`](examples/test-session-example.md) | Full walkthrough example | First-time users |
+
+---
+
+## SQL Tracking Schema
+
+Use this schema to track test results within an agent session:
+
+```sql
+CREATE TABLE IF NOT EXISTS test_runs (
+    id TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL,
+    workflow_name TEXT NOT NULL,
+    profile TEXT NOT NULL,         -- CONDITION_ONLY | PATH_ISOLATION | FULL_INTEGRATION
+    started_at TEXT DEFAULT (datetime('now')),
+    completed_at TEXT,
+    status TEXT DEFAULT 'running'  -- running | passed | failed | error
+);
+
+CREATE TABLE IF NOT EXISTS test_results (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES test_runs(id),
+    scenario_id TEXT NOT NULL,
+    scenario_name TEXT NOT NULL,
+    test_group TEXT NOT NULL,      -- condition_routing | media_handoff | text_flow | integration
+    profile TEXT NOT NULL,
+    status TEXT DEFAULT 'pending', -- pending | passed | failed | error | skipped
+    execution_id TEXT,
+    expected_path TEXT,            -- JSON array of expected block names
+    actual_path TEXT,              -- JSON array of actual block names from trace
+    expected_output TEXT,
+    actual_output TEXT,
+    error_message TEXT,
+    executed_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS block_snapshots (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES test_runs(id),
+    block_id TEXT NOT NULL,
+    block_name TEXT NOT NULL,
+    original_enabled INTEGER NOT NULL,  -- 1 = enabled, 0 = disabled
+    test_enabled INTEGER,               -- State during test (null = not modified)
+    restored INTEGER DEFAULT 0          -- 1 = restored to original
+);
+```
+
+Insert a test run:
+```sql
+INSERT INTO test_runs (id, workflow_id, workflow_name, profile)
+VALUES ('run-001', '53408cc2-52fa-46e5-85d7-402d2f42f3a4', 'Kamatas PROD', 'CONDITION_ONLY');
+```
+
+Record a result:
+```sql
+INSERT INTO test_results (id, run_id, scenario_id, scenario_name, test_group, profile, status, expected_path, actual_path)
+VALUES ('res-001', 'run-001', 'CR-01', 'Text message routing', 'condition_routing', 'CONDITION_ONLY', 'passed',
+        '["Webhook 1", "Incoming Only"]', '["Webhook 1", "Incoming Only"]');
+```
+
+Query pass rate:
+```sql
+SELECT
+    test_group,
+    COUNT(*) as total,
+    SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) as passed,
+    ROUND(100.0 * SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) / COUNT(*), 1) as pass_rate
+FROM test_results
+WHERE run_id = 'run-001'
+GROUP BY test_group;
+```
+
+---
+
+## Safety Rules
+
+1. **Always snapshot before disabling** — Record original block states so you can restore
+2. **Always restore after testing** — Re-enable every block you disabled, even if a test fails
+3. **Never deploy during testing** — Use `useDraftState: true` (the default)
+4. **Test one scenario at a time** — Don't batch executions; verify each result
+5. **Use the CONDITION_ONLY profile first** — Cheapest and safest; validates routing before testing paths
+6. **Watch for production traffic** — If the workflow is live, coordinate test windows
+7. **Never modify block configuration** — Only toggle enabled/disabled; never change block logic
+
+### Emergency Restore
+
+If something goes wrong mid-test, restore ALL blocks immediately:
+
+```python
+# Get all blocks from workflow
+workflow = get_workflow(workflowId="53408cc2-...", verbose=False)
+for block in workflow.blocks:
+    toggle_block_enabled(workflowId="53408cc2-...", blockId=block.id, enabled=True)
+```
+
+Or restore from snapshot:
+```sql
+SELECT block_id, block_name, original_enabled
+FROM block_snapshots
+WHERE run_id = 'run-001' AND restored = 0;
+-- Then toggle each block back to original_enabled state
+```
