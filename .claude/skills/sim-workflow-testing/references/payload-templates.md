@@ -53,7 +53,8 @@ start from this base and override specific fields.
             "sender": {
                 "id": {{SENDER_ID}},
                 "name": "{{SENDER_NAME}}",
-                "phone_number": "{{SENDER_PHONE}}"
+                "phone_number": "{{SENDER_PHONE}}",
+                "type": "contact"
             }
         },
         "status": "pending",
@@ -110,6 +111,7 @@ fields are shown — all other fields use base defaults.
 | S-11 | Multiple attachments | `"incoming"` | `""` | `"text"` | `[image_att, image_att]` | Multi-image handling |
 | S-12 | Empty content no attach | `"incoming"` | `""` | `"text"` | `[]` | Edge case: empty msg |
 | S-13 | Measurement question | `"incoming"` | `"Sineklik ölçüsünü nasıl alırım?"` | `"text"` | `[]` | Measurement routing |
+| S-14 | Mixed audio+image | `"incoming"` | `""` | `"text"` | `[voice_attachment, image_attachment]` | Audio > image priority |
 
 ### Attachment Objects
 
@@ -208,7 +210,8 @@ A standard incoming text message — the most common scenario.
             "sender": {
                 "id": 12345,
                 "name": "Test Müşteri",
-                "phone_number": "+905551234567"
+                "phone_number": "+905551234567",
+                "type": "contact"
             }
         },
         "status": "pending",
@@ -263,7 +266,8 @@ A voice note from WhatsApp — triggers the media handoff path.
             "sender": {
                 "id": 12345,
                 "name": "Test Müşteri",
-                "phone_number": "+905551234567"
+                "phone_number": "+905551234567",
+                "type": "contact"
             }
         },
         "status": "pending",
@@ -328,7 +332,8 @@ Customer sends a photo with a text question — combines text + media.
             "sender": {
                 "id": 12345,
                 "name": "Test Müşteri",
-                "phone_number": "+905551234567"
+                "phone_number": "+905551234567",
+                "type": "contact"
             }
         },
         "status": "pending",
@@ -392,9 +397,10 @@ A bot or agent response — should be dropped by the workflow (no processing).
         "messages": [],
         "meta": {
             "sender": {
-                "id": 99,
-                "name": "Kamatas Bot",
-                "phone_number": null
+                "id": 12345,
+                "name": "Test Müşteri",
+                "phone_number": "+905551234567",
+                "type": "contact"
             }
         },
         "status": "pending",
@@ -409,6 +415,82 @@ A bot or agent response — should be dropped by the workflow (no processing).
 ```
 
 **Expected routing:** Incoming Only (ELSE) → Is Media Message? (ELSE) → dropped (no further blocks execute)
+
+---
+
+### Example 5: Mixed Audio+Image (S-14)
+
+Customer sends a voice note along with an image — tests media priority logic (audio > image).
+
+```json
+{
+    "event": "message_created",
+    "id": 99014,
+    "content": "",
+    "content_type": "text",
+    "message_type": "incoming",
+    "created_at": "2026-02-11T10:04:00.000Z",
+    "private": false,
+    "source_id": null,
+    "content_attributes": {},
+    "sender": {
+        "id": 12345,
+        "name": "Test Müşteri",
+        "phone_number": "+905551234567",
+        "email": null,
+        "type": "contact"
+    },
+    "conversation": {
+        "additional_attributes": {},
+        "can_reply": true,
+        "channel": "Channel::Api",
+        "contact_inbox": {
+            "id": 100,
+            "source_id": "wa:905551234567"
+        },
+        "id": 42,
+        "inbox_id": 1,
+        "messages": [],
+        "meta": {
+            "sender": {
+                "id": 12345,
+                "name": "Test Müşteri",
+                "phone_number": "+905551234567",
+                "type": "contact"
+            }
+        },
+        "status": "pending",
+        "unread_count": 1
+    },
+    "account": {
+        "id": 1,
+        "name": "Kamatas"
+    },
+    "attachments": [
+        {
+            "id": 501,
+            "message_id": 99014,
+            "file_type": "audio",
+            "account_id": 1,
+            "data_url": "https://chatwoot-assets.example.com/voice_message_002.ogg",
+            "extension": "ogg",
+            "thumb_url": null
+        },
+        {
+            "id": 502,
+            "message_id": 99014,
+            "file_type": "image",
+            "account_id": 1,
+            "data_url": "https://chatwoot-assets.example.com/photo_002.jpg",
+            "extension": "jpg",
+            "thumb_url": "https://chatwoot-assets.example.com/photo_002_thumb.jpg"
+        }
+    ]
+}
+```
+
+**Expected routing:** Incoming Only (ELSE) → Is Media Message? (IF) → Media Handoff
+> Audio takes priority over image. mediaType resolves to "voice".
 
 ---
 
@@ -488,7 +570,7 @@ For each scenario, document:
 ### Example: Adding a Sticker Scenario
 
 ```
-Scenario: S-14 — Sticker message
+Scenario: S-15 — Sticker message
 Overrides:
   - content: ""
   - attachments: [{"file_type": "image", "data_url": "...", "extension": "webp"}]

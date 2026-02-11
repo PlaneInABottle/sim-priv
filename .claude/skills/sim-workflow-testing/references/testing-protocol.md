@@ -105,6 +105,23 @@ VALUES
     ('res-003', 'run-001', 'CR-03', 'Voice message → media path', 'condition_routing', 'CONDITION_ONLY');
 ```
 
+### 1.4 Concurrency Constraint
+
+⚠️ **Only one AI agent may test a workflow at a time.**
+
+If multiple agents attempt simultaneous testing of the same workflow:
+- Block disable/enable operations will interleave
+- Agent A disables blocks 1-10, Agent B disables 5-15
+- When Agent A restores, it re-enables 5-15 that Agent B needs disabled
+- Both tests produce wrong results; state corruption occurs
+
+Mitigation:
+- Document in team coordination: "Testing in progress on [workflow], do not start parallel tests"
+- Use SQL session-local locks (per-agent, not shared)
+- Future: implement shared advisory lock via external coordination service
+
+For now: enforce one-agent-per-workflow via team coordination.
+
 ---
 
 ## Phase 2: CONFIGURE
@@ -268,28 +285,66 @@ Common errors:
 - **Timeout** — Wait blocks or API calls timing out
 - **Invalid payload** — Check payload structure matches trigger expectations
 
+### 3.4 Timeout Handling
+
+Set maximum wait times per profile:
+- **CONDITION_ONLY**: 10 seconds (no I/O blocks, instant return expected)
+- **PATH_ISOLATION (media)**: 15 seconds (function block only, no AI)
+- **PATH_ISOLATION (text)**: 60 seconds (includes debounceWait blocks up to 45s)
+- **FULL_INTEGRATION**: 120 seconds (includes Agent block + wait blocks)
+
+If `execute_workflow` does not return within the timeout:
+1. Record status = 'timeout' in test_results SQL
+2. Proceed IMMEDIATELY to Phase 5 (RESTORE)
+3. Do not attempt to fetch execution logs (Phase 4)
+4. Restore blocks to original state
+5. Report: "Test timeout after [duration]s on profile [profile]"
+
+Example in Phase 3.3 (error recording):
+```sql
+INSERT INTO test_results (id, run_id, scenario_id, scenario_name, test_group, profile, status, error_message)
+VALUES ('<RESULT_ID>', '<RUN_ID>', '<SCENARIO_ID>', '<NAME>', '<GROUP>', '<PROFILE>',
+        'timeout', 'Execute took >' || '<TIMEOUT>' || 's');
+```
+
 ---
 
 ## Phase 4: VERIFY
 
 ### 4.1 Fetch Execution Logs
 
+From Phase 3.2, you have `executionId`. Use it to fetch the test's execution logs:
+
+**Preferred Approach (RECOMMENDED):**
+
 ```
 get_execution_logs(
     workspaceId="<WORKSPACE_ID>",
-    workflowId="<WORKFLOW_ID>",
+    executionId="<EXEC_ID_FROM_PHASE_3>",
     details="full",
     includeTraceSpans=true,
-    includeFinalOutput=true,
-    limit=1
+    includeFinalOutput=true
 )
 ```
 
-Or fetch a specific log by execution ID if available:
+Use the `executionId` returned from Phase 3.2 (`execute_workflow` response) to fetch the
+specific test execution's log — not just the most recent log. On workflows with high traffic,
+omitting `executionId` will verify the WRONG execution.
+
+The API returns an array with 1 log entry (your test's execution).
+
+**Alternative Approach (Two-step):**
 
 ```
-get_execution_log_detail(logId="<LOG_ID>")
+// Step 1: Fetch basic logs by executionId to get logId
+logs = get_execution_logs(workspaceId=..., executionId="<EXEC_ID>")
+logId = logs[0].id
+
+// Step 2: Get full details
+detail = get_execution_log_detail(logId=logId)
 ```
+
+**Use Preferred Approach.** It's more direct.
 
 ### 4.2 Extract Trace Spans
 

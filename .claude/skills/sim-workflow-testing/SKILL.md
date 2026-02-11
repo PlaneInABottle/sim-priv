@@ -241,71 +241,26 @@ Blocks disabled: Send to Chatwoot (No Files) 1
 
 ## Quick Start
 
-### Step 1: Load the Test Suite
+1. **Pick a test suite:** See `references/company-tests/kamatas-test-suite.md` for Kamatas PROD scenarios.
+2. **Choose a profile:** See the decision tree above (CONDITION_ONLY / PATH_ISOLATION / FULL_INTEGRATION).
+3. **Follow the protocol:** Execute all 6 phases in `references/testing-protocol.md` (PREPARE → CONFIGURE → EXECUTE → VERIFY → RESTORE → REPORT).
+4. **See a complete example:** Read `examples/test-session-example.md` for an end-to-end walkthrough of CR-04 + MH-01.
 
-Identify which company workflow you're testing:
+Expected time: 5–15 minutes per scenario depending on profile.
 
-```
-→ For Kamatas PROD: see references/company-tests/kamatas-test-suite.md
-```
+---
 
-### Step 2: Choose a Test Profile
+## Workflow Identifiers
 
-- **Verifying routing logic?** → Use CONDITION_ONLY
-- **Testing a specific path?** → Use PATH_ISOLATION
-- **Validating full behavior?** → Use FULL_INTEGRATION
+Required identifiers for executing tests:
 
-### Step 3: Follow the Protocol
+| Identifier | Value | Purpose |
+|-----------|-------|---------|
+| **workspaceId** | `ac7ec7a6-f09a-4035-8e96-e9e95b75221b` | Workspace containing Kamatas PROD workflow |
+| **workflowId** | `53408cc2-52fa-46e5-85d7-402d2f42f3a4` | Kamatas PROD workflow being tested |
+| **blockMap** | See kamatas-test-suite.md:Block Map | All 21 block UUIDs and types |
 
-See `references/testing-protocol.md` for the complete step-by-step execution flow:
-
-1. Snapshot current block states
-2. Disable blocks per profile
-3. Build payload from `references/payload-templates.md`
-4. Execute workflow
-5. Verify trace spans per `references/verification-rules.md`
-6. Restore all blocks
-7. Record results in SQL
-
-### Step 4: Run a Test
-
-Here's a minimal example — testing that a voice message routes to Media Handoff:
-
-```python
-# 1. Snapshot (record current state)
-# 2. Disable text path blocks
-toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=False)
-toggle_block_enabled(workflowId="53408cc2-...", blockId="d4b467d3-...", enabled=False)
-# ... (disable all text path blocks)
-
-# 3. Execute with voice message payload
-execute_workflow(
-  workflowId="53408cc2-...",
-  triggerType="webhook",
-  input={
-    "event": "message_created",
-    "message_type": "incoming",
-    "content": "",
-    "content_type": "text",
-    "attachments": [{"file_type": "audio", "data_url": "https://example.com/voice.ogg"}],
-    "conversation": {"id": 42}
-  }
-)
-
-# 4. Check execution logs for trace spans
-get_execution_logs(
-  workspaceId="ac7ec7a6-...",
-  workflowId="53408cc2-...",
-  details="full",
-  includeTraceSpans=True,
-  limit=1
-)
-
-# 5. Verify: trace should include "Is Media Message?" (IF) → "Media Handoff"
-# 6. Restore all blocks to enabled
-```
-
-For the complete walkthrough, see `examples/test-session-example.md`.
+These values are used in all sim-mcp tool calls (`get_workflow`, `toggle_block_enabled`, `execute_workflow`, etc.).
 
 ---
 

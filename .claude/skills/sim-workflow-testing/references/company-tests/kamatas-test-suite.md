@@ -3,7 +3,7 @@
 Test matrix for the Kamatas PROD workflow (`53408cc2-52fa-46e5-85d7-402d2f42f3a4`).
 
 **Workspace:** `ac7ec7a6-f09a-4035-8e96-e9e95b75221b`
-**Total Scenarios:** 16 (organized in 4 groups)
+**Total Scenarios:** 23 (13 Condition Routing + 5 Media Handoff + 3 Text Flow + 2 Full Integration)
 **Block Count:** 21
 
 ---
@@ -197,17 +197,30 @@ Complete block inventory with full UUIDs for use in sim-mcp tool calls.
 | **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = true` |
 | **Notes** | Multiple attachments should still trigger media path. Verifies no single-attachment assumption. |
 
-#### CR-12: Empty Message (No Content, No Attachments) → Text Path
+#### CR-12: Empty Message (No Content, No Attachments) → Dropped
 
 | Field | Value |
 |-------|-------|
 | **Scenario ID** | CR-12 |
 | **Payload Ref** | S-12 |
 | **Input** | `message_type: "incoming"`, `content: ""`, `attachments: []` |
-| **Expected Routing** | Incoming Only → IF (text path) |
-| **Expected Trace** | `["Webhook 1", "Incoming Only"]` |
-| **Condition Assertions** | `Incoming Only.conditionResult = true` |
-| **Notes** | Edge case: empty incoming message with no attachments. Should route to text path (it's still "incoming" and not media). |
+| **Expected Routing** | Incoming Only → ELSE → Is Media Message? → ELSE (dropped) |
+| **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
+| **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = false` |
+| **Notes** | Edge case: empty message with no text/attachments. Fails hasText check (`text.length > 0` is false for empty string). Message is dropped by both conditions. |
+
+#### CR-13: Mixed Audio+Image Message → Media Path
+
+| Field | Value |
+|-------|-------|
+| **Scenario ID** | CR-13 |
+| **Payload Ref** | S-14 |
+| **Input** | `message_type: "incoming"`, `content: ""`, `attachments: [audio (.ogg), image (.jpg)]` |
+| **Expected Routing** | Incoming Only → ELSE → Is Media Message? → IF → Media Handoff |
+| **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = true` |
+| **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
+| **Function Assertions** | `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.success EQUALS true` |
+| **Notes** | Tests audio > image priority. mediaType should resolve to "voice" even though image is present. |
 
 ---
 
@@ -258,9 +271,9 @@ KEEP ENABLED:
 | **Payload Ref** | S-04 |
 | **Input** | Voice message (audio attachment) |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Expected Output** | Media Handoff function produces result with: customer ack mentioning voice/sesli mesaj, Chatwoot status toggle, media label |
+| **Expected Output** | Media Handoff function returns JSON with success, operations array, and mediaType |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result CONTAINS "sesli mesaj"` OR similar Turkish voice acknowledgment |
+| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.operations LENGTH 4` |
 
 #### MH-02: Image Message Handoff
 
@@ -270,9 +283,9 @@ KEEP ENABLED:
 | **Payload Ref** | S-05 |
 | **Input** | Image message (image attachment) |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Expected Output** | Media Handoff produces result with: customer ack mentioning photo/fotoğraf, Chatwoot status toggle, media label |
+| **Expected Output** | Media Handoff function returns JSON with success, operations array, and mediaType |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result CONTAINS "fotoğraf"` OR `"görsel"` |
+| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4` |
 
 #### MH-03: Video Message Handoff
 
@@ -282,9 +295,9 @@ KEEP ENABLED:
 | **Payload Ref** | S-06 |
 | **Input** | Video message (video attachment) |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Expected Output** | Media Handoff produces result with: customer ack mentioning video, Chatwoot status toggle, media label |
+| **Expected Output** | Media Handoff function returns JSON with success, operations array, and mediaType |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result CONTAINS "video"` |
+| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "video"`, `Media Handoff.output.result.operations LENGTH 4` |
 
 #### MH-04: Text with Image Handoff
 
@@ -296,7 +309,7 @@ KEEP ENABLED:
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 | **Expected Output** | Same as image handoff — text content preserved but media handling takes priority |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result CONTAINS "fotoğraf"` OR similar |
+| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4` |
 | **Notes** | Verifies that accompanying text doesn't break media handoff flow |
 
 #### MH-05: Multiple Image Attachments
@@ -309,6 +322,7 @@ KEEP ENABLED:
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 | **Expected Output** | Media Handoff handles multiple attachments — either processes all or first |
 | **Status Assertions** | All blocks: `status = "success"` |
+| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4` |
 | **Notes** | Tests multi-attachment handling. Verify no array-out-of-bounds or single-item assumptions. |
 
 ---
@@ -552,8 +566,8 @@ keep_blocks = [
 Recommended order for running the complete test suite:
 
 ```
-Phase 1: CONDITION_ONLY (12 scenarios)
-├── CR-01 through CR-12
+Phase 1: CONDITION_ONLY (13 scenarios)
+├── CR-01 through CR-13
 ├── Cheapest ($0.00), safest
 ├── Validates all routing logic
 └── If any fail → STOP, fix routing before proceeding
@@ -577,6 +591,6 @@ Phase 4: FULL_INTEGRATION (2 scenarios)
 └── Run only after Phases 1-3 pass
 ```
 
-**Total:** 16 scenarios (can expand with new scenarios as features are added)
+**Total:** 23 scenarios (can expand with new scenarios as features are added)
 **Estimated Cost:** $0.02–0.10 for full suite
 **Estimated Time:** 5–15 minutes (depends on wait blocks and API response times)
