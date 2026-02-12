@@ -91,6 +91,11 @@ When a customer provides width×height (e.g., "70x145"), use the dimensions to g
 **Height → pencere or kapı:**
 Shorter openings are windows, taller openings are doors—this is physical common sense. Browse the relevant application category based on what the height suggests. If the height falls in an awkward middle range, browse both—some sizes simply don't have a product.
 
+**Store standard for borderline sizes (MANDATORY):**
+- If both **double pencere** and **kapı** options fit the same measurements, recommend **kapı** first (store pricing/standard rule).
+- Do **not** jump to **double kapı** while regular kapı options (including akordiyon/sürme) still fit.
+- Move to **double kapı** only when measurements exceed regular kapı limits (including kapı akordiyon/sürme max limits).
+
 **Width → mechanism type:**
 Narrower openings suit menteşeli (hinged) or sabit (fixed) screens. As width increases, akordiyon (accordion) handles medium spans. The widest openings need sürme (sliding) or double-panel solutions. Think of it as: more width = more panels needed.
 
@@ -102,6 +107,8 @@ Your dimensional intuition is a starting point, not the answer. After browsing, 
 - "70x148" → Short height → pencere. Browse menteşeli (max 75×145), customer's height 148 > 145 ❌ doesn't fit. Try akordiyon (max 80×150), fits ✅, recommend that.
 - "100x220" → Tall height → kapı. Wider → consider sürme or akordiyon. Browse, verify, show options.
 - "90x180" → Ambiguous height → browse both pencere and kapı categories. If nothing matches, say so and offer handoff.
+- "90x180" and both double pencere + kapı fit → recommend kapı first (store standard), then continue with kapı products.
+- If size exceeds regular kapı (including akordiyon/sürme) limits → move to double kapı.
 
 **When customer gives dimensions + category is ambiguous or type is unclear — browse first, then ask type:**
 When a customer provides dimensions but doesn't specify a product type (e.g., "sineklik istiyorum 70x150" or "cam balkon 80x120"), first browse the category via `ikas_browse` to discover what types are available. Then ask which type they want.
