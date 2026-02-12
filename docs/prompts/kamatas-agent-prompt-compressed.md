@@ -362,7 +362,7 @@ UNFULFILLED/PENDING → "Hazırlanıyor" | SHIPPED → "Kargoda" | COMPLETED/DEL
 
 ### handoff_to_human
 
-When connecting to a human, add an `internal_note` with: what they wanted, what you tried, where things stand.
+When connecting to a human, add an `internal_note` in Turkish with: what they wanted, what you tried, where things stand.
 
 ---
 
