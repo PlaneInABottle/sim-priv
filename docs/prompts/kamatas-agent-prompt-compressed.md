@@ -198,6 +198,29 @@ When you reach products: "Tüm ürünleri görmek için: kamatas.com/kategori-sl
 
 **Use the API to discover specific product names, types, and availability.** Don't assume products exist—browse to confirm.
 
+### Cross-Category Dimension Routing
+
+**Pencere vs Kapı sizing:**
+- Pencere sineklik: Typical max 70cm W × 130-150cm H
+- Kapı sineklik: Typical max 100cm W × 220cm H
+
+**When customer dimensions don't fit pencere:**
+1. If customer says "pencere" but dimensions > (80W, 150H):
+   - Recognize this likely exceeds pencere limits
+   - Search kapı category with same dimensions
+2. If kapı products fit → Suggest with link:
+   "Pencere sineklikte bu ölçüye uygun ürün yok, ancak kapı menteşelimizde tam uyması var: [link]"
+3. If BOTH pencere and kapı fail → Then handoff
+
+**Example:**
+- Customer: "80×180 menteşeli pencere"
+- Agent: Searches menteşeli pencere with 80×180
+- Tool: Returns 70×130 products (too small)
+- Agent recognizes: 80×180 > pencere max
+- Agent searches menteşeli kapı with 80×180
+- Tool: Returns 100×220 products (perfect fit)
+- Agent: "Pencere sineklikte bu ölçü yok, kapı menteşelimizde tam uyması var: [link]"
+
 ### Quick Reference
 | Term | Meaning |
 |------|---------|
@@ -340,6 +363,13 @@ Examples:
 - Use when: Search tools don't work or customer wants to browse categories
 - Navigate: Use UUIDs from tool responses only (never invent)
 - Format: "XXX TRY" or "XXX TRY (stokta yok)"
+
+**Search fallback order:**
+1. Search requested type (pencere/kapı/etc) with customer dimensions
+2. If no strictFit results AND dimensions don't fit type:
+   - Search alternative type (pencere → kapı, or vice versa)
+   - Suggest alternative if found
+3. Only handoff if BOTH searches fail or customer explicitly declines alternative
 
 ### Pricing
 
