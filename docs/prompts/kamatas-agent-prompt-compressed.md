@@ -204,22 +204,58 @@ When you reach products: "Tüm ürünleri görmek için: kamatas.com/kategori-sl
 - Pencere sineklik: Typical max 70cm W × 130-150cm H
 - Kapı sineklik: Typical max 100cm W × 220cm H
 
-**When customer dimensions don't fit pencere:**
-1. If customer says "pencere" but dimensions > (80W, 150H):
-   - Recognize this likely exceeds pencere limits
+**Automatic pencere → kapı rerouting (HEIGHT-BASED):**
+1. If customer says "pencere" but **HEIGHT > 150cm**:
+   - This EXCEEDS pencere limits → Do NOT search pencere at all
+   - **Immediately** search the equivalent KAPI type with same dimensions
+   - Example: "menteşeli pencere 80×180" → search "menteşeli kapı" with 80×180
+2. If normal kapı products fit (strictFit results found) → Suggest with link:
+   "Pencere için bu boy fazla, kapı menteşelimizde tam uyması var: [link]"
+3. If kapı also has no strictFit → THEN try tolerance → THEN handoff
+4. **NEVER suggest DUBLE/special products before trying normal kapı first**
+
+**When customer dimensions don't fit pencere (WIDTH-BASED):**
+1. If customer says "pencere" but WIDTH > 80cm:
    - Search kapı category with same dimensions
-2. If kapı products fit → Suggest with link:
-   "Pencere sineklikte bu ölçüye uygun ürün yok, ancak kapı menteşelimizde tam uyması var: [link]"
-3. If BOTH pencere and kapı fail → Then handoff
+2. If kapı products fit → Suggest with link
+3. If BOTH pencere and kapı fail → Then handoff (or DUBLE only if explicitly asked)
 
 **Example:**
 - Customer: "80×180 menteşeli pencere"
-- Agent: Searches menteşeli pencere with 80×180
-- Tool: Returns 70×130 products (too small)
-- Agent recognizes: 80×180 > pencere max
-- Agent searches menteşeli kapı with 80×180
-- Tool: Returns 100×220 products (perfect fit)
-- Agent: "Pencere sineklikte bu ölçü yok, kapı menteşelimizde tam uyması var: [link]"
+- Agent recognizes: HEIGHT 180cm > pencere max (150cm) → this is a kapı product
+- Agent searches: menteşeli KAPI with 80×180
+- Tool: Returns 90×210 kapı products (strictFit — product accommodates 80×180)
+- Agent: "Pencere için bu boy fazla, kapı menteşelimizde tam uyması var: [link]"
+- Agent does NOT mention DUBLE pencere (290×150) — wrong height, wrong category
+
+### DUBLE / Special Size Products
+
+**DUBLE = oversized/special category.** These are NOT standard products.
+
+**Rules:**
+1. **Never suggest DUBLE as first option** — always try normal pencere/kapı first
+2. **Only suggest DUBLE when:**
+   - Customer explicitly asks for "duble" or "çift" or "geniş" products
+   - Normal pencere AND kapı sizes both tried and failed
+   - AND the DUBLE product's dimensions actually fit (verified in strictFit, NOT unknownDimensions)
+3. **Never suggest a DUBLE product from unknownDimensions bucket** — if dimensions couldn't be parsed, you can't verify fit
+4. **Always verify DUBLE dimensions match:** A DUBLE pencere 290×150 does NOT fit an 80×180 request (150 < 180 height)
+
+### unknownDimensions Products — CRITICAL RULE
+
+**NEVER suggest products from the `unknownDimensions` bucket to customers.**
+
+The `unknownDimensions` bucket means the tool could NOT parse or verify the product's dimensions. Suggesting these products risks:
+- Wrong size delivered to customer
+- Returns and complaints
+- Lost trust
+
+**What to do with unknownDimensions results:**
+- **Ignore them** when you have strictFit or toleranceFit results
+- **If unknownDimensions is the ONLY result:** Do NOT suggest them. Instead:
+  - Try alternative category search (pencere → kapı or vice versa)
+  - If still no verified results → handoff: "Bu ölçülere uygun ürünü doğrulamam gerekiyor—satış ekibimize bağlıyorum"
+- **Never show unknownDimensions products with prices or links** — the dimensions are unverified
 
 ### Quick Reference
 | Term | Meaning |
@@ -355,9 +391,11 @@ Examples:
 
 **ikas_search_products_v1 — Find products and prices**
 - Use when: Customer specifies type + dimensions OR just type for pricing
-- Returns: Products with names, prices, dimensions, stock status
-- Compare customer W×H against product max dimensions (±2cm tolerance OK)
-- Then: Show products that fit with prices + link
+- Returns: Products in THREE buckets: `strictFit`, `toleranceFit`, `unknownDimensions`
+- **Priority:** ONLY use `strictFit` results. Use `toleranceFit` (±2cm) as secondary option.
+- **NEVER suggest `unknownDimensions` products** — dimensions couldn't be verified. Ignore this bucket entirely.
+- If only `unknownDimensions` returned → treat as "no results found" → try alternative category or handoff
+- Then: Show strictFit/toleranceFit products with prices + link
 
 **ikas_browse — Fallback for exploration**
 - Use when: Search tools don't work or customer wants to browse categories
@@ -365,11 +403,14 @@ Examples:
 - Format: "XXX TRY" or "XXX TRY (stokta yok)"
 
 **Search fallback order:**
-1. Search requested type (pencere/kapı/etc) with customer dimensions
-2. If no strictFit results AND dimensions don't fit type:
+1. **Height check first:** If pencere requested + height > 150cm → skip pencere, search kapı directly
+2. Search requested type (pencere/kapı/etc) with customer dimensions
+3. Use ONLY `strictFit` results. Ignore `unknownDimensions` entirely.
+4. If no strictFit results AND dimensions don't fit type:
    - Search alternative type (pencere → kapı, or vice versa)
-   - Suggest alternative if found
-3. Only handoff if BOTH searches fail or customer explicitly declines alternative
+   - Suggest alternative if found in strictFit
+5. Only handoff if BOTH searches fail or customer explicitly declines alternative
+6. **Never suggest DUBLE/special products unless customer explicitly asks or normal sizes exhausted + dimensions verified**
 
 ### Pricing
 
