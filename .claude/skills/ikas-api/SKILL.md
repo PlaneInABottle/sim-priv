@@ -151,3 +151,46 @@ Production-ready scripts at `scripts/ikas/` with helper library at `scripts/ikas
 - `lib/helpers.js` — Price extraction, URL construction, category trees
 - `customer-with-orders-block.js` — Sim workflow block: phone → customer → orders
 - `lookup-customer-orders.js` — Full lookup tool (order number, email, or phone)
+
+## IKAS Search Product Dimension Parsing
+
+### Critical Slug Patterns
+
+IKAS product URLs encode dimensions in slugs. Custom tools MUST parse these patterns:
+
+| Pattern | Regex | Example | Result |
+|---------|-------|---------|--------|
+| Structured (standard) | `/en--0-(\d{2,4})-cm--boy--0-(\d{2,4})-cm/` | `menteseli-pencere-sinekligi-antrasit--en--0-70-cm--boy--0-130-cm` | 70×130 |
+| Short variant | `/(\d{2,4})-cm--boy--(?:0-)?(\d{2,4})-cm/` | `70-cm--boy--130-cm` | 70×130 |
+| DUBLE/Special | `/maximum-(\d{2,4})x(\d{2,4})/` | `double-akordiyon-sineklik-pencere-beyaz-maximum-290x150` | 290×150 |
+
+**Parse order:** Try Pattern 1 → Pattern 2 → Pattern 3 → fallback to null
+
+**Critical rules:**
+- Products with `dimensions: null` = unknownDimensions bucket
+- Never suggest unknownDimensions products without manual verification
+- DUBLE products use `maximum-WxH` format (product's maximum capacity)
+
+### SearchProducts vs ListProduct GraphQL
+
+**SearchProducts:**
+- Field: `searchProducts(input: SearchInput!)`
+- Response: `results { ... }`
+- NO categoryIds filter support
+- Use for: broad text search across all products
+
+**ListProduct:**
+- Field: `listProduct(categoryIds: [UUID!], pagination: Pagination)`
+- Response: `data { ... }`
+- Supports categoryIds filter
+- Use for: category-scoped search when categoryId known
+
+**Don't mix:** searchProducts uses `input` object, listProduct uses separate args.
+
+### Common GraphQL Validation Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Cannot query field "id" on type "SearchProductVariantType"` | Querying flat fields on nested type | Use `productVariantTypes { order variantType { id name } variantValueIds }` |
+| `Cannot query field "values" on type "SearchProductVariantType"` | Wrong field name | Use `variantValueIds` instead of `values` |
+| `GraphQL HTTP 400` with searchProducts | Wrong query structure | Use `searchProducts(input: $input)` not `searchProducts(search: $search, pagination: $pagination)` |

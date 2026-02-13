@@ -18,6 +18,7 @@ executing against draft state, and verifying trace spans — all without deployi
 5. [Reference Files](#reference-files)
 6. [SQL Tracking Schema](#sql-tracking-schema)
 7. [Safety Rules](#safety-rules)
+8. [Common GraphQL Schema Validation Errors](#common-graphql-schema-validation-errors)
 
 ---
 
@@ -387,6 +388,135 @@ FROM block_snapshots
 WHERE run_id = 'run-001' AND restored = 0;
 -- Then toggle each block back to original_enabled state
 ```
+
+---
+
+## Common GraphQL Schema Validation Errors
+
+Use this section when Sim workflow blocks call ikas GraphQL endpoints and fail with HTTP 400 validation errors.
+
+### Error Pattern: Nested Variant Type Shape in `searchProducts`
+
+**Observed error:**
+
+```
+Cannot query field "id" on type "SearchProductVariantType"
+Cannot query field "name" on type "SearchProductVariantType"
+Cannot query field "values" on type "SearchProductVariantType"
+```
+
+**Why this happens:**
+
+- `searchProducts` returns `productVariantTypes` as `SearchProductVariantType`
+- That type is **nested** and does not expose `id/name/values` at the top level
+- Correct fields are:
+  - `order`
+  - `variantType { id name }`
+  - `variantValueIds`
+
+Reference: ikas Admin API GraphQL type definitions (`SearchProductVariantType`, `SearchVariantType`) on ikas.dev.
+
+### Correct vs Incorrect Query Examples
+
+```graphql
+# ❌ Incorrect (will fail validation)
+productVariantTypes {
+  id
+  name
+  values { id name }
+}
+```
+
+```graphql
+# ✅ Correct for searchProducts
+productVariantTypes {
+  order
+  variantType {
+    id
+    name
+  }
+  variantValueIds
+}
+```
+
+```graphql
+# ✅ Another valid nested selection
+productVariantTypes {
+  variantType { id name selectionType }
+  variantValueIds
+}
+```
+
+### How to Identify GraphQL Validation Errors Fast
+
+1. Check HTTP status (often `400`) and inspect GraphQL `errors[].message`.
+2. Look for messages starting with `Cannot query field ... on type ...`.
+3. Match the failing type in ikas docs (object/type definitions), not assumptions from similarly named types.
+4. Verify whether field exists directly on the type or under a nested child object.
+
+### How to Debug Using ikas API Docs
+
+1. Open the exact object definition in ikas docs (e.g., `SearchProductVariantType`).
+2. Confirm field names and nullability.
+3. Update query selection set to mirror the type structure exactly.
+4. Re-run the request and confirm no GraphQL validation errors.
+5. Update local TypeScript interfaces to match the new/actual shape.
+6. Update tests/fixtures so schema drift is caught earlier.
+
+### Prevention Checklist
+
+- [ ] For every new query field, confirm it on the exact ikas GraphQL type definition.
+- [ ] Treat `search*` types as potentially different from `list*` types.
+- [ ] Avoid flattening nested fields unless schema explicitly allows it.
+- [ ] Keep TS response interfaces synchronized with query selections.
+- [ ] Add/maintain tests with realistic response fixtures for nested objects.
+- [ ] When errors mention `Cannot query field`, fix schema mismatch first (before retry logic).
+
+---
+
+## Custom Tool Schema Best Practices
+
+### AI-Readable Tool Descriptions
+
+**Tool schema descriptions must be explicit - LLMs read them to understand usage.**
+
+**BAD (vague):**
+```json
+"dimensions": {
+  "description": "Optional W×H in cm",
+  "properties": {
+    "width": {"type": "number"},
+    "height": {"type": "number"}
+  }
+}
+```
+
+**GOOD (explicit):**
+```json
+"dimensions": {
+  "description": "Customer's opening dimensions in cm. REQUIRED when customer provides dimensions (e.g., '80x180', 'en 80 boy 180'). Used to filter products: strictFit (≥ requested), toleranceFit (0-2cm smaller), excluded (too small). Omit only when not specified yet.",
+  "properties": {
+    "width": {"type": "number", "description": "Width in cm (en). Opening width that product must cover."},
+    "height": {"type": "number", "description": "Height in cm (boy). Opening height that product must cover."}
+  }
+}
+```
+
+**Key differences:**
+- ✅ States when parameter is REQUIRED
+- ✅ Gives examples in customer's language
+- ✅ Explains what the parameter does (filtering logic)
+- ✅ Clarifies field meanings (width = en, height = boy)
+- ✅ Explains when to omit
+
+### Dimension Filtering Anti-Patterns
+
+| Anti-Pattern | Problem | Fix |
+|--------------|---------|-----|
+| Agent passes `{width: 0, height: 0}` | Disables filtering, returns all products | Tool schema must say "REQUIRED when customer provides dimensions" |
+| Products with `dimensions: null` in strictFit | Tool can't validate fit, agent gets false positives | Separate `unknownDimensions` bucket, never suggest without verification |
+| Suggesting products with unparsed dimensions | Agent suggests 290×150 for 80×180 request (150 < 180) | Add slug parsing patterns, exclude when too small |
+| No cross-category fallback | Customer needs kapı but only searched pencere | Prompt must include height/width thresholds + routing rules |
 
 ---
 

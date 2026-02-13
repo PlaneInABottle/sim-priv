@@ -70,3 +70,55 @@ Every ikas agent needs these four tools:
 | `handoff_to_human` | Platform-specific | Human escalation with labels + internal_note |
 
 Skip `calculate_product_price` if all products are fixed-price.
+
+## Dimension Extraction & Product Filtering
+
+### Dimension Extraction (Critical)
+
+**When customer provides dimensions, ALWAYS extract and pass to search tools:**
+
+```
+Customer: "80x180 menteşeli pencere"
+Extract: {width: 80, height: 180}
+Pass to tool: ikas_search_products_v1({query: "menteşeli pencere", dimensions: {width: 80, height: 180}})
+```
+
+**Turkish dimension patterns:**
+- `80x180` or `80×180` → width: 80, height: 180
+- `en 80 boy 180` → width: 80, height: 180
+- `80 genişlik 180 yükseklik` → width: 80, height: 180
+- Single number → ask which dimension
+
+**Never pass `{width: 0, height: 0}`** - this disables filtering and returns all products.
+
+### Product Filter Buckets
+
+Search tools return three buckets:
+
+| Bucket | Meaning | Agent Action |
+|--------|---------|--------------|
+| **strictFit** | Product dimensions ≥ requested | Suggest these first |
+| **toleranceFit** | Product 0-2cm smaller than requested | Suggest if no strict fits |
+| **unknownDimensions** | Dimensions couldn't be parsed | Ignore OR handoff for manual verification |
+
+**Never suggest unknownDimensions products** without explicit verification.
+
+### Cross-Category Routing
+
+When dimensions don't fit requested category, search alternative:
+
+```
+Customer: "80×180 menteşeli pencere"
+Agent searches: "menteşeli pencere" with {width: 80, height: 180}
+Tool returns: pencere 70×130 (too small, excluded)
+Agent recognizes: 180cm height > pencere max (~150cm)
+Agent searches: "menteşeli kapı" with {width: 80, height: 180}
+Tool returns: kapı 90×210 (fits in strictFit)
+Agent suggests: "Pencere sineklikte bu ölçü yok, kapı menteşelimizde tam uyması var: [link]"
+```
+
+**Dimension thresholds:**
+- Pencere (window): Typical max 70W × 150H cm
+- Kapı (door): Typical max 100W × 220H cm
+
+**Routing rule:** If customer says "pencere" but height > 150cm → search kapı first.
