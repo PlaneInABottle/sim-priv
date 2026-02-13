@@ -390,6 +390,170 @@ WHERE run_id = 'run-001' AND restored = 0;
 
 ---
 
+## Critical: Tag Reference Anti-Patterns
+
+**28 tag reference errors in Kamatas PROD (last 24h) — avoid these mistakes:**
+
+### Anti-Pattern 1: JSDoc Comments with `<>` Tag Syntax ❌ CRITICAL
+
+**Problem:** Tag resolver has **no comment awareness**. It finds `<BlockName.field>` anywhere in code, including comments and strings.
+
+```javascript
+// BAD - Tag in JSDoc comment gets resolved
+/**
+ * Fetches orders for customer
+ * Input: <IkasTokenManager.result.token>, <FormatCustomerResponse.result.customer.id>
+ */
+const orders = await fetchOrders(token, customerId);
+
+// If customer is null, resolver tries to traverse .id on null → CRASH
+```
+
+**Fix:** Use plain text in comments, not `<>` syntax:
+
+```javascript
+// GOOD - Plain text, not parsed
+/**
+ * Fetches orders for customer
+ * Input: IkasTokenManager.result.token, FormatCustomerResponse.result.customer.id
+ * Uses functional code below (not JSDoc) for actual tag resolution
+ */
+const token = <IkasTokenManager.result.token>;        // ← Real tag, safe
+const customerId = <FormatCustomerResponse.result>?.customer?.id;  // ← Shallow tag + guard
+```
+
+**Lesson:** Functional code tags are resolved; JSDoc/comments are not. Never use `<>` in comments.
+
+### Anti-Pattern 2: Deep Nested Paths Without Guards ❌ HIGH
+
+**Problem:** Assuming nested fields always exist on nullable objects.
+
+```javascript
+// BAD - 9 errors in Kamatas from this pattern
+const customerId = <FormatCustomerResponse.result.customer.id>;
+// If customer is null/undefined, resolution fails
+
+// BAD - 7 errors from wrong shape assumption
+const toolCalls = <supportagent.toolCalls.list>;
+// Agent output is an array, not {list: [...]}
+```
+
+**Fix:** Use shallow tags + JS guards:
+
+```javascript
+// GOOD - Shallow tag + optional chaining
+const customerData = <FormatCustomerResponse.result>;
+const customerId = customerData?.customer?.id;
+
+// GOOD - Correct shape + handles both formats
+const toolCalls = <Support Agent.toolCalls>;
+// Normalize in function block if legacy format differs
+const normalized = Array.isArray(toolCalls) 
+  ? toolCalls 
+  : (Array.isArray(toolCalls?.list) ? toolCalls.list : []);
+```
+
+**Lesson:** Tags are shallow (one level). Stop before nullable objects. Guard with `?.` operator.
+
+### Anti-Pattern 3: Wrong Nested Webhook Field Assumptions ❌ HIGH
+
+**Problem:** Assuming webhook payload has specific nested structure (e.g., `conversation.id`, `conversation.created_at`), but actual shape varies.
+
+```javascript
+// BAD - 8 errors in Kamatas from payload structure mismatches
+const conversationId = <Webhook 1.conversation.id>;
+const createdAt = <Webhook 1.conversation.created_at>;
+// Different webhook sources send different shapes
+```
+
+**Fix:** Use fallback chains with guards:
+
+```javascript
+// GOOD - Fallback chain handles multiple payload shapes
+const payload = <Webhook 1>;
+const conversationId = payload?.conversation?.id 
+  || payload?.conversation_id 
+  || payload?.id 
+  || 'unknown';
+
+const createdAt = payload?.conversation?.created_at 
+  || payload?.created_at 
+  || new Date().toISOString();
+```
+
+**Lesson:** Webhook payloads are unpredictable. Build fallback chains. Never assume nesting.
+
+### Anti-Pattern 4: Wrong Block Display Names in Tags ❌ HIGH
+
+**Problem:** Using lowercase/normalized names instead of exact display names. Tags must match block display names exactly.
+
+```javascript
+// BAD - Block display name is "Support Agent", not "supportagent"
+const toolCalls = <supportagent.toolCalls>;  // ← Won't resolve
+
+// BAD - Block display name is "Ikas Token Manager", not all lowercase
+const token = <ikastokenmanager.result>;     // ← Won't resolve
+```
+
+**Fix:** Always use exact display name as shown in UI:
+
+```javascript
+// GOOD - Matches block display name exactly
+const toolCalls = <Support Agent.toolCalls>;
+const token = <Ikas Token Manager.result>;
+```
+
+**Lesson:** Display names are case-sensitive. Check the UI. When in doubt, read the workflow via `get_workflow`.
+
+### Anti-Pattern 5: Invalid Condition Syntax with Tags ❌ MEDIUM
+
+**Problem:** Inserting raw tag tokens into condition expressions without proper syntax.
+
+```javascript
+// BAD - Leaves raw <> in JS expression → syntax error
+if (<Extract Search Context.result.hasContext>) { ... }
+
+// BAD - Wrapping tag in quotes breaks resolution
+if ("<Extract Search Context.result.hasContext>" === true) { ... }
+```
+
+**Fix:** Tag syntax must be unwrapped in valid JS:
+
+```javascript
+// GOOD - Tag resolves to boolean value, then compared
+<Extract Search Context.result.hasContext> === true
+
+// GOOD - For complex conditions
+(<Extract Search Context.result.hasContext> === true && <some_block.data> !== null)
+```
+
+**Lesson:** Conditions are JavaScript. Tags resolve to values before JS sees them. Don't quote or wrap tags.
+
+### Mandatory Pre-Deployment Checklist
+
+Before **committing or deploying** a workflow, verify:
+
+- [ ] **No `<>` in comments or strings** — Search code for `<` + review all JSDoc blocks
+- [ ] **All block display names are exact** — Compare against UI names; case matters
+- [ ] **All nested references have guards** — Use `?.` operator for any optional/nullable field
+- [ ] **Webhook payload shapes are handled** — Use fallback chains for field alternatives
+- [ ] **Condition syntax is valid JS** — Ensure conditions are executable before tag resolution
+- [ ] **Execute with test payload first** — Run workflow before deploying; check `get_execution_log_detail` trace
+- [ ] **Verify trace shows expected fields** — Inspect actual block outputs before wiring downstream references
+
+### How to Debug Tag Reference Errors
+
+When you see: `"result.customer.id" doesn't exist on block "FormatCustomerResponse"`
+
+1. **Get the block:** `sim-mcp-get_block(workflowId, blockId)`
+2. **Check output schema:** What fields does the block actually declare? (for function blocks: always `{result, stdout}`)
+3. **Run a test:** `execute_workflow(workflowId, testPayload)` with `useDraftState: true`
+4. **Inspect trace:** `get_execution_log_detail(logId)` — look at trace spans for what each block actually outputs
+5. **Compare:** Does the tag reference match what the block actually produces?
+6. **Fix:** Adjust tag to match actual output; add guards for nullable fields
+
+---
+
 ## Known Limitations
 
 ### Workflow Design Constraints
