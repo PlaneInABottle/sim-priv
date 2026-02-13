@@ -6,6 +6,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { checkHybridAuth } from '@/lib/auth/hybrid'
 import { generateRequestId } from '@/lib/core/utils/request'
+import { TOOL_NAME_PATTERN } from '@/lib/mcp/workflow-tool-schema'
 import { upsertCustomTools } from '@/lib/workflows/custom-tools/operations'
 import { authorizeWorkflowByWorkspacePermission } from '@/lib/workflows/utils'
 import { getUserEntityPermissions } from '@/lib/workspaces/permissions/utils'
@@ -20,7 +21,13 @@ const CustomToolSchema = z.object({
       schema: z.object({
         type: z.literal('function'),
         function: z.object({
-          name: z.string().min(1, 'Function name is required'),
+          name: z
+            .string()
+            .min(1, 'Function name is required')
+            .regex(
+              TOOL_NAME_PATTERN,
+              'Function name must contain only lowercase letters, numbers, underscores, or hyphens (1-64 chars)'
+            ),
           description: z.string().optional(),
           parameters: z.object({
             type: z.string(),
@@ -117,7 +124,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create or update custom tools
+// POST handles both create (no id) and update (with id in body)
+// Validation is applied to both paths equally
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
 
