@@ -208,6 +208,7 @@ execute_workflow({ workflowId: "wf_new", input: { message: "Test" }, triggerType
 | Wrong trigger type | `start_trigger` for `"api"/"manual"/"chat"/"mcp"/"a2a"`, `generic_webhook` for `"webhook"`, `schedule` for `"schedule"` |
 | Block ID in tags | Use **display name**: `<Agent 1.content>` not `<block_id.content>` |
 | Missing API key | Set both `apiKey` and `model` on agent blocks |
+| **OpenRouter + temperature** | ⚠️ **NEVER set `temperature` for OpenRouter models** (models starting with `openrouter/`) — causes `400 Bad Request`. Leave `temperature` subblock **null/empty**. OpenRouter uses model defaults. |
 | Wrong condition handles | Use `"condition-{conditionId}"` NOT `"true"`/`"false"` |
 | Response returns `{}` | Set `dataMode` to `"json"` before setting `data` |
 | `inputData is not defined` | Use `<BlockName.field>` tag syntax; `params` is always `{}` |
