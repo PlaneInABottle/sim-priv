@@ -42,14 +42,35 @@ Output:
 
 ### 1. Transform (Extract metadata from product names)
 
-**Color extraction** (full-scan, multi-word aware):
+**Color extraction** (two-phase, multi-word aware — prevents substring bugs):
 ```javascript
-const colors = ["Beyaz", "Antrasit", "Altınmeşe", "Kahverengi", "Naturel", "Gri", "Ara Gri", "Metalik Gri", ...];
+// Multi-word colors checked FIRST (longest match wins, prevents "Gri" matching inside "Metalik Gri")
+const KNOWN_COLORS_MULTI = ["Metalik Gri", "Ara Gri"];
+
+// Single-word colors, scanned across ALL word positions (rightmost match preferred)
+const KNOWN_COLORS_SINGLE = [
+  "Beyaz", "Antrasit", "Altınmeşe", "Kahverengi", "Naturel",
+  "Siyah", "Bronz", "Parlak", "Gri", "Krem",
+  "Kırmızı", "Pudra", "Yeşil"
+];
 
 function extractColor(name) {
-  for (const color of colors) {
-    if (name.includes(color)) return color;
+  const lower = trLower(name);  // Turkish-aware lowercase
+
+  // Phase 1: Multi-word colors (must match before single-word to prevent partial matches)
+  for (const color of KNOWN_COLORS_MULTI) {
+    if (lower.includes(trLower(color))) return color;
   }
+
+  // Phase 2: Single-word colors (rightmost match = most likely variant suffix)
+  const tokens = name.split(/\s+/);
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const tokenClean = tokens[i].replace(/[,;.]+$/, '');
+    for (const color of KNOWN_COLORS_SINGLE) {
+      if (trLower(tokenClean) === trLower(color)) return color;
+    }
+  }
+
   return null;
 }
 ```
@@ -140,13 +161,16 @@ Update these parts for your ikas store:
 
 **1. Category Enum**
 ```javascript
-enum: ["your-cat-1", "your-cat-2", ...]  // Query ikas API once
+enum: ["sineklikler", "perdeler", "otomatik-panjurlar", "profiller", "aksesuarlar", "tutamaklar"]  // Query ikas API once
 ```
 
 **2. Color Palette**
 ```javascript
 const colors = [
-  "Beyaz", "Antrasit", ...  // Add store-specific colors
+  "Beyaz", "Antrasit", "Altınmeşe", "Kahverengi", "Naturel",
+  "Siyah", "Bronz", "Parlak", "Gri", "Krem",
+  "Kırmızı", "Pudra", "Yeşil",
+  "Metalik Gri", "Ara Gri"  // Multi-word colors: must check BEFORE single-word
 ];
 ```
 
@@ -159,10 +183,13 @@ const h = dims.maxHeight || dims.height || dims.h;
 
 **4. Environment Variables**
 ```
-STORE_IKAS_CLIENT_ID
-STORE_IKAS_CLIENT_SECRET
-STORE_SALES_CHANNEL_ID
+IKAS_CLIENT_ID          # ikas OAuth2 client ID
+IKAS_CLIENT_SECRET      # ikas OAuth2 client secret
+SALES_CHANNEL_ID        # Storefront sales channel UUID
+STORE_BASE_URL          # e.g., https://kamatas.com
 ```
+
+In Sim Studio custom tools, use template variable syntax: `{{IKAS_CLIENT_ID}}`, `{{IKAS_CLIENT_SECRET}}`
 
 ## Real-World Example: Kamatas
 
@@ -176,4 +203,3 @@ STORE_SALES_CHANNEL_ID
 
 - `references/testing-workflow.md` — Complete testing workflow with code examples
 - `references/schema.md` — Full API schema with all field definitions
-- `docs/TESTING_AND_WORKFLOW_BEST_PRACTICES.md` — General custom tool testing guide (in main repo)

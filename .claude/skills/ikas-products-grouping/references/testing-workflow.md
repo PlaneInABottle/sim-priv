@@ -7,16 +7,49 @@ Create a standalone test script to validate transformation logic without touchin
 ### 1.1 Mock ikas Response
 
 ```javascript
-// test-products.js
+// test-products.js — mock data matching real ikas Product shape
 const mockProducts = [
   {
     id: "prod-1",
     name: "Akordeon DUBLE Kapı Sineklik Antrasit",
-    price: { amount: 4621.5, currency: "TRY" },
+    metaData: { slug: "akordeon-duble-kapi-sineklik-antrasit-maximum-290x240" },
+    baseUnit: null,
+    attributes: [],
     variants: [
-      { id: "var-1", dimensions: { maxWidth: 290, maxHeight: 240 } }
-    ],
-    imagePath: "/images/sineklik-1.jpg"
+      {
+        isActive: true,
+        prices: [{ sellPrice: 4621.5, discountPrice: null, currency: "TRY" }],
+        images: [{ imageId: "img-001", fileName: "sineklik-1.jpg", isMain: true }]
+      }
+    ]
+  },
+  {
+    id: "prod-2",
+    name: "Akordeon DUBLE Kapı Sineklik Beyaz",
+    metaData: { slug: "akordeon-duble-kapi-sineklik-beyaz-maximum-290x240" },
+    baseUnit: null,
+    attributes: [],
+    variants: [
+      {
+        isActive: true,
+        prices: [{ sellPrice: 4621.5, discountPrice: null, currency: "TRY" }],
+        images: [{ imageId: "img-002", fileName: "sineklik-2.jpg", isMain: true }]
+      }
+    ]
+  },
+  {
+    id: "prod-3",
+    name: "Akordeon DUBLE Kapı Sineklik Altınmeşe",
+    metaData: { slug: "akordeon-duble-kapi-sineklik-altinmese-maximum-290x240" },
+    baseUnit: null,
+    attributes: [],
+    variants: [
+      {
+        isActive: true,
+        prices: [{ sellPrice: 5220, discountPrice: null, currency: "TRY" }],
+        images: [{ imageId: "img-003", fileName: "sineklik-3.jpg", isMain: true }]
+      }
+    ]
   },
   // ... more products
 ];
@@ -27,23 +60,46 @@ module.exports = { mockProducts };
 ### 1.2 Transformation Functions
 
 ```javascript
-const colors = [
-  "Beyaz", "Antrasit", "Altınmeşe", "Kahverengi", "Naturel", 
-  "Gri", "Ara Gri", "Metalik Gri", "Siyah", "Koyu Gri",
-  "Ceviz", "Çelik", "Mermer", "Mermer Beyaz", "Mermer Siyah"
+// Multi-word colors checked FIRST (prevents "Gri" matching inside "Metalik Gri")
+const KNOWN_COLORS_MULTI = ["Metalik Gri", "Ara Gri"];
+
+const KNOWN_COLORS_SINGLE = [
+  "Beyaz", "Antrasit", "Altınmeşe", "Kahverengi", "Naturel",
+  "Siyah", "Bronz", "Parlak", "Gri", "Krem",
+  "Kırmızı", "Pudra", "Yeşil"
 ];
 
+function trLower(s) {
+  return s.replace(/İ/g, 'i').replace(/I/g, 'ı')
+    .replace(/Ğ/g, 'ğ').replace(/Ü/g, 'ü').replace(/Ö/g, 'ö')
+    .replace(/Ş/g, 'ş').replace(/Ç/g, 'ç').toLowerCase();
+}
+
 function extractColor(name) {
-  for (const color of colors) {
-    if (name.includes(color)) return color;
+  const lower = trLower(name);
+
+  // Phase 1: Multi-word colors first
+  for (const color of KNOWN_COLORS_MULTI) {
+    if (lower.includes(trLower(color))) return color;
   }
+
+  // Phase 2: Single-word colors, rightmost match preferred
+  const tokens = name.split(/\s+/);
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const tokenClean = tokens[i].replace(/[,;.]+$/, '');
+    for (const color of KNOWN_COLORS_SINGLE) {
+      if (trLower(tokenClean) === trLower(color)) return color;
+    }
+  }
+
   return null;
 }
 
 function extractBaseType(name) {
   let baseName = name.trim();
-  for (const color of colors) {
-    baseName = baseName.replace(new RegExp(`\\s*${color}\\s*$`), "").trim();
+  // Remove multi-word colors first, then single-word
+  for (const color of [...KNOWN_COLORS_MULTI, ...KNOWN_COLORS_SINGLE]) {
+    baseName = baseName.replace(new RegExp(`\\s*${color}\\s*$`, 'i'), "").trim();
   }
   return baseName;
 }
@@ -55,7 +111,7 @@ function serializeDims(dims) {
   return (w && h) ? `${w}x${h}` : null;
 }
 
-module.exports = { extractColor, extractBaseType, serializeDims, colors };
+module.exports = { extractColor, extractBaseType, serializeDims, KNOWN_COLORS_MULTI, KNOWN_COLORS_SINGLE };
 ```
 
 ### 1.3 Grouping Function
@@ -67,28 +123,52 @@ function groupProducts(products) {
   for (const product of products) {
     const color = extractColor(product.name);
     const baseType = extractBaseType(product.name);
-    const dims = serializeDims(product.variants?.[0]?.dimensions);
+    const dims = product.dims || null;
     const groupKey = dims ? `${baseType}|${dims}` : baseType;
-    const price = product.price?.amount;
-    const url = product.imagePath;
+
+    // Extract price from first active variant's prices array
+    const activeVariants = (product.variants || []).filter(v => v.isActive !== false);
+    const primaryVariant = activeVariants[0] || product.variants?.[0];
+    let price = null;
+    if (primaryVariant?.prices?.length) {
+      const tryPrice = primaryVariant.prices.find(p => !p.currency || p.currency === 'TRY') || primaryVariant.prices[0];
+      if (tryPrice) {
+        const hasDiscount = tryPrice.discountPrice && tryPrice.discountPrice < tryPrice.sellPrice;
+        price = Math.round((hasDiscount ? tryPrice.discountPrice : tryPrice.sellPrice) * 100) / 100;
+      }
+    }
+
+    const slug = product.metaData?.slug;
+    const url = slug ? `/${slug}` : null;
 
     if (!groups.has(groupKey)) {
       groups.set(groupKey, {
         type: baseType,
         ...(dims && { dims }),
-        price,
         variants: []
       });
     }
 
     const group = groups.get(groupKey);
-    const variant = { color: color || "Standart", url };
-    
-    if (price !== group.price) {
-      variant.price = price;
-    }
-    
+    const variant = { color: color || undefined, url };
+    if (price != null) variant.price = price;
     group.variants.push(variant);
+  }
+
+  // Price hoisting: if ALL variants have same price, hoist to group level
+  for (const group of groups.values()) {
+    const prices = group.variants.filter(v => v.price != null).map(v => v.price);
+    const allSamePrice = prices.length === group.variants.length
+      && prices.length > 1
+      && new Set(prices).size === 1;
+
+    if (allSamePrice) {
+      group.price = prices[0];
+      for (const v of group.variants) {
+        delete v.price;
+      }
+    }
+    // Otherwise: each variant keeps its own price
   }
 
   return Array.from(groups.values());
@@ -170,7 +250,7 @@ const toolConfig = {
         properties: {
           mainCategory: {
             type: "string",
-            enum: ["sineklikler", "tülüler", "klasikler"],
+            enum: ["sineklikler", "perdeler", "otomatik-panjurlar", "profiller", "aksesuarlar", "tutamaklar"],
             description: "Product category"
           }
         },
@@ -180,7 +260,7 @@ const toolConfig = {
   },
   code: `
     // Tool code here - same transformation + grouping logic
-    // See references/tool-code.md for full implementation
+    // Implement: fetch → flatten → group → format (see Phase 1 test patterns above)
   `
 };
 
@@ -189,7 +269,7 @@ const toolConfig = {
 
 ### 2.2 Create Test Workflow
 
-1. Create a **separate test workflow** (or disable blocks in existing one)
+1. **Disable blocks in existing workflow** (do NOT create a separate test copy — see anti-patterns)
 2. Keep only: `api_trigger` → `agent` → `response`
 3. Agent uses the new tool
 4. Execute: `sim-mcp-execute_workflow(useDraftState: true)`
@@ -258,8 +338,11 @@ Test with all categories to ensure consistent token savings:
 
 ```
 - sineklikler: 100 products → 39 groups (61%)
-- tülüler: 80 products → 28 groups (65%)
-- klasikler: 120 products → 41 groups (66%)
+- perdeler: 80 products → 28 groups (65%)
+- otomatik-panjurlar: 50 products → 20 groups (60%)
+- profiller: 40 products → 15 groups (63%)
+- aksesuarlar: 60 products → 25 groups (58%)
+- tutamaklar: 30 products → 12 groups (60%)
 ```
 
 ---

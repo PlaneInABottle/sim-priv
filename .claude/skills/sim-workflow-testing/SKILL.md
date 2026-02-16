@@ -135,6 +135,5 @@ Or restore from snapshot — see `references/error-recovery.md`.
 
 ## Related Resources
 
-- **Custom Tool Development** — See `docs/TESTING_AND_WORKFLOW_BEST_PRACTICES.md` for the 6-phase lifecycle
 - **Tag Reference Issues** — See `references/tag-reference-patterns.md` for debugging tag resolution errors
 - **Custom Tool Testing** — See `references/custom-tool-testing.md` for anti-patterns and checklists

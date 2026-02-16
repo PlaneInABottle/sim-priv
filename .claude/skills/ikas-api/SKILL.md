@@ -142,16 +142,6 @@ Read these files for complete field definitions, type schemas, and detailed exam
 - **[references/customers.md](references/customers.md)** — Customer type schema, listCustomer filters, address model, phone lookup patterns
 - **[references/categories-and-more.md](references/categories-and-more.md)** — Categories, sales channels, stock locations, merchant info, webhooks, product attributes, brands, tags, variant types
 
-## Existing Scripts
-
-Production-ready scripts at `scripts/ikas/` with helper library at `scripts/ikas/lib/`:
-- `lib/config.js` — Store config, endpoints, credentials
-- `lib/auth.js` — OAuth token management with Redis caching
-- `lib/graphql.js` — GraphQL executor with all query builders
-- `lib/helpers.js` — Price extraction, URL construction, category trees
-- `customer-with-orders-block.js` — Sim workflow block: phone → customer → orders
-- `lookup-customer-orders.js` — Full lookup tool (order number, email, or phone)
-
 ## IKAS Search Product Dimension Parsing
 
 ### Critical Slug Patterns

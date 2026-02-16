@@ -8,8 +8,8 @@
   properties: {
     mainCategory: {
       type: "string",
-      enum: ["sineklikler", "tülüler", "klasikler", ...],
-      description: "Main product category from ikas storefront"
+      enum: ["sineklikler", "perdeler", "otomatik-panjurlar", "profiller", "aksesuarlar", "tutamaklar"],
+      description: "Main product category slug from ikas storefront"
     }
   },
   required: ["mainCategory"]
@@ -81,86 +81,65 @@
 ## Color Palette (Kamatas Example)
 
 ```javascript
-const colors = [
-  "Beyaz",
-  "Antrasit",
-  "Altınmeşe",
-  "Kahverengi",
-  "Naturel",
-  "Gri",
-  "Ara Gri",
-  "Metalik Gri",
-  "Siyah",
-  "Koyu Gri",
-  "Ceviz",
-  "Çelik",
-  "Mermer",
-  "Mermer Beyaz",
-  "Mermer Siyah"
+// Multi-word colors checked FIRST (longest match wins, prevents partial "gri" match)
+const KNOWN_COLORS_MULTI = ["Metalik Gri", "Ara Gri"];
+
+// Single-word colors, scanned across ALL word positions (rightmost match preferred)
+const KNOWN_COLORS_SINGLE = [
+  "Beyaz", "Antrasit", "Altınmeşe", "Kahverengi", "Naturel",
+  "Siyah", "Bronz", "Parlak", "Gri", "Krem",
+  "Kırmızı", "Pudra", "Yeşil"
 ];
 ```
 
 **Notes on color extraction:**
-- Multi-word colors: "Metalik Gri", "Mermer Beyaz" (check longest matches first)
-- Case-sensitive match
-- Colors removed from product name suffix during base type extraction
-- If no color found: use "Standart"
+- Two-phase matching: multi-word colors first, then single-word (prevents "Gri" matching inside "Metalik Gri")
+- Turkish-aware lowercase comparison (`trLower()` handles İ→i, I→ı, etc.)
+- Colors scanned across ALL word positions; rightmost match preferred (most likely variant suffix)
+- Colors removed from product name during base type extraction
+- If no color found: color field omitted from variant (not "Standart")
 
 ## ikas GraphQL Integration
 
 ### OAuth2 Token
 
-```graphql
-POST /api/admin/oauth/token
+```http
+POST https://<store>.myikas.com/api/admin/oauth/token
+Content-Type: application/x-www-form-urlencoded
 
-Request:
-{
-  "grant_type": "client_credentials",
-  "client_id": "{{ENV_IKAS_CLIENT_ID}}",
-  "client_secret": "{{ENV_IKAS_CLIENT_SECRET}}"
-}
+grant_type=client_credentials&client_id={{IKAS_CLIENT_ID}}&client_secret={{IKAS_CLIENT_SECRET}}
+```
 
 Response:
+```json
 {
   "access_token": "eyJhbGc...",
   "token_type": "Bearer",
-  "expires_in": 3600
+  "expires_in": 14400
 }
 ```
+
+**Notes:**
+- Content-Type MUST be `application/x-www-form-urlencoded` (NOT JSON)
+- Token expires in 14400 seconds (4 hours) — cache and refresh on 401
+- In Sim Studio custom tools, use template variables: `{{IKAS_CLIENT_ID}}`, `{{IKAS_CLIENT_SECRET}}`
 
 ### Product Query
 
 ```graphql
-query ListProductsByCategory(
-  $categoryId: ID!
-  $salesChannelId: ID!
-) {
-  listProducts(
-    filter: {
-      AND: [
-        { categories: { any: { id: { eq: $categoryId } } } }
-        { salesChannels: { any: { id: { eq: $salesChannelId } } } }
-      ]
-    }
-    first: 100
-  ) {
-    nodes {
+query($categoryIds: CategoryFilterInput, $salesChannelIds: SalesChannelFilterInput, $pagination: PaginationInput) {
+  listProduct(categoryIds: $categoryIds, salesChannelIds: $salesChannelIds, pagination: $pagination) {
+    hasNext
+    data {
       id
       name
+      metaData { slug }
+      baseUnit { type }
+      attributes { value }
       variants {
-        id
-        name
-        price {
-          amount
-          currency
-        }
-        attributes {
-          key
-          value
-        }
-        images {
-          path
-        }
+        isActive
+        prices { sellPrice discountPrice currency }
+        images { imageId fileName isMain }
       }
     }
   }
@@ -170,35 +149,46 @@ query ListProductsByCategory(
 **Variables:**
 ```json
 {
-  "categoryId": "7cbc724c-...",
-  "salesChannelId": "c2a8f4e0-..."
+  "categoryIds": { "in": ["7cbc724c-..."] },
+  "salesChannelIds": { "eq": "c2a8f4e0-..." },
+  "pagination": { "limit": 200, "page": 1 }
 }
 ```
 
+**Key differences from other GraphQL APIs:**
+- Query name is `listProduct` (singular, NOT `listProducts`)
+- Arguments are flat (NO `filter` wrapper, NO Relay `first`/`after` syntax)
+- Response uses `{ data, hasNext }` (NOT `nodes`/`edges`)
+- Pagination is page-based: `{ limit: N, page: N }` (1-indexed, max limit: 200)
+- Variant prices use `prices[].sellPrice` (NOT `price.amount`)
+- Variant images use `images[].imageId` (NOT `imagePath` or `images[].path`)
+
 ### Category Discovery
 
-Get available main categories once (cache result):
+Get all categories (returns array directly, no pagination wrapper):
 
 ```graphql
-query ListCategories($salesChannelId: ID!) {
-  listCategories(
-    filter: {
-      salesChannels: { any: { id: { eq: $salesChannelId } } }
-      parent: { isNull: true }
-    }
-  ) {
-    nodes {
-      id
-      name
-      slug
-    }
+{
+  listCategory {
+    id
+    name
+    parentId
+    metaData { slug }
+    salesChannelIds
   }
 }
 ```
 
+**Key differences:**
+- Query name is `listCategory` (singular, NOT `listCategories`)
+- NO filter wrapper — arguments are flat: `listCategory(id: ..., name: ..., search: ...)`
+- Returns `[Category!]!` directly (NOT a pagination response)
+- Filter root categories client-side: `categories.filter(c => !c.parentId)`
+- Filter by sales channel client-side: `c.salesChannelIds?.includes(channelId)`
+
 Result updates tool's enum:
 ```
-mainCategory enum = [slug1, slug2, ...]
+mainCategory enum = [slug1, slug2, ...]  // from root categories' metaData.slug
 ```
 
 ## Token Efficiency Metrics
@@ -243,7 +233,7 @@ STORE_CATEGORIES_CACHE_TTL=86400  # 24 hours
 ```javascript
 // Invalid category
 {
-  "error": "Invalid mainCategory. Valid options: sineklikler, tülüler, klasikler",
+  "error": "Invalid mainCategory. Valid options: sineklikler, perdeler, otomatik-panjurlar, profiller, aksesuarlar, tutamaklar",
   "code": "INVALID_CATEGORY"
 }
 

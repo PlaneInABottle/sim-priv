@@ -80,7 +80,8 @@ Skip `calculate_product_price` if all products are fixed-price.
 ```
 Customer: "80x180 menteşeli pencere"
 Extract: {width: 80, height: 180}
-Pass to tool: ikas_search_products_v1({query: "menteşeli pencere", dimensions: {width: 80, height: 180}})
+Pass to tool: get_products_by_main_category({mainCategory: "menteseli-pencere-sinekligi"})
+→ Agent filters results by extracted dimensions (width: 80, height: 180)
 ```
 
 **Turkish dimension patterns:**
