@@ -7,8 +7,10 @@ description: Complete guide for working with the ikas e-commerce Admin API (Grap
 
 ## Quick Start
 
-**Endpoint:** `https://api.myikas.com/api/v1/admin/graphql` (POST, JSON)
+**Canonical Endpoint (production):** `https://api.myikas.com/api/v1/admin/graphql` (POST, JSON)
 **Auth:** Bearer token via OAuth2 `client_credentials` grant
+
+> **API version note:** This skill documents **v1** Admin API endpoints only. No `v2` Admin GraphQL endpoint is documented in these references.
 
 ```js
 // 1. Get token
@@ -30,8 +32,16 @@ const data = await fetch('https://api.myikas.com/api/v1/admin/graphql', {
 ## Core Concepts
 
 ### Pagination
-All list queries use page-based pagination: `pagination: { limit: N, page: N }` (1-indexed).
-Response: `{ count, data [...], hasNext, limit, page }`. Max limit: 200.
+Many list queries use page-based pagination: `pagination: { limit: N, page: N }` (1-indexed).
+Paginated response shape: `{ count, data [...], hasNext, limit, page }`. Max limit: 200.
+
+**Known non-paginated list queries (direct array return):**
+- `listCategory`
+- `listSalesChannel`
+- `listProductBrand`
+- `listProductTag`
+- `listVariantType`
+- `listWebhook`
 
 ### Filter Types
 | Type | Usage | Example |
@@ -52,6 +62,36 @@ Sortable fields vary per query (commonly: `createdAt`, `updatedAt`, `name`, `ord
 - **`search` on listCustomer** searches across name, email, phone fields
 - **`search` on listOrder** searches order numbers only, NOT customer fields
 - **Token expires in 4 hours** (14400s) — cache and refresh on 401
+
+### Error Responses
+- A complete official error payload contract is **not fully documented** in these references, so treat parsing defensively.
+- GraphQL validation/runtime failures are typically surfaced through an `errors` array.
+- Auth and quota failures are surfaced via HTTP status (commonly 401 / 429).
+
+Example GraphQL error envelope:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Cannot query field \"foo\" on type \"Query\".",
+      "locations": [{ "line": 1, "column": 3 }],
+      "extensions": { "code": "GRAPHQL_VALIDATION_FAILED" }
+    }
+  ],
+  "data": null
+}
+```
+
+Handling rule: always check **both** HTTP status and GraphQL `errors` before trusting `data`.
+
+### Rate Limiting
+Official rate-limit policy is documented by ikas here: `https://builders.ikas.com/docs/admin-api/rate-limits`
+
+- **General limit:** max **50 requests / 10 seconds**
+- Exceeding limit returns **HTTP 429 Too Many Requests**
+- **Error-rate block:** if 1-hour error rate exceeds 25%, API access can be blocked for 1 hour
+- Additional escalating blocks apply for sustained high error-rate traffic (30m / 12h / permanent)
 
 ## API Coverage
 
@@ -98,7 +138,6 @@ query($search: String, $pagination: PaginationInput) {
     data { id firstName lastName phone email }
   }
 }
-# Variables: { "search": "+905551234567", "pagination": { "limit": 20, "page": 1 } }
 
 # Step 2: Get their orders
 query($customerId: StringFilterInput, $pagination: PaginationInput, $sort: String) {
@@ -108,7 +147,23 @@ query($customerId: StringFilterInput, $pagination: PaginationInput, $sort: Strin
       orderLineItems { quantity finalPrice variant { name sku } } }
   }
 }
-# Variables: { "customerId": { "eq": "<id>" }, "pagination": { "limit": 10, "page": 1 }, "sort": "-orderedAt" }
+```
+
+**Step 1 Variables**
+```json
+{
+  "search": "+905551234567",
+  "pagination": { "limit": 20, "page": 1 }
+}
+```
+
+**Step 2 Variables**
+```json
+{
+  "customerId": { "eq": "<id>" },
+  "pagination": { "limit": 10, "page": 1 },
+  "sort": "-orderedAt"
+}
 ```
 
 ### Orders by Date Range
@@ -119,7 +174,14 @@ query($orderedAt: DateFilterInput, $pagination: PaginationInput) {
     data { orderNumber status totalFinalPrice orderedAt }
   }
 }
-# Variables: { "orderedAt": { "gte": <unix_ms_start>, "lte": <unix_ms_end> }, "pagination": { "limit": 50, "page": 1 } }
+```
+
+**Variables**
+```json
+{
+  "orderedAt": { "gte": "<unix_ms_start>", "lte": "<unix_ms_end>" },
+  "pagination": { "limit": 50, "page": 1 }
+}
 ```
 
 ### Products by Category
@@ -130,7 +192,14 @@ query($categoryIds: CategoryFilterInput, $pagination: PaginationInput) {
       variants { id isActive prices { sellPrice discountPrice currency } } }
   }
 }
-# Variables: { "categoryIds": { "in": ["<category-id>"] }, "pagination": { "limit": 30, "page": 1 } }
+```
+
+**Variables**
+```json
+{
+  "categoryIds": { "in": ["<category-id>"] },
+  "pagination": { "limit": 30, "page": 1 }
+}
 ```
 
 ## References
@@ -170,7 +239,7 @@ IKAS product URLs encode dimensions in slugs. Custom tools MUST parse these patt
 - Use for: broad text search across all products
 
 **ListProduct:**
-- Field: `listProduct(categoryIds: [UUID!], pagination: Pagination)`
+- Field: `listProduct(categoryIds: CategoryFilterInput, pagination: PaginationInput)`
 - Response: `data { ... }`
 - Supports categoryIds filter
 - Use for: category-scoped search when categoryId known

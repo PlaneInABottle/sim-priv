@@ -255,6 +255,8 @@ execute_workflow(
 )
 ```
 
+`triggerType` canonical values: `api` | `manual` | `schedule` | `chat` | `webhook` | `mcp` | `a2a`
+
 ### 3.2 Capture Execution Result
 
 The `execute_workflow` response contains:

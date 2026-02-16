@@ -8,7 +8,7 @@ Detailed troubleshooting guide for sim-mcp workflow operations. See [SKILL.md](.
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| "No start block found" | Wrong trigger type for `execute_workflow` | Use `start_trigger` with `triggerType: "api"/"manual"/"chat"`, `generic_webhook` with `triggerType: "webhook"`, `schedule` with `triggerType: "schedule"` |
+| "No start block found" | Wrong trigger type for `execute_workflow` | Use `start_trigger` with `triggerType: "api"/"manual"/"chat"/"mcp"/"a2a"`, `generic_webhook` with `triggerType: "webhook"`, `schedule` with `triggerType: "schedule"` |
 | "Block not found" | Block was deleted or ID is wrong | Call `get_workflow` to verify current block IDs |
 | "Invalid block type" | Misspelled type name | Check the Block Types Reference |
 | "Edge already exists" | Duplicate source→target connection | Check existing edges with `get_workflow` first |
@@ -30,7 +30,7 @@ Detailed troubleshooting guide for sim-mcp workflow operations. See [SKILL.md](.
 3. **Not setting API keys** — agent blocks need `apiKey` subBlock configured — **hard requirement**
 4. **Missing trigger block** — every workflow needs exactly one trigger
 5. **Wrong sourceHandle on conditions** — use `"condition-{conditionId}"` format, NOT `"true"` / `"false"`
-6. **Wrong trigger type** — `start_trigger` for API/manual/chat execution, `generic_webhook` for webhook execution, `schedule` for scheduled execution
+6. **Wrong trigger type** — `start_trigger` for API/manual/chat/MCP/A2A execution, `generic_webhook` for webhook execution, `schedule` for scheduled execution
 7. **Response block in structured mode** — set `dataMode` to `"json"` for tag-based responses
 8. **Using `inputData` or `params` for block data in function blocks** — `params` is always `{}` for regular function blocks; use tag syntax `<BlockName.field>` instead
 9. **Referencing function output as `.output`** — the correct field is `.result` (e.g., `<MyFunc.result>`)

@@ -71,6 +71,21 @@ Every ikas agent needs these four tools:
 
 Skip `calculate_product_price` if all products are fixed-price.
 
+### OAuth Credential Setup (ikas)
+
+If your agent uses ikas GraphQL-backed tools (`ikas_browse`, `ikas_lookup_customer_orders`), configure OAuth first:
+
+1. Create an API application in the ikas merchant/admin panel.
+2. Collect `client_id` and `client_secret`.
+3. Store credentials in secure environment variables or secret storage (never hardcode in prompt text).
+4. Obtain token via OAuth2 `client_credentials` grant from:
+   - `https://<store>.myikas.com/api/admin/oauth/token`
+5. Use returned bearer token for Admin GraphQL calls.
+
+For full auth flow and token lifecycle details, see [ikas-api skill quick start](../../ikas-api/SKILL.md#quick-start).
+
+> **Rate limits:** ikas Admin API requests are rate-limited (currently 50 requests / 10 seconds). See [ikas-api rate limiting](../../ikas-api/SKILL.md#rate-limiting) before production rollout.
+
 > **Production note:** Kamatas replaces `ikas_browse` with `get_products_by_main_category` — a single-call tool returning all products grouped by type with `dims: "WxH"` strings and color variants. See the [ikas-products-grouping skill](../../ikas-products-grouping/SKILL.md) for the grouping pattern. When using this tool, navigation simplifies from multi-step browsing to: customer says category → single tool call → filter and present results. The template uses `ikas_browse` as the generic fallback; customize the navigation section for your tool.
 
 ## Dimension Extraction & Product Filtering
@@ -79,7 +94,7 @@ Skip `calculate_product_price` if all products are fixed-price.
 
 **When customer provides dimensions, ALWAYS extract them and use for filtering:**
 
-```
+```text
 Customer: "80x180 menteşeli pencere"
 Extract: {width: 80, height: 180}
 Agent calls: get_products_by_main_category("sineklikler")
@@ -102,7 +117,7 @@ Agent filters: returned groups by dims field matching customer dimensions
 
 When dimensions don't fit requested category, check alternatives in the same results:
 
-```
+```text
 Customer: "80×180 menteşeli pencere"
 Agent calls: get_products_by_main_category("sineklikler")
 Agent filters: menteşeli pencere groups → max dims ~70x150 (too small for 180cm height)

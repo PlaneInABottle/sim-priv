@@ -24,7 +24,8 @@ When testing a new custom tool for the first time, use a restricted block config
 ### Setup: Minimal Blocks Profile
 
 Create a **TOOL_ONLY** test profile with:
-- **Enabled:** API trigger (or start trigger) → Agent block (uses tool) → Response block
+- **Enabled:** `start_trigger` → Agent block (uses tool) → Response block  
+  *(Legacy `api_trigger` may exist in older workflows but is hidden/deprecated.)*
 - **Disabled:** All other blocks (routers, conditions, secondary agents, integrations)
 
 **Why:** Isolates the tool's behavior; eliminates noise from other agents/blocks; confirms tool works before trusting it with full routing.

@@ -453,7 +453,7 @@ Query, upload to, or create documents in a vector knowledge base.
 }
 ```
 
-**Output:** Search results array, or upload/create confirmation
+**Output:** `.results` (search results), `.query` (query used), `.totalResults` (result count)
 
 ### variables
 Set one or more workflow variable values. This is a single block type (not separate get/set blocks). Variables set here can be read elsewhere in the workflow via `<variable.variableName>` tag syntax.
@@ -535,6 +535,7 @@ Standard spacing for visual clarity:
 | `router_v2` | `.selectedRoute` (route ID), `.reasoning` (LLM explanation), `.selectedPath` (target block info), `.context` (input context), `.model`, `.tokens`, `.cost` |
 | `memory` | `.memories` (memory data), `.id` (memory identifier) |
 | `workflow_input` | `.success`, `.childWorkflowName`, `.childWorkflowId`, `.result`, `.error` |
+| `knowledge` | `.results`, `.query`, `.totalResults` |
 | `response` | `.data`, `.status`, `.headers` |
 | `wait` | `.waitDuration` (duration in ms), `.status` (waiting/completed/cancelled) |
 | `human_in_the_loop` | `.url`, `.resumeEndpoint`, `.response`, `.submission`, `.resumeInput`, `.submittedAt` |

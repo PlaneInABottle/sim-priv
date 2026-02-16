@@ -6,7 +6,7 @@ license: Complete terms in LICENSE.txt
 
 # AI-Native Workflow Management
 
-Autonomous guide for creating, building, executing, and monitoring Sim Studio workflows via the 25 sim-mcp tools. All operations update the UI in real-time.
+Autonomous guide for creating, building, executing, and monitoring Sim Studio workflows via the 28 sim-mcp tools. All operations update the UI in real-time.
 
 > **Deep dives:** [MCP Tools](references/mcp-tools-reference.md) · [Block Types](references/block-types.md) · [Function Patterns](references/function-block-patterns.md) · [API Patterns](references/api-block-patterns.md) · [Troubleshooting](references/troubleshooting.md) · [Templates](examples/workflow-templates.json)
 
@@ -27,13 +27,13 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 |-------|-------|---------|
 | **Create** | `create_workflow` | Create empty workflow |
 | **Build** | `add_blocks`, `add_edge`, `add_variable` | Add blocks, connect them, define variables |
-| **Configure** | `update_subblock`, `update_block_name`, `toggle_block_enabled` | Set block parameters |
+| **Configure** | `update_subblock`, `update_block_name`, `toggle_block_enabled`, `update_block_parent` | Set block parameters |
 | **Execute** | `execute_workflow` | Run with any trigger type |
 | **Monitor** | `get_execution_logs`, `get_execution_log_detail` | Retrieve logs, trace spans, costs |
 | **Inspect** | `list_workflows`, `get_workflow`, `get_block` | Read workflow state |
 | **Manage** | `remove_blocks`, `remove_edge`, `remove_variable` | Remove components |
-| **Skills** | `list_skills`, `create_skill`, `update_skill`, `delete_skill` | Manage workspace skills for agents |
-| **Advanced** | `replace_workflow_state`, `update_subflow`, `list_custom_tools`, `upsert_custom_tools` | Bulk ops, loops, custom tools |
+| **Skills** | `list_skills`, `get_skill`, `create_skill`, `update_skill`, `delete_skill` | Manage workspace skills for agents |
+| **Advanced** | `replace_workflow_state`, `update_subflow`, `list_custom_tools`, `get_custom_tool`, `upsert_custom_tools` | Bulk ops, loops, custom tools |
 
 ---
 
@@ -68,9 +68,9 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 
 ### Skills & Advanced
 
-- **`list_skills`**`({ workspaceId })` · **`create_skill`**`({ workspaceId, name, description, content })` · **`update_skill`**`(...)` · **`delete_skill`**`({ workspaceId, id })`
+- **`list_skills`**`({ workspaceId })` · **`get_skill`**`({ workspaceId, id })` · **`create_skill`**`({ workspaceId, name, description, content })` · **`update_skill`**`(...)` · **`delete_skill`**`({ workspaceId, id })`
 - **`replace_workflow_state`**`({ workflowId, state })` · **`update_subflow`**`({ workflowId, id, type, config })`
-- **`list_custom_tools`**`({ workspaceId })` · **`upsert_custom_tools`**`({ workspaceId, tools })`
+- **`list_custom_tools`**`({ workspaceId })` · **`get_custom_tool`**`({ toolId, workspaceId? })` · **`upsert_custom_tools`**`({ workspaceId, tools })`
 
 **⚠️ After deleting a skill:** Manually remove the skill reference from agent blocks — deletion does NOT auto-remove references. [Details](references/mcp-tools-reference.md#delete_skill)
 

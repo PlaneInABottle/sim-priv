@@ -22,8 +22,8 @@ Output:
 ```json
 {
   "mainCategory": "Sineklikler",
-  "totalProducts": 100,
-  "totalGroups": 39,
+  "totalProducts": 3,
+  "totalGroups": 1,
   "groups": [
     {
       "type": "Akordeon DUBLE Kapı Sineklik",
@@ -224,7 +224,7 @@ In Sim Studio custom tools, use template variable syntax: `{{IKAS_CLIENT_ID}}`, 
 - **Workspace:** `ac7ec7a6-f09a-4035-8e96-e9e95b75221b`
 - **Workflow:** Kamatas PROD (`53408cc2-52fa-46e5-85d7-402d2f42f3a4`)
 - **Tool ID:** `1l6OXfiPurePIeJcLDOS4`
-- **Token Savings:** 45% average (100 products → 39 groups)
+- **Token Savings:** verify from your execution logs (varies by category/data shape)
 - **Performance:** ~650-850ms per category, Redis cached
 
 ## See Also

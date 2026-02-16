@@ -4,19 +4,20 @@
 
 Create a standalone test script to validate transformation logic without touching the UI.
 
-> **File structure:** The code below is split across separate files:
-> - `mock-data.js` — Section 1.1 (mock ikas response + `module.exports`)
-> - `transformations.js` — Section 1.2 (color/type extraction, dims serialization + `module.exports`)
-> - `grouping.js` — Section 1.3 (grouping function — imports from `transformations.js` + `module.exports`)
-> - `test-products.js` — Section 1.4 (test runner — imports from all above)
+> **Default mode (recommended): single file.**
+> Paste Sections **1.1 → 1.4** into one `test-products.js` file and run it directly.
 >
-> If you prefer a single file, remove all `module.exports` / `require()` lines and
-> paste sections 1.1–1.4 in order into one `test-products.js`.
+> **Optional split-file mode:** If you want separate files, create:
+> - `mock-data.js` — Section 1.1
+> - `transformations.js` — Section 1.2
+> - `grouping.js` — Section 1.3
+> - `test-products.js` — Section 1.4  
+> and add `module.exports` / `require()` lines as needed.
 
 ### 1.1 Mock ikas Response
 
 ```javascript
-// test-products.js — mock data matching real ikas Product shape
+// mock-data.js (or top of test-products.js in single-file mode)
 const mockProducts = [
   {
     id: "prod-1",
@@ -62,8 +63,6 @@ const mockProducts = [
   },
   // ... more products
 ];
-
-module.exports = { mockProducts };
 ```
 
 ### 1.2 Transformation Functions
@@ -131,15 +130,11 @@ function serializeDims(dims) {
   const h = dims.maxHeight ?? dims.height ?? dims.minHeight;
   return (w && h) ? `${w}x${h}` : null;
 }
-
-module.exports = { extractColor, extractBaseType, serializeDims, KNOWN_COLORS_MULTI, KNOWN_COLORS_SINGLE };
 ```
 
 ### 1.3 Grouping Function
 
 ```javascript
-const { extractColor, extractBaseType, serializeDims } = require('./transformations');
-
 function groupProducts(products) {
   products = products.map(p => ({ ...p, dims: serializeDims(p.dims) }));
   const groups = new Map();
@@ -197,17 +192,11 @@ function groupProducts(products) {
 
   return Array.from(groups.values());
 }
-
-module.exports = { groupProducts };
 ```
 
-### 1.4 Test Runner
+### 1.4 Test Runner (Single-File Mode)
 
 ```javascript
-const { mockProducts } = require('./mock-data');
-const { extractColor, extractBaseType, serializeDims } = require('./transformations');
-const { groupProducts } = require('./grouping');
-
 console.log('=== Color Extraction ===');
 const product1 = mockProducts[0];
 console.log(`Name: ${product1.name}`);
@@ -227,6 +216,7 @@ console.log(JSON.stringify(grouped[0], null, 2));
 ### 1.5 Run Test
 
 ```bash
+cd .claude/skills/ikas-products-grouping/references
 node test-products.js
 ```
 
@@ -253,9 +243,9 @@ Token Savings: 67%
 }
 ```
 
-> **Note:** The mock data above contains only 3 products for simplicity. In production,
-> a category like "sineklikler" returns ~100 products → ~39 groups with ~61% token savings.
-> With 3 mock products all sharing the same base type, they collapse into 1 group (67% savings).
+> **Note:** The mock data above contains only 3 products and the expected output is based
+> strictly on that mock input (`Products: 3`, `Groups: 1`, `Token Savings: 67%`).
+> If you later test with real storefront data, product/group counts will differ by category.
 > Prices differ (4621.5, 4621.5, 5220 → Set.size = 2), so no price hoisting occurs —
 > each variant retains its individual price. The `dims` field is absent because dimension
 > parsing from slugs is a prerequisite step not shown in the mock (see section 1.2 note).
@@ -365,15 +355,16 @@ Expected: Agent filters groups by dimension
 
 ### 3.2 Multi-Category Performance
 
-Test with all categories to ensure consistent token savings:
+Test with all categories to ensure consistent token savings.  
+Use real measured values from your execution logs (replace placeholders below):
 
 ```
-- sineklikler: 100 products → 39 groups (61%)
-- perdeler: 80 products → 28 groups (65%)
-- otomatik-panjurlar: 50 products → 20 groups (60%)
-- profiller: 40 products → 15 groups (63%)
-- aksesuarlar: 60 products → 25 groups (58%)
-- tutamaklar: 30 products → 12 groups (60%)
+- sineklikler: <products> → <groups> (<savings>%)
+- perdeler: <products> → <groups> (<savings>%)
+- otomatik-panjurlar: <products> → <groups> (<savings>%)
+- profiller: <products> → <groups> (<savings>%)
+- aksesuarlar: <products> → <groups> (<savings>%)
+- tutamaklar: <products> → <groups> (<savings>%)
 ```
 
 ---

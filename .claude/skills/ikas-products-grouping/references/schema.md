@@ -22,8 +22,8 @@
 {
   "mainCategory": "sineklikler",
   "categoryLabel": "Sineklikler",
-  "totalProducts": 100,
-  "totalGroups": 39,
+  "totalProducts": 3,
+  "totalGroups": 1,
   "groups": [
     {
       "type": "Akordeon DUBLE Kapı Sineklik",
@@ -32,17 +32,17 @@
         {
           "color": "Antrasit",
           "price": 4621.5,
-          "url": "/products/akordeon-duble-kapi-sineklik-antrasit"
+          "url": "/akordeon-duble-kapi-sineklik-antrasit-maximum-290x240"
         },
         {
           "color": "Beyaz",
           "price": 4621.5,
-          "url": "/products/akordeon-duble-kapi-sineklik-beyaz"
+          "url": "/akordeon-duble-kapi-sineklik-beyaz-maximum-290x240"
         },
         {
           "color": "Altınmeşe",
           "price": 5220,
-          "url": "/products/akordeon-duble-kapi-sineklik-altinmese"
+          "url": "/akordeon-duble-kapi-sineklik-altinmese-maximum-290x240"
         }
       ]
     }
@@ -227,9 +227,9 @@ mainCategory enum = [slug1, slug2, ...]  // from root categories' metaData.slug
 
 ## Token Efficiency Metrics
 
-### Before Grouping (Flat)
+### Before Grouping (Flat Mock Input)
 
-100 products × ~55 tokens/product = **~5,500 tokens**
+3 products × ~55 tokens/product = **~165 tokens**
 
 Breakdown per product:
 - Product name: 8 tokens
@@ -239,18 +239,17 @@ Breakdown per product:
 - URL: 8 tokens
 - Variant array overhead: 27 tokens
 
-### After Grouping (v6 Schema)
+### After Grouping (Grouped Mock Output)
 
-39 groups × ~60 tokens/group = **~2,300 tokens**
+1 group × ~60 tokens/group = **~60 tokens**
 
-Savings by optimization:
-- Deduplication: −89 products (−4,895 tokens)
-- Relative URLs: −200 tokens (removed domain)
-- Price hoisting: −300 tokens (moved outside variants)
-- Omit nulls: −180 tokens (no empty fields)
-- Dimension format: −100 tokens (simple string vs object)
+Savings by optimization (mock example):
+- Deduplication: 3 products → 1 group
+- Relative URLs: removes domain overhead
+- Omit nulls: no empty optional fields
+- Flattened shape: lower token overhead for agents
 
-**Result: 58% savings**
+**Result (mock): ~64% savings**
 
 ## Environment Variables
 

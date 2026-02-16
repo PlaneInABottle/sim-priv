@@ -9,7 +9,7 @@ Manage the Sim Studio development environment: PostgreSQL in Docker, Next.js app
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │  Docker Compose (docker-compose.local.yml)  │
 │  ┌────────────────────────────────────────┐  │
@@ -73,7 +73,7 @@ Run from repo root. Requires `DATABASE_URL` in `apps/sim/.env`.
 
 Use async mode with detach so the process persists:
 
-```
+```text
 bash(command: "bun run dev:full", mode="async", detach=true)
 ```
 
@@ -123,7 +123,7 @@ Or run `scripts/check-health.sh` from the skill directory at `.claude/skills/sim
 
 **App + Socket logs:** Detached processes automatically redirect output to temporary log files. Use `read_bash` to get the log path:
 
-```
+```text
 read_bash(shellId: "{shellId}", delay: 5)
 # Returns: <command detached, output redirected to /var/folders/.../copilot-detached-{shellId}-*.log>
 ```

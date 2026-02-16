@@ -1,10 +1,22 @@
 # MCP Tools Parameter Reference
 
-Detailed parameter tables for all 27 sim-mcp tools. See [SKILL.md](../SKILL.md) for usage patterns and examples.
+Detailed parameter tables for all 28 sim-mcp tools. See [SKILL.md](../SKILL.md) for usage patterns and examples.
 
 ---
 
 ## Creation
+
+### `list_tools`
+
+List all available sim-mcp tools and their descriptions.
+
+```
+list_tools()
+```
+
+**Returns:** Server metadata plus the full registered tools list.
+
+---
 
 ### `create_workflow`
 
@@ -408,7 +420,7 @@ list_skills({ workspaceId: "ws_id" })
 |-------|----------|-------------|
 | `workspaceId` | ✅ | Workspace ID to list skills from |
 
-**Returns:** Array of skills with id, name, description, content, createdAt, updatedAt.
+**Returns:** Array of skill metadata only: `id`, `name`, `description` (no `content`).
 
 ### `get_skill`
 

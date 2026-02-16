@@ -37,7 +37,7 @@ Instead, use **test profiles** to control exactly what executes.
 
 ### Core Testing Flow
 
-```
+```text
 SNAPSHOT → DISABLE → EXECUTE → VERIFY → RESTORE
 ```
 
@@ -58,6 +58,15 @@ Three isolation levels control how much of the workflow executes:
 | **CONDITION_ONLY** | Test routing logic only | $0.00 | Trigger + condition blocks |
 | **PATH_ISOLATION** | Test one execution path | $0.00–0.01 | Target path blocks only |
 | **FULL_INTEGRATION** | End-to-end with AI agent | $0.01–0.05 | All except final send |
+
+---
+
+## Prerequisites
+
+- **sim-mcp tool access:** You must be able to call workflow tools such as `get_workflow`, `execute_workflow`, and `toggle_block_enabled`.
+- **Workspace permissions:** Access to the target `workspaceId` and `workflowId` with permission to read and execute.
+- **Runtime availability:** Target Sim environment (local/staging/prod) must be reachable before test execution.
+- **Optional SQL tracking:** If recording pass/fail in session SQL, initialize the schema from `references/block-management.md`.
 
 ---
 
@@ -98,6 +107,7 @@ See `references/TABLE_OF_CONTENTS.md` for the full index. Key files:
 | [`references/custom-tool-testing.md`](references/custom-tool-testing.md) | Building custom tools — isolated testing, lifecycle, anti-patterns |
 | [`references/payload-examples.md`](references/payload-examples.md) | Need full JSON payloads — 6 complete examples |
 | [`references/company-tests/kamatas-test-suite.md`](references/company-tests/kamatas-test-suite.md) | Testing Kamatas — full test matrix |
+| [`../sim-workflows/references/block-types.md`](../sim-workflows/references/block-types.md) | Canonical block outputs and semantics (`memory`, `workflow_input`, `knowledge`, `agent`) |
 
 ---
 
@@ -110,6 +120,7 @@ See `references/TABLE_OF_CONTENTS.md` for the full index. Key files:
 5. **Use the CONDITION_ONLY profile first** — Cheapest and safest; validates routing before testing paths
 6. **Watch for production traffic** — If the workflow is live, coordinate test windows
 7. **Never modify block configuration** — Only toggle enabled/disabled; never change block logic
+8. **Respect external API limits** — If the workflow calls ikas/Chatwoot APIs, space test runs and account for upstream rate limits.
 
 ### Emergency Restore
 
@@ -130,6 +141,14 @@ Or restore from snapshot — see `references/error-recovery.md`.
 - **External APIs:** Media Handoff makes real Chatwoot API calls. Use test conversation IDs.
 - **Draft State Only:** Tests execute against draft, not deployed snapshots.
 - **Numeric message_type:** Payloads use string `"incoming"` vs Chatwoot's numeric `0`. Doesn't affect test results.
+
+## Error Response Handling
+
+This skill does not define a single custom API error envelope. Handle failures using the tool response shape:
+
+- Verify `success`/error status from each sim-mcp tool call before proceeding.
+- On execution failure, inspect error text and then query execution logs for trace-level details.
+- For invalid `workflowId`/`blockId` or permission issues, expect tool-level errors and stop the test flow until corrected.
 
 ---
 

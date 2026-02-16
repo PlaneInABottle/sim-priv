@@ -133,6 +133,8 @@ ASSERT: block("<BLOCK_NAME>").output.result.<FIELD> EQUALS "<VALUE>"
 ASSERT: final_output CONTAINS "<SUBSTRING>"
 ```
 
+> **Naming note:** In trace-span assertions, outputs are wrapped under `.output` (for example `block("Support Agent").output.content`). In workflow tag syntax, use canonical block fields directly (for example `<Support Agent.content>`, `<Memory 1.memories>`, `<Knowledge.results>`).
+
 **How to extract:**
 ```python
 # Block output from trace span
