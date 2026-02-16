@@ -138,10 +138,11 @@ INSERT INTO block_snapshots (id, run_id, block_id, block_name, original_enabled)
 ### 3.1 Disable Non-Condition Blocks
 
 For CONDITION_ONLY, we keep only: Webhook 1, Incoming Only, Is Media Message?.
-Disable all 18 other blocks:
+Disable all 19 other blocks:
 
 ```
 toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="block-b0a9fec7-4938-4c4c-bf17-87c193b468b1", enabled=false)
+toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="buildconversationcompositekey", enabled=false)
 toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="5c001454-9711-456e-b56c-c66baccb1d3c", enabled=false)
 toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="d4b467d3-b1d6-4319-a7d8-356f1bbda3ed", enabled=false)
 toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="ca5acc54-e9d3-45a3-965e-ef10c3b8295d", enabled=false)
@@ -235,14 +236,16 @@ execute_workflow(
 
 ### 3.3 Check Execution Logs
 
+Extract the `executionId` from the `execute_workflow` response (e.g., `"exec-abc123"` from Step 3.2),
+then fetch logs for that specific execution:
+
 ```
 get_execution_logs(
     workspaceId="ac7ec7a6-f09a-4035-8e96-e9e95b75221b",
-    workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4",
+    executionId="exec-abc123",
     details="full",
     includeTraceSpans=true,
-    includeFinalOutput=true,
-    limit=1
+    includeFinalOutput=true
 )
 ```
 

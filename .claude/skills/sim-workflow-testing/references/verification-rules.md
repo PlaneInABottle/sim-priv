@@ -178,7 +178,7 @@ Only condition blocks + trigger are enabled, so traces are short:
 | S-09: Text with image | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
 | S-10: Document attachment | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
 | S-11: Multiple attachments | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-12: Empty content | `["Webhook 1", "Incoming Only"]` |
+| S-12: Empty content | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
 | S-13: Measurement question | `["Webhook 1", "Incoming Only"]` |
 
 ### PATH_ISOLATION — Media Path
@@ -190,6 +190,7 @@ Only condition blocks + trigger are enabled, so traces are short:
 | S-06: Video | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 | S-09: Text+Image | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 | S-11: Multi-image | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
+| S-14: Mixed Audio+Image | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 
 ### PATH_ISOLATION — Text Path (Agent Disabled)
 
