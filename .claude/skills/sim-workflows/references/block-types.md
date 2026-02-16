@@ -387,6 +387,42 @@ Execute custom JavaScript (or Python when E2B is enabled) code.
 **Input:** `params` is always `{}` for regular function blocks (only populated for custom tool executions). Previous block outputs accessed via tag syntax `<BlockName.field>` (replaced with variable references before execution; block names in function code must not contain spaces).
 **Output:** `{ result: <returnValue>, stdout: "" }`
 
+### memory
+Conversation memory store for adding, retrieving, and deleting message history. Used to inject artificial memory into agent conversations.
+
+**Data structure:**
+```typescript
+{
+  operation: "add" | "getAll" | "get" | "delete"
+  id?: string                    // Conversation ID (required for add, get, delete)
+  role?: "user" | "assistant" | "system"  // Message role (required for add)
+  content?: string               // Message content (required for add)
+}
+```
+
+**SubBlock IDs:** `operation`, `id`, `role`, `content`
+
+> **⚠️ Best practice:** Only use this block when explicitly needed for artificial memory injection. For natural conversations, use the agent block's built-in memory modes instead.
+
+**Output:** `.memories` (memory data), `.id` (memory identifier)
+
+### workflow_input
+Execute another (child) workflow and map variables to its Start trigger schema. Enables modular workflow composition.
+
+**Data structure:**
+```typescript
+{
+  workflowId: string             // Child workflow ID (workflow-selector, required)
+  inputMapping?: object          // Map of child Start block fields to parent values (input-mapping)
+}
+```
+
+**SubBlock IDs:** `workflowId`, `inputMapping`
+
+> **⚠️ Note:** The `inputMapping` subblock depends on `workflowId` — select the child workflow first, then map its Start block inputs.
+
+**Output:** `.success` (boolean), `.childWorkflowName` (string), `.childWorkflowId` (string), `.result` (execution result), `.error` (error message if failed)
+
 ### knowledge
 Query, upload to, or create documents in a vector knowledge base.
 
@@ -488,6 +524,8 @@ Standard spacing for visual clarity:
 | `start_trigger` | `.input` (full input), `.conversationId`, `.files`, + inputFormat fields |
 | `api` | `.data` (response body), `.status`, `.headers` |
 | `condition` | `.conditionResult`, `.selectedPath`, `.selectedOption`; spreads source output |
+| `memory` | `.memories` (memory data), `.id` (memory identifier) |
+| `workflow_input` | `.success`, `.childWorkflowName`, `.childWorkflowId`, `.result`, `.error` |
 | `response` | `.data`, `.status`, `.headers` |
 
 ### Tag Syntax Details
