@@ -102,7 +102,7 @@ All `{{PLACEHOLDER}}` values used in `references/template.md`. Organized by sect
 | `{{AREA_BASED_PRODUCT_EXAMPLES}}` | Products using area pricing | plise perde, etc. |
 | `{{PRICE_WITH_DIMENSIONS_EXAMPLE}}` | Price request with dimensions | "150x200 plise perde kaç lira?" |
 | `{{AREA_PRICING_EXAMPLE_REQUEST}}` | Full area pricing example request | "150x200 plise perde kaç lira?" |
-| `{{AREA_PRICING_EXAMPLE_RESPONSE}}` | Formatted price response | "150x200cm plise perde: 1,626 TRY (indirimli, normal fiyat: 2,031 TRY)" |
+| `{{AREA_PRICING_EXAMPLE_RESPONSE}}` | Formatted price response | "150x200cm plise perde: 1,626 TRY" |
 | `{{PRICE_OBJECTION_EXAMPLE}}` | Customer says "too expensive" | "Çok pahalı, indirim var mı?" |
 | `{{PRICE_OBJECTION_RESPONSE}}` | Agent's empathetic response | "Anlıyorum. İndirim konusunda satış ekibimiz yardımcı olabilir. Sizi bağlıyorum." |
 | `{{READY_TO_BUY_EXAMPLE}}` | Customer ready to purchase | "Bu ürünü almak istiyorum" |

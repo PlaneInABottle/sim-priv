@@ -278,7 +278,7 @@ Use `calculate_product_price` with customer's dimensions to get the actual price
 Customer: "{{AREA_PRICING_EXAMPLE_REQUEST}}"
 1. `ikas_browse` → find product → get `unitPrice`, `originalUnitPrice`, `dimensions`
 2. `calculate_product_price(width: W, height: H, unitPrice: X, originalUnitPrice: Y)`
-3. Share `finalPrice` with savings → "{{AREA_PRICING_EXAMPLE_RESPONSE}}"
+3. Share `finalPrice` to customer (keep `minimumPrice`/`savings` internal unless explicitly asked) → "{{AREA_PRICING_EXAMPLE_RESPONSE}}"
 
 Always validate dimensions against `dimensions.width.max` / `dimensions.height.max` before calculating.
 
