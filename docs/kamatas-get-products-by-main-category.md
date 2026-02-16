@@ -47,40 +47,45 @@ Queried from ikas Admin API (`listCategory`), filtered to storefront-visible (`s
 }
 ```
 
-## Response Format (v5 — Grouped + Flattened)
+## Response Format (v6 — Grouped + Flattened, Full-Scan Color Extraction)
 
-**Updated 2026-02-16:** Replaced flat product list with grouped response schema.
+**Updated 2026-02-16:** v6 adds full-scan color extraction across ALL word positions,
+multi-word colors (Metalik Gri, Ara Gri), expanded color palette (15 colors),
+and punctuation-aware matching. Dramatically improves grouping for perdeler,
+otomatik-panjurlar, aksesuarlar, and tutamaklar categories.
 
 ```json
 {
-  "mainCategory": "Sineklikler",
-  "totalProducts": 100,
-  "totalGroups": 39,
+  "mainCategory": "Tutamaklar",
+  "totalProducts": 8,
+  "totalGroups": 4,
   "baseUrl": "https://kamatas.com",
   "groups": [
     {
-      "type": "Anti-Polen akordeon Kapı Sineklik",
-      "dims": "90x210",
-      "price": 2398,
+      "type": "Merdiven Tutamağı 100cm",
+      "price": 870,
       "variants": [
-        { "color": "Altınmeşe", "url": "/anti-polen-akordiyon-kapi-sinekligi-altinmese-max-90x210" },
-        { "color": "Antrasit", "url": "/anti-polen-kapi-sinekligi-antrasit-max-90x210" },
-        { "color": "Beyaz", "url": "/anti-polen-akordiyon-kapi-sinekligi-beyaz-max-90x210" }
+        { "color": "Bronz", "url": "/aluminyum-bronz-merdiven-tutamak-..." },
+        { "color": "Metalik Gri", "url": "/aluminyum-merdiven-korkuluk-..." }
       ]
     },
     {
-      "type": "Akordeon DUBLE Kapı Sineklik",
-      "dims": "290x240",
+      "type": "Orjin Pliseli Perde Katlanır Cam/Ev/Ofis Perdesi, İstediğin Ölçüde",
+      "price": 5.42,
       "variants": [
-        { "color": "Antrasit", "price": 4621.5, "url": "/double-akordiyon-kapi-sinekligi-antrasit-maximum-290x240" },
-        { "color": "Altınmeşe", "price": 5220, "url": "/double-akordiyon-kapi-sinekligi-altinmese-maximum-290x240" },
-        { "color": "Beyaz", "price": 4621.5, "url": "/double-akordiyon-kapi-sinekligi-beyaz-maximum-290x240" }
+        { "color": "Antrasit", "url": "/orjin-pliseli-perde-antrasit-..." },
+        { "color": "Beyaz", "url": "/orjin-pliseli-perde-beyaz-..." },
+        { "color": "Gri", "url": "/orjin-pliseli-perde-gri-..." },
+        { "color": "Kırmızı", "url": "/still-plise-perde-kirmizi" },
+        { "color": "Krem", "url": "/orjin-pliseli-perde-krem-..." },
+        { "color": "Pudra", "url": "/still-plise-perde-pudra" },
+        { "color": "Yeşil", "url": "/still-plise-perde-yesil" }
       ]
     },
     {
       "type": "Yapışkanlı Sineklik Yaması Tülü Tamir Bandı 50mm x 2m",
       "variants": [
-        { "price": 99.99, "url": "/yapiskanli-sineklik-yamasi-tulu-tamir-bandi-50mm-x-5m" }
+        { "price": 99.99, "url": "/yapiskanli-sineklik-yamasi-..." }
       ]
     }
   ]
@@ -107,21 +112,39 @@ Queried from ikas Admin API (`listCategory`), filtered to storefront-visible (`s
 - If variants have **different prices** → `price` is per-variant, omitted from group
 - Price is always flat number (TRY assumed), not nested `{amount: X}`
 
-### Grouping Logic
+### Supported Colors (v6)
+
+**Multi-word (matched first):** Metalik Gri, Ara Gri
+**Single-word:** Beyaz, Antrasit, Altınmeşe, Kahverengi, Naturel, Siyah, Bronz, Parlak, Gri, Krem, Kırmızı, Pudra, Yeşil
+**Typo handling:** "Beya" → Beyaz
+
+### Grouping Logic (v6)
 - **Group key:** Normalized product type + dimensions
-- **Color extraction:** Turkish-aware, checks last word then first word against known colors (Beyaz, Antrasit, Altınmeşe, Kahverengi, Naturel)
-- **Typo normalization:** "Sinekliğ"→"Sineklik", "Cam Balkonlar"→"Cam Balkon"
-- **Case normalization:** Turkish İ/I handling for grouping (KEDİ = Kedi)
+- **Color extraction (v6):** Scans ALL word positions (right-to-left), strips trailing punctuation before matching
+- **Multi-word colors:** Checked first to prevent partial matches (e.g., "Metalik Gri" before "Gri")
+- **Typo normalization:** "Sinekliğ"→"Sineklik", "Cam Balkonlar"→"Cam Balkon", "Beya"→"Beyaz"
+- **Case normalization:** Turkish İ/I handling via `trLower()` (KEDİ = Kedi, ANTRASİT = Antrasit)
 - **URL deduplication:** No duplicate URLs within any group
 
-### Token Savings (v4 → v5)
+### Grouping Results Per Category (v6)
 
-| Metric | v4 (flat) | v5 (grouped) | Savings |
+| Category | Products | Groups | Ratio | Price Hoisting |
+|----------|----------|--------|-------|----------------|
+| sineklikler | 100 | 39 | 2.56x | 18 groups |
+| perdeler | 20 | 9 | 2.22x | 4 groups |
+| otomatik-panjurlar | 12 | 3 | 4.0x | 2 groups |
+| aksesuarlar | 35 | 28 | 1.25x | 5 groups |
+| tutamaklar | 8 | 4 | 2.0x | 4 groups |
+| profiller | 0 | 0 | — | — |
+
+### Token Savings (v4 → v6)
+
+| Metric | v4 (flat) | v6 (grouped) | Savings |
 |--------|-----------|--------------|---------|
-| JSON chars | 22,046 | 13,819 | **8,227 (37%)** |
-| Est. tokens | ~5,511 | ~3,454 | **~2,057** |
-| LLM input tokens | 7,627 | 5,550 | **2,077 (27%)** |
-| Products/groups | 100 flat | 39 groups | 61 fewer entries |
+| Sineklikler groups | 100 flat | 39 groups | **61 fewer entries (37%)** |
+| Perdeler groups | 20 flat | 9 groups | **11 fewer entries (55%)** |
+| Otomatik Panjurlar groups | 12 flat | 3 groups | **9 fewer entries (75%)** |
+| Tutamaklar groups | 8 flat | 4 groups | **4 fewer entries (50%)** |
 
 ## Implementation Details
 
@@ -131,8 +154,9 @@ Queried from ikas Admin API (`listCategory`), filtered to storefront-visible (`s
 - **Pagination:** Up to 10 pages × 200 products = 2000 max per category
 - **Product dedup:** By product ID (Set-based)
 - **Sorting:** Alphabetical (Turkish locale)
-- **Grouping (v5):** Type + dims based, with color variants, Turkish-aware normalization
+- **Grouping (v6):** Type + dims based, full-scan color extraction (15 colors incl. multi-word), Turkish-aware normalization
 - **Price optimization:** Same-price groups hoist price to group level
+- **Cache key:** `ikas:main-cat:${category}:v6`
 - **URL format:** Relative paths (strip `https://kamatas.com` prefix)
 - **Error handling:** All errors in Turkish
 
