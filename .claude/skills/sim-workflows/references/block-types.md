@@ -246,18 +246,25 @@ add_edge({ source: "router_1", target: "sales_agent",   sourceHandle: "router-sa
 add_edge({ source: "router_1", target: "general_agent", sourceHandle: "router-general" })
 ```
 
-## Loop Blocks
+## Subflow Containers
 
-### loop
-Iterate over arrays or repeat until condition met.
+> **⚠️ Important:** Loop and parallel are **subflow containers**, not registered block types. They do not appear in the block registry (`blocks/registry.ts`). They are created via `add_blocks` with `type: "loop"` or `type: "parallel"` and managed via `update_subflow`. Blocks are nested inside them using `update_block_parent`.
+
+### loop (subflow)
+Iterate over collections, repeat N times, or loop until a condition is met. Created via `add_blocks` with `type: "loop"`.
 
 **Data structure:**
 ```typescript
 {
-  type: "forEach" | "while"
-  array?: string             // For forEach: array expression
-  condition?: string         // For while: continuation condition
-  maxIterations?: number    // Safety limit
+  loopType: "for" | "forEach" | "while" | "doWhile"
+  // for:       runs N times (configure iterations via update_subflow)
+  // forEach:   iterates over a collection
+  // while:     runs while condition is true (checked before each iteration)
+  // doWhile:   runs at least once, then checks condition
+  forCount?: number          // For 'for': number of iterations
+  array?: string             // For 'forEach': array expression
+  condition?: string         // For 'while'/'doWhile': continuation condition
+  maxIterations?: number     // Safety limit
 }
 ```
 
@@ -287,7 +294,7 @@ AI-powered web research block (Parallel AI integration). Uses API key auth. **No
   // Search operation:
   objective?: string                // Search objective
   search_queries?: string           // Comma-separated queries
-  processor?: "lite" | "standard" | "pro" | "ultra" | ...  // Processing tier
+  processor?: "lite" | "base" | "core" | "core2x" | "pro" | "ultra" | "ultra2x" | "ultra4x"  // Processing tier (default: "base")
   max_results?: string
   max_chars_per_result?: string
   // Extract operation:
@@ -352,10 +359,17 @@ Return data from workflow execution. Typically last block in workflow.
 **Data structure:**
 ```typescript
 {
-  data: any                 // Data to return, supports expressions
-  statusCode?: number       // HTTP status code (default 200)
+  dataMode: "structured" | "json"  // Builder mode vs JSON editor (set to "json" BEFORE setting data)
+  builderData?: object             // For structured mode (response-format)
+  data?: string                    // For json mode: expression/JSON string
+  status?: string                  // HTTP status code as string (default: "200")
+  headers?: Array<{ key: string, value: string }>  // Custom response headers
 }
 ```
+
+**SubBlock IDs:** `dataMode`, `builderData`, `data`, `status`, `headers`
+
+> **⚠️ The subblock ID is `status` (not `statusCode`).** It's a `short-input` field that accepts a string value like `"200"`, `"404"`, etc.
 
 **Output:** Formatted response
 
