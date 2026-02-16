@@ -92,7 +92,7 @@ cd packages/db && bunx drizzle-kit migrate --config=./drizzle.config.ts
 
 ### Missing DATABASE_URL
 
-Ensure `.env` at repo root contains:
+Ensure `apps/sim/.env` contains:
 
 ```
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/simstudio"
@@ -111,8 +111,8 @@ bun install  # from repo root
 Copy the example:
 
 ```bash
-cp .env.example .env
-# Edit .env with required values
+cp apps/sim/.env.example apps/sim/.env
+# Edit apps/sim/.env with required values
 ```
 
 ### Next.js Compilation Stuck
@@ -154,7 +154,7 @@ If connection refused, the server hasn't started yet. Check logs from the `bun r
 
 ### Required Variables
 
-These must be set in `.env` for local dev:
+These must be set in `apps/sim/.env` for local dev:
 
 | Variable | Example | Generate with |
 |----------|---------|--------------|

@@ -35,7 +35,7 @@ Native dev is 3-5x faster than Docker volumes on macOS (50-200ms HMR vs 200-800m
 
 - **bun** installed globally
 - **Docker** and Docker Compose installed and running
-- `.env` file at repo root (copy from `.env.example`)
+- `.env` file at `apps/sim/.env` (copy from `apps/sim/.env.example`)
 - Required env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `INTERNAL_API_SECRET`
 
 ## Starting the Environment
@@ -67,7 +67,7 @@ Expected: `localhost:5432 - accepting connections`
 cd packages/db && bunx drizzle-kit migrate --config=./drizzle.config.ts
 ```
 
-Run from repo root. Requires `DATABASE_URL` in `.env`.
+Run from repo root. Requires `DATABASE_URL` in `apps/sim/.env`.
 
 ### Step 3: Start App + Socket Server
 
@@ -87,7 +87,7 @@ bash(command: "bun run dev:full", mode="async", detach=true)
 curl -s http://localhost:3002/health
 ```
 
-Expected: `{"status":"ok"}`
+Expected: `{"status":"ok","timestamp":"...","connections":N}`
 
 **Next.js app** (ready in ~15-30s):
 
@@ -96,6 +96,8 @@ curl -s http://localhost:3000/api/health
 ```
 
 Expected: `{"status":"ok","timestamp":"..."}`
+
+> **Note:** The socket health endpoint returns three fields: `status` (`"ok"` or `"error"`), `timestamp` (ISO 8601), and `connections` (active connection count). On error it returns HTTP 503 with `{"status":"error","message":"Health check failed"}`.
 
 If curl fails, the server is still compiling. Wait 10s and retry. Monitor with `read_bash` using the shellId from the async start.
 
@@ -114,7 +116,7 @@ Or run `scripts/check-health.sh` from the skill directory at `.claude/skills/sim
 | Service | Command | Expected | Timing |
 |---------|---------|----------|--------|
 | PostgreSQL | `docker compose -f docker-compose.local.yml exec db pg_isready -U postgres` | `accepting connections` | ~5s |
-| Socket | `curl -s http://localhost:3002/health` | `{"status":"ok"}` | ~5-10s |
+| Socket | `curl -s http://localhost:3002/health` | `{"status":"ok","timestamp":"...","connections":N}` | ~5-10s |
 | App | `curl -s http://localhost:3000/api/health` | `{"status":"ok",...}` | ~15-30s |
 
 ## Monitoring Logs

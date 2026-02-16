@@ -138,11 +138,11 @@ Configuration field types for block settings:
 | `file-selector` | File picker (Google Drive, etc.) |
 | `channel-selector` | Channel picker (Slack, Discord) |
 
-### Registered Blocks (130+)
+### Registered Blocks (180+)
 
 **Triggers:** `api_trigger`, `chat_trigger`, `generic_webhook`, `schedule`, `start_trigger`
 
-**Core:** `a2a`, `agent`, `api`, `condition`, `function`, `human_in_the_loop`, `mcp`, `memory`, `parallel_ai`, `response`, `router`, `variables`, `webhook_request`, `workflow`
+**Core:** `a2a`, `agent`, `api`, `condition`, `function`, `human_in_the_loop`, `knowledge`, `mcp`, `memory`, `parallel_ai`, `response`, `router`, `variables`, `webhook_request`, `workflow`
 
 **AI/LLM:** `openai`, `thinking`, `vision`, `image_generator`, `tts`, `stt`
 
