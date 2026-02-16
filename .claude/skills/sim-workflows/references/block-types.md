@@ -5,7 +5,7 @@ Comprehensive list of block types available in Sim workflows.
 ## Trigger Blocks
 
 ### start_trigger
-**Recommended** unified workflow entry point for API, manual, and chat runs. Replaces legacy `api_trigger`, `chat_trigger`, and `manual_trigger` blocks.
+**Recommended** unified workflow entry point for API, manual, chat, MCP, and A2A runs. Replaces legacy `api_trigger`, `chat_trigger`, and `manual_trigger` blocks.
 
 **Data structure:**
 ```typescript
@@ -19,7 +19,7 @@ Comprehensive list of block types available in Sim workflows.
 
 **Output:** `.input` (full input object), `.conversationId`, `.files`, plus spread fields from custom `inputFormat`
 
-**Trigger modes:** `api`, `manual`, `chat` (all supported by this single block)
+**Trigger modes:** `api`, `manual`, `chat`, `mcp`, `a2a` (all supported by this single block)
 
 ### generic_webhook
 Receive webhooks from any external service. Exposes a unique webhook URL.
@@ -325,7 +325,7 @@ Make HTTP requests to external APIs.
   url: string
   headers?: Record<string, string>
   body?: any
-  timeout?: number
+  timeout?: number          // Milliseconds (default: 300000 = 5 min, max: 600000 = 10 min)
 }
 ```
 
@@ -560,10 +560,10 @@ Enable error handlers on critical blocks:
 
 ### Timeouts
 Set reasonable timeouts to prevent stuck workflows:
-- API calls: 30-60 seconds
-- Agent blocks: 60-120 seconds
-- Code blocks: 10-30 seconds
-- Loop blocks: Set maxIterations
+- API blocks: default 300,000 ms (5 min), max 600,000 ms (10 min)
+- Agent blocks: 60-120 seconds recommended
+- Code blocks: 10-30 seconds recommended
+- Loop blocks: Set maxIterations (max 1000)
 
 ## Block Validation
 

@@ -13,7 +13,7 @@ Comprehensive guide for using API blocks in Sim workflows.
 | `headers` | `table` | Request headers as 2D array: `[["Key", "Value"], ...]` |
 | `body` | `string` or `object` | Request body (for POST/PUT/PATCH) |
 | `params` | `table` | Query parameters as 2D array: `[["key", "value"], ...]` |
-| `timeout` | `number` | Request timeout in milliseconds (default: 30000) |
+| `timeout` | `number` | Request timeout in milliseconds (default: 300000 = 5 min, max: 600000 = 10 min) |
 
 ---
 
