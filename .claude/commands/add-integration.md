@@ -208,7 +208,8 @@ export const {Service}Block: BlockConfig = {
 ```
 
 **Critical Canonical Param Rules:**
-- `canonicalParamId` must NOT match any subblock's `id` in the block
+- The basic-mode subblock's `id` CAN equal the `canonicalParamId` (preferred pattern, e.g., `id: 'channel'` with `canonicalParamId: 'channel'`)
+- `canonicalParamId` must NOT match the `id` of any subblock outside its canonical pair (causes serializer conflicts — the serializer deletes raw IDs and writes the canonical ID, so a collision would overwrite an unrelated subblock's value)
 - `canonicalParamId` must be unique per operation/condition context
 - Only use `canonicalParamId` to link basic/advanced alternatives for the same logical parameter
 - `mode` only controls UI visibility, NOT serialization. Without `canonicalParamId`, both basic and advanced field values would be sent
@@ -524,7 +525,7 @@ Use the basic/advanced mode pattern:
 },
 ```
 
-**Critical:** `canonicalParamId` must NOT match any subblock `id`.
+**Critical:** `canonicalParamId` must NOT match the `id` of any subblock outside its canonical pair. The basic-mode subblock's `id` CAN equal its `canonicalParamId` (preferred pattern).
 
 #### 2. Normalize File Input in Block Config
 

@@ -216,7 +216,8 @@ When your block accepts file uploads, use the basic/advanced mode pattern with `
 ```
 
 **Critical constraints:**
-- `canonicalParamId` must NOT match any subblock's `id` in the same block
+- The basic-mode subblock's `id` CAN equal the `canonicalParamId` (this is the preferred pattern, e.g., `id: 'channel'` with `canonicalParamId: 'channel'`)
+- `canonicalParamId` must NOT match the `id` of any subblock outside its canonical pair (i.e., any subblock that does not share the same `canonicalParamId`)
 - Values are stored under subblock `id`, not `canonicalParamId`
 
 ### Normalizing File Input in tools.config
@@ -420,7 +421,8 @@ Maps multiple UI fields to a single serialized parameter:
 - The serializer consolidates based on current mode
 
 **Critical constraints:**
-- `canonicalParamId` must NOT match any other subblock's `id` in the same block (causes conflicts)
+- The basic-mode subblock's `id` CAN equal the `canonicalParamId` (preferred pattern, as shown above)
+- `canonicalParamId` must NOT match the `id` of any subblock outside its canonical pair (causes serializer conflicts — the serializer deletes raw IDs and writes the canonical ID, so a collision would overwrite an unrelated subblock's value)
 - `canonicalParamId` must be unique per block (only one basic/advanced pair per canonicalParamId)
 - ONLY use `canonicalParamId` to link basic/advanced mode alternatives for the same logical parameter
 - Do NOT use it for any other purpose
