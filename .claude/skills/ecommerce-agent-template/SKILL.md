@@ -64,7 +64,7 @@ Every ikas agent needs these four tools:
 
 | Tool | ikas API | Purpose |
 |------|----------|---------|
-| `ikas_browse` | `listProductCategory` / `listProduct` (GraphQL) | Product discovery by category UUID |
+| `ikas_browse` | `listCategory` / `listProduct` (GraphQL) | Product discovery by category UUID |
 | `calculate_product_price` | Custom JS function | Area pricing: `max(100×unitPrice, W×H×unitPrice/100)` |
 | `ikas_lookup_customer_orders` | `listOrder` (GraphQL) | Order lookup by phone/email/orderNumber |
 | `handoff_to_human` | Platform-specific | Human escalation with labels + internal_note |
@@ -80,8 +80,10 @@ Skip `calculate_product_price` if all products are fixed-price.
 ```
 Customer: "80x180 menteşeli pencere"
 Extract: {width: 80, height: 180}
-Pass to tool: get_products_by_main_category({mainCategory: "menteseli-pencere-sinekligi"})
+Pass to tool: ikas_browse({mainCategory: "menteseli-pencere-sinekligi"})
 → Agent filters results by extracted dimensions (width: 80, height: 180)
+
+> **Note:** Company-specific implementations may use a custom tool name (e.g., Kamatas uses `get_products_by_main_category`). The generic template name is `ikas_browse`.
 ```
 
 **Turkish dimension patterns:**

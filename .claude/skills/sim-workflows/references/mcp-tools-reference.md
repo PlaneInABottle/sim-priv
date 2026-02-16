@@ -1,6 +1,6 @@
 # MCP Tools Parameter Reference
 
-Detailed parameter tables for all 25 sim-mcp tools. See [SKILL.md](../SKILL.md) for usage patterns and examples.
+Detailed parameter tables for all 27 sim-mcp tools. See [SKILL.md](../SKILL.md) for usage patterns and examples.
 
 ---
 
@@ -361,6 +361,20 @@ List custom tools in a workspace.
 list_custom_tools({ workspaceId: "ws_id" })
 ```
 
+### `get_custom_tool`
+
+Get full details for a specific custom tool by ID. Returns schema and code.
+
+```
+get_custom_tool({ toolId: "tool_uuid", workspaceId: "ws_id" })
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `toolId` | ✅ | ID of the custom tool to retrieve |
+| `workspaceId` | | Workspace ID (optional if workflowId provided) |
+| `workflowId` | | Workflow ID to resolve workspace |
+
 ### `upsert_custom_tools`
 
 Create or update custom tools.
@@ -395,6 +409,21 @@ list_skills({ workspaceId: "ws_id" })
 | `workspaceId` | ✅ | Workspace ID to list skills from |
 
 **Returns:** Array of skills with id, name, description, content, createdAt, updatedAt.
+
+### `get_skill`
+
+Get full details of a specific skill by ID, including its content.
+
+```
+get_skill({ workspaceId: "ws_id", id: "skill-uuid" })
+```
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `workspaceId` | ✅ | Workspace ID containing the skill |
+| `id` | ✅ | ID of the skill to retrieve |
+
+**Returns:** Full skill object with id, name, description, content, createdAt, updatedAt.
 
 ### `create_skill`
 

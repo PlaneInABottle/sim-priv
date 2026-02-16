@@ -273,14 +273,30 @@ The `sim-mcp` server provides programmatic workflow management.
 ### Workflow Operations
 
 ```typescript
+// Create a new workflow
+sim-mcp-create_workflow({ name, workspaceId, description?, color?, folderId? })
+
 // List workflows
 sim-mcp-list_workflows({ workspaceId?, limit?, offset? })
 
-// Get workflow details
+// Get workflow details (verbose=true for full block config)
 sim-mcp-get_workflow({ workflowId, verbose? })
 
 // Replace entire workflow state
 sim-mcp-replace_workflow_state({ workflowId, state })
+
+// Execute a workflow (uses draft state by default — no deploy needed)
+sim-mcp-execute_workflow({ workflowId, input?, triggerType?, useDraftState? })
+```
+
+### Execution Monitoring
+
+```typescript
+// List and filter execution logs
+sim-mcp-get_execution_logs({ workspaceId, workflowId?, executionId?, level?, details?, includeTraceSpans?, includeFinalOutput?, limit?, cursor? })
+
+// Get full detail for a specific execution log
+sim-mcp-get_execution_log_detail({ logId })
 ```
 
 ### Block Operations
@@ -293,6 +309,9 @@ sim-mcp-add_blocks({
   edges?: [{ source, target, sourceHandle?, targetHandle? }]
 })
 
+// Get full detail for a single block
+sim-mcp-get_block({ workflowId, blockId })
+
 // Remove blocks
 sim-mcp-remove_blocks({ workflowId, blockIds: [] })
 
@@ -304,6 +323,9 @@ sim-mcp-toggle_block_enabled({ workflowId, blockId, enabled })
 
 // Update subblock value
 sim-mcp-update_subblock({ workflowId, blockId, subblockId, value })
+
+// Set or remove block's parent container (for loop/parallel nesting)
+sim-mcp-update_block_parent({ workflowId, blockId, parentId })
 ```
 
 ### Edge Operations
@@ -326,11 +348,21 @@ sim-mcp-add_variable({ workflowId, name, type, value, id? })
 sim-mcp-remove_variable({ workflowId, variableId })
 ```
 
+### Subflow Operations
+
+```typescript
+// Update loop/parallel configuration (create via add_blocks with type "loop"/"parallel")
+sim-mcp-update_subflow({ workflowId, id, type?, config? })
+```
+
 ### Custom Tools
 
 ```typescript
-// List workspace custom tools
-sim-mcp-list_custom_tools({ workspaceId? })
+// List workspace custom tools (metadata only)
+sim-mcp-list_custom_tools({ workspaceId?, workflowId? })
+
+// Get full details for a specific custom tool
+sim-mcp-get_custom_tool({ toolId, workspaceId?, workflowId? })
 
 // Create/update custom tools
 sim-mcp-upsert_custom_tools({
@@ -338,6 +370,27 @@ sim-mcp-upsert_custom_tools({
   tools: [{ title, schema, code, id? }]
 })
 ```
+
+### Skill Management
+
+```typescript
+// List all skills in a workspace
+sim-mcp-list_skills({ workspaceId })
+
+// Get full skill details by ID
+sim-mcp-get_skill({ workspaceId, id })
+
+// Create a new skill (name must be kebab-case)
+sim-mcp-create_skill({ workspaceId, name, description, content })
+
+// Update an existing skill
+sim-mcp-update_skill({ workspaceId, id, name, description, content })
+
+// Delete a skill (does NOT cascade — manually remove from agent blocks)
+sim-mcp-delete_skill({ workspaceId, id })
+```
+
+> **Full parameter reference:** See `sim-workflows` skill → `references/mcp-tools-reference.md` for detailed parameter tables, return values, and usage examples for all 27 tools.
 
 ---
 
@@ -352,6 +405,8 @@ Invoke with `skill` tool. Tier indicates when loading is mandatory vs recommende
 | 🔥 Required | `ikas-api` | Querying ikas e-commerce data (products, orders, customers via GraphQL) |
 | ✅ Recommended | `ecommerce-agent-template` | Creating WhatsApp/chat support agents for ikas companies (product browsing, order lookup, handoff) |
 | ✅ Recommended | `ikas-products-grouping` | Product discovery tools with category grouping, color/dimension parsing for ikas stores |
+
+> **⚠️ Note:** `ikas-products-grouping` may not auto-discover if the binary `.skill` package (`.claude/skills/ikas-products-grouping.skill`) conflicts with directory-based discovery. If not available, load it manually or remove the `.skill` file.
 | ✅ Recommended | `config-production-db` | Config_production database schema, tenant auth, runtime query flow |
 | ✅ Recommended | `sim-runtime` | Starting/monitoring the Sim Studio dev environment |
 | ✅ Recommended | `skill-creator` | Creating and packaging new AI skills |
