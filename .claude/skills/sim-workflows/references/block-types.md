@@ -237,8 +237,8 @@ Iterate over arrays or repeat until condition met.
 
 **Output:** Array of iteration results
 
-### parallel
-Execute multiple paths simultaneously and aggregate results.
+### parallel (subflow)
+Execute multiple paths simultaneously and aggregate results. Created via `add_blocks` with `type: "parallel"`. This is a **subflow container**, not to be confused with the `parallel_ai` integration block.
 
 **Data structure:**
 ```typescript
@@ -249,6 +249,36 @@ Execute multiple paths simultaneously and aggregate results.
 ```
 
 **Output:** Array of parallel execution results
+
+### parallel_ai
+AI-powered web research block (Parallel AI integration). Uses API key auth. **Not a subflow** — this is a tool block for search, extraction, and deep research.
+
+**Data structure:**
+```typescript
+{
+  operation: "search" | "extract" | "deep_research"
+  apiKey: string                    // Required
+  // Search operation:
+  objective?: string                // Search objective
+  search_queries?: string           // Comma-separated queries
+  processor?: "lite" | "standard" | "pro" | "ultra" | ...  // Processing tier
+  max_results?: string
+  max_chars_per_result?: string
+  // Extract operation:
+  urls?: string                     // URLs to extract from
+  extract_objective?: string
+  excerpts?: "Yes" | "No"
+  full_content?: "Yes" | "No"
+  // Deep research operation:
+  research_input?: string
+  include_domains?: string
+  exclude_domains?: string
+}
+```
+
+**Output:** Search results, extracted content, or research report
+
+> **⚠️ Important distinction:** In the MCP `add_blocks` tool, `type: "parallel"` creates a subflow container for parallel execution paths. The block registry type `parallel_ai` is a completely different integration block for AI-powered web research. Do not confuse the two.
 
 ## Integration Blocks
 
@@ -268,22 +298,27 @@ Make HTTP requests to external APIs.
 
 **Output:** Response data (status, headers, body)
 
-### webhook
-Send data to external webhook URLs.
+### webhook_request
+Send HTTP POST requests to external webhook URLs with optional HMAC signing.
 
 **Data structure:**
 ```typescript
 {
-  url: string
-  method?: "POST" | "PUT"
-  headers?: Record<string, string>
-  body?: any
+  url: string               // Webhook URL (required)
+  body?: string             // JSON payload
+  secret?: string           // HMAC signing secret (password field)
+  headers?: Array<{         // Custom headers
+    key: string
+    value: string
+  }>
 }
 ```
 
-**Output:** Response status and data
+**Output:** `{ data: object, status: number, headers: object }`
 
-## Data Blocks
+> **Note:** Do not confuse with `generic_webhook` (a trigger block that *receives* webhooks). `webhook_request` is an action block that *sends* outbound webhook requests.
+
+## Data & Storage Blocks
 
 ### response
 Return data from workflow execution. Typically last block in workflow.
@@ -298,125 +333,94 @@ Return data from workflow execution. Typically last block in workflow.
 
 **Output:** Formatted response
 
-### code
-Execute custom JavaScript/TypeScript code.
+### function
+Execute custom JavaScript (or Python when E2B is enabled) code.
 
 **Data structure:**
 ```typescript
 {
-  code: string              // JavaScript code to execute
-  timeout?: number          // Execution timeout in ms
+  language?: "javascript" | "python"  // Default: JavaScript; Python requires E2B feature flag
+  code: string                        // JavaScript/Python code to execute
 }
 ```
 
 **Input:** `params` is always `{}` for regular function blocks (only populated for custom tool executions). Previous block outputs accessed via tag syntax `<BlockName.field>` (replaced with variable references before execution; block names in function code must not contain spaces).
-**Output:** Return value wrapped as `{ result: <returnValue>, stdout: "" }`
+**Output:** `{ result: <returnValue>, stdout: "" }`
 
-## Transform Blocks
-
-### json_transform
-Transform JSON data using JSONata expressions.
+### knowledge
+Query, upload to, or create documents in a vector knowledge base.
 
 **Data structure:**
 ```typescript
 {
-  expression: string        // JSONata expression
+  operation: "search" | "upload_chunk" | "create_document"
+  knowledgeBaseId: string           // Knowledge base selector (all operations)
+  // Search operation:
+  query?: string                    // Search query
+  topK?: string                     // Max results (numeric string)
+  tagFilters?: object               // Tag-based filters
+  // Upload chunk operation:
+  documentId?: string               // Target document ID
+  content?: string                  // Chunk content
+  // Create document operation:
+  name?: string                     // Document name
+  content?: string                  // Document content
+  documentTags?: object             // Tags for the new document
 }
 ```
 
-**Output:** Transformed data
+**Output:** Search results array, or upload/create confirmation
 
-### map
-Apply transformation to each item in an array.
+### variables
+Set one or more workflow variable values. This is a single block type (not separate get/set blocks). Variables set here can be read elsewhere in the workflow via `<variable.variableName>` tag syntax.
 
 **Data structure:**
 ```typescript
 {
-  array: string             // Array expression
-  transform: string         // Transformation expression per item
+  variables: Array<{             // Select workflow variables and assign values
+    variableId: string
+    value: any                   // Value to set, supports tag expressions
+  }>
 }
 ```
 
-**Output:** Transformed array
+**Output:** Each assigned variable becomes a top-level output field (dynamic)
 
-## Storage Blocks
-
-### knowledge_base
-Query vector database for semantic search.
-
-**Data structure:**
-```typescript
-{
-  knowledgeBaseId: string
-  query: string             // Search query
-  limit?: number           // Max results
-  minScore?: number        // Minimum similarity score
-}
-```
-
-**Output:** Array of relevant documents
-
-### variable_set
-Set workflow variable value.
-
-**Data structure:**
-```typescript
-{
-  variableId: string
-  value: any               // Value to set, supports expressions
-}
-```
-
-### variable_get
-Get workflow variable value.
-
-**Data structure:**
-```typescript
-{
-  variableId: string
-}
-```
-
-**Output:** Variable value
+> **Note:** There is no separate "variable_get" block. Reading variables is done via `<variable.variableName>` tag syntax in any block's fields.
 
 ## Utility Blocks
 
-### delay
-Pause workflow execution for specified duration.
+### wait
+Pause workflow execution for a specified duration.
 
 **Data structure:**
 ```typescript
 {
-  duration: number          // Milliseconds
+  timeValue: string          // Numeric string, e.g., "10" (required)
+  timeUnit: "seconds" | "minutes"  // Default: "seconds" (required)
 }
 ```
 
-### log
-Log data for debugging and monitoring.
-
-**Data structure:**
-```typescript
-{
-  message: string           // Log message, supports expressions
-  level?: "info" | "warn" | "error"
-}
-```
+**Output:** `{ waitDuration: number, status: string }`
 
 ## Human-in-the-Loop Blocks
 
-### hitl
-Pause workflow and wait for human approval or input.
+### human_in_the_loop
+Pause workflow and wait for human approval or input. Generates a unique URL/endpoint for an approver to submit a response.
 
 **Data structure:**
 ```typescript
 {
-  message: string           // Message to display
-  options?: string[]        // Available choices
-  timeout?: number          // Auto-resume timeout
+  builderData?: object        // Display data structure (response-format) shown to the approver
+  notification?: object       // Notification tool config (e.g., Slack, Email) to alert approver
+  inputFormat?: Array<{       // Resume form fields the approver fills out
+    name: string
+    type: "string" | "number" | "boolean" | "object" | "array"
+  }>
 }
 ```
 
-**Output:** User response or timeout indication
+**Output:** `{ url, resumeEndpoint, response, submission, resumeInput, submittedAt }`
 
 ## Block Configuration Best Practices
 
