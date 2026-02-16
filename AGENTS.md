@@ -355,16 +355,7 @@ Invoke with `skill` tool. Tier indicates when loading is mandatory vs recommende
 | ✅ Recommended | `config-production-db` | Config_production database schema, tenant auth, runtime query flow |
 | ✅ Recommended | `sim-runtime` | Starting/monitoring the Sim Studio dev environment |
 | ✅ Recommended | `skill-creator` | Creating and packaging new AI skills |
-| Optional | `sim-api-management` | Webhooks and API endpoints |
-| Optional | `sim-agents-advanced` | Agent settings, model selection, prompts |
-| Optional | `sim-tools-integration` | Integrating external services |
-| Optional | `sim-auth-security` | OAuth, BYOK, API key management |
-| Optional | `sim-knowledge-bases` | RAG workflows, document chunking |
-| Optional | `sim-execution-monitoring` | Debugging, logs, performance |
-| Optional | `billing-essentials` | Cost tracking, usage, billing |
-| Optional | `deployment-guide` | Docker, Render, Kubernetes |
-| Optional | `sim-upstream-sync` | Fork sync with upstream |
-| Optional | `add-integration` / `add-block` / `add-tools` / `add-trigger` | Integration scaffolding guides |
+| ⚠️ Commands | `add-integration` / `add-block` / `add-tools` / `add-trigger` | Slash commands: `/add-integration`, `/add-block`, `/add-tools`, `/add-trigger` for workflow scaffolding |
 
 ---
 
