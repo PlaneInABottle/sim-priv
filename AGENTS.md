@@ -96,7 +96,7 @@ Types: string | number | boolean | object | array | plain
 
 | Category | Purpose |
 |----------|---------|
-| `triggers` | Entry points (api_trigger, webhook, schedule) |
+| `triggers` | Entry points (api_trigger, generic_webhook, schedule) |
 | `blocks` | Core logic (agent, condition, router, loop) |
 | `tools` | Service integrations (slack, gmail, github) |
 
@@ -138,11 +138,11 @@ Configuration field types for block settings:
 | `file-selector` | File picker (Google Drive, etc.) |
 | `channel-selector` | Channel picker (Slack, Discord) |
 
-### Registered Blocks (120+)
+### Registered Blocks (130+)
 
 **Triggers:** `api_trigger`, `chat_trigger`, `generic_webhook`, `schedule`, `start_trigger`
 
-**Core:** `agent`, `condition`, `router`, `function`, `parallel_ai`, `response`, `variables`, `workflow`
+**Core:** `a2a`, `agent`, `api`, `condition`, `function`, `human_in_the_loop`, `mcp`, `memory`, `parallel_ai`, `response`, `router`, `variables`, `webhook_request`, `workflow`
 
 **AI/LLM:** `openai`, `thinking`, `vision`, `image_generator`, `tts`, `stt`
 
@@ -411,7 +411,7 @@ Enable all blocks (disable final sends if destructive) → send realistic payloa
 ```
 Simple Agent:      api_trigger → agent → response
 Conditional:       webhook → router → [path_a → agent_a, path_b → agent_b] → response
-API Integration:   start_trigger → api_block → function (parse) → agent → slack
+API Integration:   start_trigger → api → function (parse) → agent → slack
 RAG:               api_trigger → knowledge (retrieve) → agent (answer) → response
 ```
 
