@@ -19,7 +19,9 @@ Comprehensive list of block types available in Sim workflows.
 
 **Output:** `.input` (full input object), `.conversationId`, `.files`, plus spread fields from custom `inputFormat`
 
-**Trigger modes:** `api`, `manual`, `chat`, `mcp`, `a2a` (all supported by this single block)
+**Trigger modes (block UI):** `chat`, `manual`, `api` — the three modes available in the block's trigger selector.
+
+> **Execution-level trigger types:** When executing a workflow via `execute_workflow`, the `triggerType` parameter also accepts `mcp` and `a2a`. These are metadata values — the executor resolves them through the same `start_trigger` block (defaulting to `manual` resolution). The full set of valid `triggerType` values is: `api`, `manual`, `chat`, `schedule`, `webhook`, `mcp`, `a2a`.
 
 ### generic_webhook
 Receive webhooks from any external service. Exposes a unique webhook URL.
@@ -68,7 +70,13 @@ AI agent with LLM capabilities, tool access, and knowledge base integration.
 
 **⚠️ No `systemPrompt` subblock** — use the `messages` array with `{ "role": "system", "content": "..." }` instead.
 
-**Output:** Agent response text and tool calls
+**Output fields:**
+- `content` (string) — Generated response text
+- `model` (string) — Model used for generation (e.g., `"gpt-4o"`)
+- `tokens` (json) — Token usage statistics `{ prompt, completion, total }`
+- `toolCalls` (json) — Tool calls made `{ list, count }`
+- `providerTiming` (json) — Provider timing information
+- `cost` (json) — Cost of the API call
 
 #### Skills
 
@@ -232,7 +240,7 @@ AI-powered semantic routing using an LLM to select the best path. The router sen
 
 **Handles:** `router-{routeId}` — each route's `id` becomes a sourceHandle
 
-**Output:** `selectedRoute` (route ID), `reasoning` (LLM explanation), `selectedPath` (target block info), `model`, `tokens`, `cost`
+**Output:** `selectedRoute` (route ID), `reasoning` (LLM explanation), `selectedPath` (target block info), `context` (input context used), `model`, `tokens`, `cost`
 
 **Key differences from condition block:**
 - **Condition:** Evaluates JavaScript expressions deterministically
@@ -519,14 +527,17 @@ Standard spacing for visual clarity:
 
 | Block Type | Output Fields |
 |-----------|--------------|
-| `agent` | `.content` (response text) |
+| `agent` | `.content` (response text), `.model` (model used), `.tokens` (usage stats), `.toolCalls` (tool calls made), `.providerTiming` (timing info), `.cost` (API call cost) |
 | `function` | `.result` (return value), `.stdout` (console output) |
 | `start_trigger` | `.input` (full input), `.conversationId`, `.files`, + inputFormat fields |
 | `api` | `.data` (response body), `.status`, `.headers` |
 | `condition` | `.conditionResult`, `.selectedPath`, `.selectedOption`; spreads source output |
+| `router_v2` | `.selectedRoute` (route ID), `.reasoning` (LLM explanation), `.selectedPath` (target block info), `.context` (input context), `.model`, `.tokens`, `.cost` |
 | `memory` | `.memories` (memory data), `.id` (memory identifier) |
 | `workflow_input` | `.success`, `.childWorkflowName`, `.childWorkflowId`, `.result`, `.error` |
 | `response` | `.data`, `.status`, `.headers` |
+| `wait` | `.waitDuration` (duration in ms), `.status` (waiting/completed/cancelled) |
+| `human_in_the_loop` | `.url`, `.resumeEndpoint`, `.response`, `.submission`, `.resumeInput`, `.submittedAt` |
 
 ### Tag Syntax Details
 
@@ -564,6 +575,76 @@ Set reasonable timeouts to prevent stuck workflows:
 - Agent blocks: 60-120 seconds recommended
 - Code blocks: 10-30 seconds recommended
 - Loop blocks: Set maxIterations (max 1000)
+
+## SubBlock Types Reference
+
+SubBlock types define the UI control used for each configuration field within a block. There are **42 SubBlock types** defined in `apps/sim/blocks/types.ts`:
+
+### Core Input Controls
+| Type | Description |
+|------|-------------|
+| `short-input` | Single-line text input |
+| `long-input` | Multi-line text input |
+| `dropdown` | Select menu |
+| `combobox` | Searchable dropdown with text input |
+| `slider` | Range input |
+| `table` | Grid layout |
+| `code` | Code editor |
+| `switch` | Toggle button |
+| `text` | Read-only text display |
+
+### Specialized Input Controls
+| Type | Description |
+|------|-------------|
+| `tool-input` | Tool configuration for agent blocks |
+| `skill-input` | Skill selection for agent blocks |
+| `condition-input` | Conditional logic expressions |
+| `eval-input` | Evaluation input |
+| `time-input` | Time input |
+| `messages-input` | Message history with role and content for LLMs |
+| `router-input` | Router route definitions with descriptions |
+| `variables-input` | Variable assignments for updating workflow variables |
+| `input-format` | Input structure format (trigger blocks) |
+| `response-format` | Response structure format |
+| `input-mapping` | Map parent variables to child workflow input schema |
+| `file-upload` | File uploader |
+
+### Selection Controls
+| Type | Description |
+|------|-------------|
+| `checkbox-list` | Multiple selection |
+| `grouped-checkbox-list` | Grouped, scrollable checkbox list with select all |
+| `oauth-input` | OAuth credential selector |
+| `knowledge-base-selector` | Knowledge base selector |
+| `knowledge-tag-filters` | Multiple tag filters for knowledge bases |
+| `document-selector` | Document selector for knowledge bases |
+| `document-tag-entry` | Document tag entry for creating documents |
+| `workflow-selector` | Workflow selector for agent tools |
+| `workflow-input-mapper` | Dynamic workflow input mapper based on selected workflow |
+
+### Integration-Specific Selectors
+| Type | Description |
+|------|-------------|
+| `file-selector` | File selector (Google Drive, etc.) |
+| `sheet-selector` | Sheet/tab selector (Google Sheets, Microsoft Excel) |
+| `project-selector` | Project selector (Jira, Discord, etc.) |
+| `channel-selector` | Channel selector (Slack, Discord, etc.) |
+| `user-selector` | User selector (Slack, etc.) |
+| `folder-selector` | Folder selector (Gmail, etc.) |
+
+### MCP Controls
+| Type | Description |
+|------|-------------|
+| `mcp-server-selector` | MCP server selector |
+| `mcp-tool-selector` | MCP tool selector |
+| `mcp-dynamic-args` | MCP dynamic arguments based on tool schema |
+
+### Trigger/Schedule Controls
+| Type | Description |
+|------|-------------|
+| `webhook-config` | Webhook configuration |
+| `schedule-info` | Schedule status display (next run, last ran, failure badge) |
+| `trigger-save` | ⚠️ **Deprecated** — Legacy trigger save button with validation |
 
 ## Block Validation
 
