@@ -4,6 +4,15 @@
 
 Create a standalone test script to validate transformation logic without touching the UI.
 
+> **File structure:** The code below is split across separate files:
+> - `mock-data.js` — Section 1.1 (mock ikas response + `module.exports`)
+> - `transformations.js` — Section 1.2 (color/type extraction, dims serialization + `module.exports`)
+> - `grouping.js` — Section 1.3 (grouping function — imports from `transformations.js` + `module.exports`)
+> - `test-products.js` — Section 1.4 (test runner — imports from all above)
+>
+> If you prefer a single file, remove all `module.exports` / `require()` lines and
+> paste sections 1.1–1.4 in order into one `test-products.js`.
+
 ### 1.1 Mock ikas Response
 
 ```javascript
@@ -58,6 +67,15 @@ module.exports = { mockProducts };
 ```
 
 ### 1.2 Transformation Functions
+
+> **Prerequisite — Slug-to-Dims Parsing:**
+> Before calling `groupProducts()`, each product's `metaData.slug` must be parsed to
+> extract dimensions into a `product.dims` object. Use the patterns from the ikas-api
+> skill (e.g., `/maximum-(\d{2,4})x(\d{2,4})/` for DUBLE products,
+> `/(\d{2,4})-cm--boy--(?:0-)?(\d{2,4})-cm/` for standard products).
+> Set `product.dims = { maxWidth, maxHeight }` if a pattern matches, or `null` otherwise.
+> This step is omitted from the mock data below for brevity — the mock tests focus on
+> color extraction and grouping logic only. In production code, parse dims first, then group.
 
 ```javascript
 // Multi-word colors checked FIRST (prevents "Gri" matching inside "Metalik Gri")
@@ -213,21 +231,27 @@ Color: Antrasit
 Base Type: Akordeon DUBLE Kapı Sineklik
 
 === Grouping ===
-Products: 100
-Groups: 39
-Token Savings: 61%
+Products: 3
+Groups: 1
+Token Savings: 67%
 
 === Sample Group ===
 {
   "type": "Akordeon DUBLE Kapı Sineklik",
-  "dims": "290x240",
-  "price": 4621.5,
   "variants": [
-    { "color": "Antrasit", "url": "/..." },
-    { "color": "Beyaz", "url": "/..." }
+    { "color": "Antrasit", "price": 4621.5, "url": "/akordeon-duble-kapi-sineklik-antrasit-maximum-290x240" },
+    { "color": "Beyaz", "price": 4621.5, "url": "/akordeon-duble-kapi-sineklik-beyaz-maximum-290x240" },
+    { "color": "Altınmeşe", "price": 5220, "url": "/akordeon-duble-kapi-sineklik-altinmese-maximum-290x240" }
   ]
 }
 ```
+
+> **Note:** The mock data above contains only 3 products for simplicity. In production,
+> a category like "sineklikler" returns ~100 products → ~39 groups with ~61% token savings.
+> With 3 mock products all sharing the same base type, they collapse into 1 group (67% savings).
+> Prices differ (4621.5, 4621.5, 5220 → Set.size = 2), so no price hoisting occurs —
+> each variant retains its individual price. The `dims` field is absent because dimension
+> parsing from slugs is a prerequisite step not shown in the mock (see section 1.2 note).
 
 ---
 

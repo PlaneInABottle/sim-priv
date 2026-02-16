@@ -28,14 +28,15 @@
     {
       "type": "Akordeon DUBLE Kapı Sineklik",
       "dims": "290x240",
-      "price": 4621.5,
       "variants": [
         {
           "color": "Antrasit",
+          "price": 4621.5,
           "url": "/products/akordeon-duble-kapi-sineklik-antrasit"
         },
         {
           "color": "Beyaz",
+          "price": 4621.5,
           "url": "/products/akordeon-duble-kapi-sineklik-beyaz"
         },
         {
@@ -127,7 +128,7 @@ Response:
 ### Product Query
 
 ```graphql
-query($categoryIds: CategoryFilterInput, $salesChannelIds: SalesChannelFilterInput, $pagination: PaginationInput) {
+query($categoryIds: CategoryFilterInput, $salesChannelIds: StringFilterInput, $pagination: PaginationInput) {
   listProduct(categoryIds: $categoryIds, salesChannelIds: $salesChannelIds, pagination: $pagination) {
     hasNext
     data {
@@ -162,6 +163,39 @@ query($categoryIds: CategoryFilterInput, $salesChannelIds: SalesChannelFilterInp
 - Pagination is page-based: `{ limit: N, page: N }` (1-indexed, max limit: 200)
 - Variant prices use `prices[].sellPrice` (NOT `price.amount`)
 - Variant images use `images[].imageId` (NOT `imagePath` or `images[].path`)
+
+### Pagination for Large Categories
+
+The ikas API returns a maximum of 200 products per page. For categories with more
+than 200 products, you **must** paginate:
+
+```javascript
+// Pagination loop — fetch ALL products in a category
+async function fetchAllProducts(categoryId, salesChannelId, token) {
+  let allProducts = [];
+  let page = 1;
+  let hasNext = true;
+
+  while (hasNext) {
+    const response = await graphqlQuery(token, {
+      categoryIds: { in: [categoryId] },
+      salesChannelIds: { eq: salesChannelId },
+      pagination: { limit: 200, page }
+    });
+
+    allProducts = allProducts.concat(response.data);
+    hasNext = response.hasNext;
+    page++;
+  }
+
+  return allProducts;
+}
+```
+
+**Limitations:**
+- Max `limit` per request is **200** (ikas enforced)
+- Very large categories (1000+ products) may require multiple round-trips
+- Consider caching results (e.g., Redis with TTL) for production use
 
 ### Category Discovery
 

@@ -132,7 +132,7 @@ Output:
   {
     "type": "Plise Sineklik",
     "dims": "150x220",
-    // no hoisted price — prices differ (Set.size === 3 > 1)
+    // no hoisted price — prices differ (Set.size === 2 > 1)
     "variants": [
       { "color": "Antrasit", "price": 3200, "url": "/..." },
       { "color": "Beyaz", "price": 3200, "url": "/..." },
