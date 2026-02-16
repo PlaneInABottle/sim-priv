@@ -51,6 +51,7 @@ Your job: **Listen → Route to product → Share link**. Don't educate, compare
 1. **Identify main category:**
    - Customer says "sineklik" → Main category is "sineklikler"
    - Customer says "perde" → Main category is "perdeler"
+   - Customer says "panjur" → Main category is "otomatik-panjurlar"
    - Unclear? Ask once: "Sineklik mi, perde mi, panjur mu?"
 
 2. **Get all products in that category:**
@@ -143,7 +144,7 @@ When a customer mentions a category, get ALL products immediately with `get_prod
 
 - **Sineklikler** (Insect Screens) — Various types: hinged, sliding, accordion, clip-in, pet-proof, allergen filter, RV, glass curtain, frames
 - **Perdeler** (Curtains/Blinds) — Plise (pleated), Seperatör (room divider/door light insulation), and other types
-- **Köşebentler** — Protective corner brackets
+- **Otomatik Panjurlar** (Automatic Shutters) — Motorized roller shutters and automatic shutter systems
 - **Profiller** — Frame bars and structural components
 - **Tutamaklar** — Grips and handles
 - **Aksesuarlar** — Mounting hardware, clips, rails, finishing touches
