@@ -96,8 +96,8 @@ Types: string | number | boolean | object | array | plain
 
 | Category | Purpose |
 |----------|---------|
-| `triggers` | Entry points (api_trigger, generic_webhook, schedule) |
-| `blocks` | Core logic (agent, condition, router, loop) |
+| `triggers` | Entry points (`start_trigger`, `generic_webhook`, `schedule`) + service-specific triggers (`imap`, `rss`, `circleback`) |
+| `blocks` | Core logic (agent, condition, router, function) |
 | `tools` | Service integrations (slack, gmail, github) |
 
 ### Block Configuration (BlockConfig)
@@ -138,11 +138,13 @@ Configuration field types for block settings:
 | `file-selector` | File picker (Google Drive, etc.) |
 | `channel-selector` | Channel picker (Slack, Discord) |
 
-### Registered Blocks (180+)
+### Registered Blocks (181)
 
-**Triggers:** `api_trigger`, `chat_trigger`, `generic_webhook`, `schedule`, `start_trigger`
+**Triggers (active):** `start_trigger`, `generic_webhook`, `schedule`, `imap`, `rss`, `circleback`  
+**Triggers (legacy, hidden):** `api_trigger`, `chat_trigger`, `input_trigger`, `manual_trigger`
 
-**Core:** `a2a`, `agent`, `api`, `condition`, `function`, `human_in_the_loop`, `knowledge`, `mcp`, `memory`, `parallel_ai`, `response`, `router`, `variables`, `webhook_request`, `workflow`
+**Core:** `a2a`, `agent`, `api`, `condition`, `evaluator`, `function`, `guardrails`, `human_in_the_loop`, `knowledge`, `mcp`, `memory`, `note`, `parallel_ai`, `response`, `router_v2`, `starter`, `variables`, `wait`, `webhook_request`, `workflow_input`  
+**Core (legacy, hidden):** `router`, `workflow`
 
 **AI/LLM:** `openai`, `thinking`, `vision`, `image_generator`, `tts`, `stt`
 
@@ -155,6 +157,12 @@ Configuration field types for block settings:
 **Search:** `exa`, `tavily`, `serper`, `duckduckgo`, `wikipedia`
 
 **Web:** `firecrawl`, `jina`, `browser_use`, `stagehand`
+
+> **Note on loop/parallel:** `loop` and `parallel` are subflow container types used by workflow state + `sim-mcp-update_subflow`; they are not registry block keys (`parallel_ai` is the registered block type).
+
+### Valid Trigger Types (`execute_workflow.triggerType`)
+
+`api` | `manual` | `schedule` | `chat` | `webhook` | `mcp` | `a2a`
 
 ---
 
@@ -273,6 +281,9 @@ The `sim-mcp` server provides programmatic workflow management.
 ### Workflow Operations
 
 ```typescript
+// List all available sim-mcp tools
+sim-mcp-list_tools()
+
 // Create a new workflow
 sim-mcp-create_workflow({ name, workspaceId, description?, color?, folderId? })
 
@@ -286,6 +297,7 @@ sim-mcp-get_workflow({ workflowId, verbose? })
 sim-mcp-replace_workflow_state({ workflowId, state })
 
 // Execute a workflow (uses draft state by default — no deploy needed)
+// triggerType: "api" | "manual" | "schedule" | "chat" | "webhook" | "mcp" | "a2a"
 sim-mcp-execute_workflow({ workflowId, input?, triggerType?, useDraftState? })
 ```
 
@@ -390,7 +402,7 @@ sim-mcp-update_skill({ workspaceId, id, name, description, content })
 sim-mcp-delete_skill({ workspaceId, id })
 ```
 
-> **Full parameter reference:** See `sim-workflows` skill → `references/mcp-tools-reference.md` for detailed parameter tables, return values, and usage examples for all 27 tools.
+> **Full parameter reference:** See `sim-workflows` skill → `references/mcp-tools-reference.md` for detailed parameter tables, return values, and usage examples for all 28 tools.
 
 ---
 
@@ -464,10 +476,10 @@ Enable all blocks (disable final sends if destructive) → send realistic payloa
 ## Common Patterns
 
 ```
-Simple Agent:      api_trigger → agent → response
-Conditional:       generic_webhook → router → [path_a → agent_a, path_b → agent_b] → response
+Simple Agent:      start_trigger → agent → response
+Conditional:       generic_webhook → router_v2 → [path_a → agent_a, path_b → agent_b] → response
 API Integration:   start_trigger → api → function (parse) → agent → slack
-RAG:               api_trigger → knowledge (retrieve) → agent (answer) → response
+RAG:               start_trigger → knowledge (retrieve) → agent (answer) → response
 ```
 
 **Block Positioning:** 200-300px horizontal spacing, 50-100px vertical for branches, triggers left → responses right.
