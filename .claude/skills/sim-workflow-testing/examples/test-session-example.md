@@ -109,7 +109,7 @@ get_workflow(
         {"id": "block-b0a9fec7-4938-4c4c-bf17-87c193b468b1", "name": "Media Handoff", "enabled": true},
         {"id": "5c001454-9711-456e-b56c-c66baccb1d3c", "name": "fetchCustomerInformation", "enabled": true},
         {"id": "d4b467d3-b1d6-4319-a7d8-356f1bbda3ed", "name": "storeUserMessage", "enabled": true}
-        // ... 15 more blocks, all enabled: true
+        // ... 16 more blocks, all enabled: true
     ]
 }
 ```
@@ -198,7 +198,8 @@ execute_workflow(
                 "sender": {
                     "id": 12345,
                     "name": "Test Müşteri",
-                    "phone_number": "+905551234567"
+                    "phone_number": "+905551234567",
+                    "type": "contact"
                 }
             },
             "status": "pending",
@@ -336,10 +337,10 @@ VALUES ('res-cr04', 'run-voice-001', 'CR-04', 'Voice Message → Media Path', 'c
 Since we're switching profiles, restore all blocks:
 
 ```
--- Re-enable all 18 disabled blocks (showing key ones)
+-- Re-enable all 19 disabled blocks (showing key ones)
 toggle_block_enabled(workflowId="53408cc2-...", blockId="block-b0a9fec7-...", enabled=true)
 toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=true)
-// ... (re-enable all 18)
+// ... (re-enable all 19)
 ```
 
 ### 4.2 Create New Test Run
@@ -351,13 +352,13 @@ VALUES ('run-voice-002', '53408cc2-52fa-46e5-85d7-402d2f42f3a4', 'Kamatas PROD',
 
 ### 4.3 Disable Text Path Blocks
 
-For PATH_ISOLATION (media), disable 17 blocks (all text path blocks):
+For PATH_ISOLATION (media), disable 18 blocks (all text path blocks):
 
 ```
 toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=false)   # fetchCustomerInfo
 toggle_block_enabled(workflowId="53408cc2-...", blockId="d4b467d3-...", enabled=false)   # storeUserMessage
 toggle_block_enabled(workflowId="53408cc2-...", blockId="ca5acc54-...", enabled=false)   # API 1
-// ... (disable all 17 text path blocks — see kamatas-test-suite.md for full list)
+// ... (disable all 18 text path blocks — see kamatas-test-suite.md for full list)
 ```
 
 ### 4.4 Execute with Same Voice Payload
@@ -408,10 +409,16 @@ get_execution_logs(
             "status": "success",
             "output": {
                 "result": {
-                    "customer_message": "Sesli mesajınızı aldık! Ekibimiz en kısa sürede size dönüş yapacaktır.",
-                    "status_toggle": "open",
-                    "label_added": "media",
-                    "internal_note": "Customer sent a voice message (audio/ogg)"
+                    "success": true,
+                    "mediaType": "voice",
+                    "operations": [
+                        {"type": "status_toggle", "status": "completed"},
+                        {"type": "label_add", "status": "completed"},
+                        {"type": "internal_note", "status": "completed"},
+                        {"type": "customer_message", "status": "completed"}
+                    ],
+                    "errors": [],
+                    "timestamp": "2026-02-11T10:01:00.500Z"
                 },
                 "stdout": "Processing voice message handoff for conversation 42"
             }
@@ -429,8 +436,14 @@ get_execution_logs(
 ✅ ASSERT: block("Media Handoff").status EQUALS "success"
    Actual: "success" — MATCH
 
-✅ ASSERT: block("Media Handoff").output.result CONTAINS "sesli mesaj"
-   Actual: Contains "Sesli mesajınızı aldık" — MATCH
+✅ ASSERT: block("Media Handoff").output.result.mediaType EQUALS "voice"
+   Actual: "voice" — MATCH
+
+✅ ASSERT: block("Media Handoff").output.result.success EQUALS true
+   Actual: true — MATCH
+
+✅ ASSERT: block("Media Handoff").output.result.operations LENGTH 4
+   Actual: 4 operations — MATCH
 
 ✅ ASSERT: trace_block_names NOT_CONTAINS ["Support Agent"]
    Actual: Not present — MATCH (text path disabled)
@@ -449,8 +462,8 @@ INSERT INTO test_results (id, run_id, scenario_id, scenario_name, test_group, pr
 VALUES ('res-mh01', 'run-voice-002', 'MH-01', 'Voice Message Handoff', 'media_handoff', 'PATH_ISOLATION', 'passed',
         '["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]',
         '["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]',
-        'Media Handoff acknowledges voice message in Turkish',
-        'Sesli mesajınızı aldık! Ekibimiz en kısa sürede size dönüş yapacaktır.');
+        'Media Handoff.output.result.mediaType = voice, operations.length = 4',
+        '{"success":true,"mediaType":"voice","operations":[...],"errors":[],"timestamp":"..."}');
 ```
 
 ---
@@ -460,10 +473,10 @@ VALUES ('res-mh01', 'run-voice-002', 'MH-01', 'Voice Message Handoff', 'media_ha
 **Critical step — never skip this.**
 
 ```
--- Re-enable all 17 disabled text path blocks
+-- Re-enable all 18 disabled text path blocks
 toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=true)
 toggle_block_enabled(workflowId="53408cc2-...", blockId="d4b467d3-...", enabled=true)
-// ... (re-enable all 17)
+// ... (re-enable all 18)
 ```
 
 Verify restoration:

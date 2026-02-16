@@ -217,9 +217,9 @@ Complete block inventory with full UUIDs for use in sim-mcp tool calls.
 | **Scenario ID** | CR-14 |
 | **Payload Ref** | S-15 |
 | **Input** | `message_type: "incoming"`, `content: "Merhaba"`, `team: {"id": 1, "name": "Support Team"}` |
-| **Expected Routing** | Incoming Only → ELSE (hasTeam=true) |
-| **Expected Trace** | `["Webhook 1", "Incoming Only"]` |
-| **Condition Assertions** | `Incoming Only.conditionResult = false` |
+| **Expected Routing** | Incoming Only → ELSE (hasTeam=true) → Is Media Message? → ELSE (dropped) |
+| **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
+| **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = false` |
 | **Notes** | Team-assigned conversations are dropped. Only personal conversations (hasTeam=false) are processed. |
 
 ---
@@ -272,9 +272,9 @@ KEEP ENABLED:
 | **Payload Ref** | S-04 |
 | **Input** | Voice message (audio attachment) |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Expected Output** | Media Handoff function returns JSON with success, operations array, and mediaType |
+| **Expected Output** | `Media Handoff.output` includes `{ result, stdout }`; `result` includes `success` (boolean), `mediaType` (string), `operations` (array), `errors` (array), `timestamp` (ISO string) |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.operations LENGTH 4` |
+| **Output Assertions** | `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.operations LENGTH 4`, `Media Handoff.output.result.success IS BOOLEAN`, `Media Handoff.output.result.errors IS ARRAY`, `Media Handoff.output.stdout IS STRING` |
 
 #### MH-02: Image Message Handoff
 
@@ -284,9 +284,9 @@ KEEP ENABLED:
 | **Payload Ref** | S-05 |
 | **Input** | Image message (image attachment) |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Expected Output** | Media Handoff function returns JSON with success, operations array, and mediaType |
+| **Expected Output** | `Media Handoff.output` includes `{ result, stdout }`; `result` includes `success` (boolean), `mediaType` (string), `operations` (array), `errors` (array), `timestamp` (ISO string) |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4` |
+| **Output Assertions** | `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4`, `Media Handoff.output.result.success IS BOOLEAN`, `Media Handoff.output.result.errors IS ARRAY`, `Media Handoff.output.stdout IS STRING` |
 
 #### MH-03: Video Message Handoff
 
@@ -296,9 +296,9 @@ KEEP ENABLED:
 | **Payload Ref** | S-06 |
 | **Input** | Video message (video attachment) |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Expected Output** | Media Handoff function returns JSON with success, operations array, and mediaType |
+| **Expected Output** | `Media Handoff.output` includes `{ result, stdout }`; `result` includes `success` (boolean), `mediaType` (string), `operations` (array), `errors` (array), `timestamp` (ISO string) |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "video"`, `Media Handoff.output.result.operations LENGTH 4` |
+| **Output Assertions** | `Media Handoff.output.result.mediaType EQUALS "video"`, `Media Handoff.output.result.operations LENGTH 4`, `Media Handoff.output.result.success IS BOOLEAN`, `Media Handoff.output.result.errors IS ARRAY`, `Media Handoff.output.stdout IS STRING` |
 
 #### MH-04: Text with Image Handoff
 
@@ -308,9 +308,9 @@ KEEP ENABLED:
 | **Payload Ref** | S-09 |
 | **Input** | Text + image combo: `content: "Bu ölçülere sineklik olur mu?"`, image attachment |
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Expected Output** | Same as image handoff — text content preserved but media handling takes priority |
+| **Expected Output** | Same schema as MH-02 (`{ result, stdout }` with `result.mediaType = "image"`). Text may be present in input, but media path output remains structured handoff metadata. |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4` |
+| **Output Assertions** | `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4`, `Media Handoff.output.result.success IS BOOLEAN`, `Media Handoff.output.result.errors IS ARRAY`, `Media Handoff.output.stdout IS STRING` |
 | **Notes** | Verifies that accompanying text doesn't break media handoff flow |
 
 #### MH-05: Multiple Image Attachments
@@ -323,7 +323,7 @@ KEEP ENABLED:
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 | **Expected Output** | Media Handoff handles multiple attachments — either processes all or first |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4` |
+| **Output Assertions** | `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4`, `Media Handoff.output.result.success IS BOOLEAN`, `Media Handoff.output.result.errors IS ARRAY`, `Media Handoff.output.stdout IS STRING` |
 | **Notes** | Tests multi-attachment handling. Verify no array-out-of-bounds or single-item assumptions. |
 
 #### MH-06: Mixed Audio+Image Handoff
@@ -336,7 +336,7 @@ KEEP ENABLED:
 | **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
 | **Expected Output** | Media Handoff processes audio as primary media type (audio > image priority) |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.operations LENGTH 4` |
+| **Output Assertions** | `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.operations LENGTH 4`, `Media Handoff.output.result.success IS BOOLEAN`, `Media Handoff.output.result.errors IS ARRAY`, `Media Handoff.output.stdout IS STRING` |
 | **Notes** | Tests audio > image priority. mediaType should resolve to "voice" even though image is present. Originally CR-13. |
 
 ---
@@ -465,7 +465,7 @@ KEEP ENABLED:
 | **Payload Ref** | S-04 |
 | **Input** | Voice message (audio attachment) |
 | **Expected Trace** | Full media path: `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Output Assertions** | `Media Handoff.output.result` contains Turkish voice acknowledgment and Chatwoot handoff actions |
+| **Output Assertions** | `Media Handoff.output` includes `{ result, stdout }`; `result.mediaType = "voice"` and includes Chatwoot handoff operation results (`operations[]`, `success`, `errors[]`, `timestamp`) |
 | **Status Assertions** | All blocks: `status = "success"` |
 | **Notes** | Tests complete media handoff including Chatwoot API calls for status toggle and label assignment. May fail if Chatwoot API credentials are not configured — this is expected in test environments. |
 

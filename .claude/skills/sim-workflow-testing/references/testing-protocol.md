@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS test_results (
     scenario_name TEXT NOT NULL,
     test_group TEXT NOT NULL,
     profile TEXT NOT NULL,
-    status TEXT DEFAULT 'pending',
+    status TEXT DEFAULT 'pending', -- pending | passed | failed | error | timeout | skipped
     execution_id TEXT,
     expected_path TEXT,
     actual_path TEXT,
@@ -504,6 +504,8 @@ SET completed_at = datetime('now'),
         THEN 'failed'
         WHEN (SELECT COUNT(*) FROM test_results WHERE run_id = '<RUN_ID>' AND status = 'error') > 0
         THEN 'error'
+        WHEN (SELECT COUNT(*) FROM test_results WHERE run_id = '<RUN_ID>' AND status = 'timeout') > 0
+        THEN 'error'
         ELSE 'passed'
     END
 WHERE id = '<RUN_ID>';
@@ -521,6 +523,7 @@ SELECT
     SUM(CASE WHEN t.status = 'passed' THEN 1 ELSE 0 END) as passed,
     SUM(CASE WHEN t.status = 'failed' THEN 1 ELSE 0 END) as failed,
     SUM(CASE WHEN t.status = 'error' THEN 1 ELSE 0 END) as errors,
+    SUM(CASE WHEN t.status = 'timeout' THEN 1 ELSE 0 END) as timeouts,
     SUM(CASE WHEN t.status = 'skipped' THEN 1 ELSE 0 END) as skipped
 FROM test_runs r
 LEFT JOIN test_results t ON t.run_id = r.id

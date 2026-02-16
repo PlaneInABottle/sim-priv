@@ -145,10 +145,16 @@ final_output = log.get("output", {})
 
 **Examples:**
 ```
-# Media Handoff should produce Turkish acknowledgment
-ASSERT: block("Media Handoff").output.result CONTAINS "sesli mesaj"
-    OR: block("Media Handoff").output.result CONTAINS "fotoğraf"
-    OR: block("Media Handoff").output.result CONTAINS "video"
+# Media Handoff should produce structured handoff result
+ASSERT: block("Media Handoff").output.result.mediaType EQUALS "voice"
+    OR: block("Media Handoff").output.result.mediaType EQUALS "image"
+    OR: block("Media Handoff").output.result.mediaType EQUALS "video"
+
+# Verify handoff operation count and success
+ASSERT: block("Media Handoff").output.result.operations LENGTH 4
+ASSERT: block("Media Handoff").output.result.success EQUALS true
+ASSERT: block("Media Handoff").output.result.errors LENGTH 0
+ASSERT: block("Media Handoff").output.stdout NOT_EMPTY
 
 # Support Agent should produce a response
 ASSERT: block("Support Agent").output.content NOT_EMPTY

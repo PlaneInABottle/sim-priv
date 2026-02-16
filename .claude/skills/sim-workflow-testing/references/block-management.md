@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS test_results (
     scenario_name TEXT NOT NULL,
     test_group TEXT NOT NULL,      -- condition_routing | media_handoff | text_flow | integration
     profile TEXT NOT NULL,
-    status TEXT DEFAULT 'pending', -- pending | passed | failed | error | skipped
+    status TEXT DEFAULT 'pending', -- pending | passed | failed | error | timeout | skipped
     execution_id TEXT,
     expected_path TEXT,            -- JSON array of expected block names
     actual_path TEXT,              -- JSON array of actual block names from trace
