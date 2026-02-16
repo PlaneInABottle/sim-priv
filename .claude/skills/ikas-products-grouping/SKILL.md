@@ -79,8 +79,9 @@ function extractColor(name) {
 ```javascript
 function extractBaseType(name) {
   let baseName = name.trim();
-  for (const color of colors) {
-    baseName = baseName.replace(new RegExp(`\\s*${color}\\s*$`), "").trim();
+  // Remove multi-word colors first, then single-word
+  for (const color of [...KNOWN_COLORS_MULTI, ...KNOWN_COLORS_SINGLE]) {
+    baseName = baseName.replace(new RegExp(`\\s*${color}\\s*$`, 'i'), "").trim();
   }
   return baseName;
 }

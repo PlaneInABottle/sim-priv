@@ -269,7 +269,7 @@ const toolConfig = {
 
 ### 2.2 Create Test Workflow
 
-1. **Disable blocks in existing workflow** (do NOT create a separate test copy — see anti-patterns)
+1. Create a **separate test workflow** (or disable blocks in existing one)
 2. Keep only: `api_trigger` → `agent` → `response`
 3. Agent uses the new tool
 4. Execute: `sim-mcp-execute_workflow(useDraftState: true)`
