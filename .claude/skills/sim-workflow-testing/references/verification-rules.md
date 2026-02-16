@@ -195,7 +195,7 @@ Only condition blocks + trigger are enabled, so traces are short:
 
 | Scenario | Expected Trace Blocks |
 |----------|-----------------------|
-| S-01: Text greeting | `["Webhook 1", "Incoming Only", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait", ...]` |
+| S-01: Text greeting | `["Webhook 1", "Incoming Only", "Build Conversation Composite Key", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait", ...]` |
 
 > Note: Exact trace depends on which blocks are kept enabled. With Support Agent disabled,
 > execution may stop at Loop 1 entry or continue through the loop with errors.

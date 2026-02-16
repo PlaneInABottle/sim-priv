@@ -68,6 +68,11 @@ If the agent session is interrupted mid-test:
 
 **Situation:** All blocks remain disabled; restore operations failed completely.
 
+> ⚠️ **WARNING:** This procedure sets ALL blocks to `enabled=true`, regardless of their
+> original state. If any blocks were intentionally disabled before testing, this will
+> change production state. **Use Selective Rollback (below) instead when snapshot data
+> is available.** Only use Emergency Full Rollback when no snapshot exists.
+
 **Procedure:**
 
 1. Fetch the workflow state:
@@ -97,7 +102,7 @@ If the agent session is interrupted mid-test:
 
 1. Query the block_snapshots table to get all disabled blocks and their original_enabled values:
    ```
-   SELECT blockId, original_enabled FROM block_snapshots WHERE run_id='<RUN_ID>' AND restored=0
+   SELECT block_id, original_enabled FROM block_snapshots WHERE run_id='<RUN_ID>' AND restored=0
    ```
 
 2. For each row returned:
@@ -111,7 +116,7 @@ If the agent session is interrupted mid-test:
 
 3. After each toggle, update the snapshot:
    ```
-   UPDATE block_snapshots SET restored=1 WHERE run_id='<RUN_ID>' AND blockId='<BLOCK_ID>'
+   UPDATE block_snapshots SET restored=1 WHERE run_id='<RUN_ID>' AND block_id='<BLOCK_ID>'
    ```
 
 4. Verify all blocks are restored:

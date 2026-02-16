@@ -24,20 +24,24 @@ Architecture diagram, block reference, and SQL tracking schema for the Kamatas P
     │  Webhook 1 │─────▶│ Incoming Only│──── IF (incoming text) ──────────────────────┐
     │ (trigger)  │      │ (condition)  │                                               │
     └────────────┘      └──────┬───────┘                                               │
-                               │                                               ┌───────┴────────┐
-                          ELSE │                                               │                 │
-                               ▼                                               ▼                 ▼
-                     ┌──────────────────┐                          ┌─────────────────┐  ┌──────────────┐
-                     │ Is Media Message?│                          │fetchCustomerInfo│  │storeUserMsg  │
-                     │   (condition)    │                          │ (workflow_input)│  │  (memory)    │
-                     └────────┬─────────┘                          └────────┬────────┘  └──────┬───────┘
-                              │                                            │                   │
-                     IF media │                                            │                   ▼
-                              ▼                                            │           ┌──────────────┐
-                     ┌──────────────────┐                                  │           │    API 1     │
-                     │  Media Handoff   │                                  │           │  (api call)  │
-                     │   (function)     │                                  │           └──────┬───────┘
-                     └──────────────────┘                                  │                  │
+                               │                                          ┌────────────┴──────────────┐
+                          ELSE │                                          │ Build Conversation        │
+                               │                                          │ Composite Key (function)  │
+                               ▼                                          └────────────┬──────────────┘
+                     ┌──────────────────┐                                      ┌───────┴────────┐
+                     │ Is Media Message?│                                      │                 │
+                     │   (condition)    │                                      ▼                 ▼
+                     └────────┬─────────┘                          ┌─────────────────┐  ┌──────────────┐
+                              │                                    │fetchCustomerInfo│  │storeUserMsg  │
+                     IF media │                                    │ (workflow_input)│  │  (memory)    │
+                              ▼                                    └────────┬────────┘  └──────┬───────┘
+                     ┌──────────────────┐                                   │                   │
+                     │  Media Handoff   │                                   │                   ▼
+                     │   (function)     │                                   │           ┌──────────────┐
+                     └──────────────────┘                                   │           │    API 1     │
+                                                                           │           │  (api call)  │
+                                                                           │           └──────┬───────┘
+                                                                           │                  │
                                                                            │                  ▼
                                                                            │           ┌──────────────┐
                                                                            │           │ debounceWait │
@@ -85,10 +89,10 @@ Architecture diagram, block reference, and SQL tracking schema for the Kamatas P
                                                                            IF latest
                                                                                 │
                                                                                 ▼
-                                                                   ┌────────────────────┐
-                                                                   │Extract IKAS Context│
-                                                                   │    (function)      │
-                                                                   └─────────┬──────────┘
+                                                                   ┌──────────────────────┐
+                                                                   │Extract Search Context│
+                                                                   │    (function)        │
+                                                                   └─────────┬────────────┘
                                                                              │
                                                                              ▼
                                                                    ┌──────────────────┐
@@ -125,23 +129,24 @@ Architecture diagram, block reference, and SQL tracking schema for the Kamatas P
 | 2 | Incoming Only | `dcad3f5b` | condition |
 | 3 | Is Media Message? | `block-9f9c16f6` | condition |
 | 4 | Media Handoff | `block-b0a9fec7` | function |
-| 5 | fetchCustomerInformation | `5c001454` | workflow_input |
-| 6 | storeUserMessage | `d4b467d3` | memory |
-| 7 | API 1 | `ca5acc54` | api |
-| 8 | debounceWait | `bc6cc87d` | wait |
-| 9 | getLatestMessageId | `c18d418f` | api |
-| 10 | checkIfTheMessageLatest | `a057131e` | condition |
-| 11 | Loop 1 | `f2c10d85` | loop |
-| 12 | Support Agent | `35a00fab` | agent |
-| 13 | AgentVariable | `2c432318` | variables |
-| 14 | Wait 2 | `598e048a` | wait |
-| 15 | getLatestMessageId2 | `cfeba002` | api |
-| 16 | checkIfTheMessageLatest2 | `892e0602` | condition |
-| 17 | Extract IKAS Context | `89d6feb8` | function |
-| 18 | Has IKAS Context? | `77f980fc` | condition |
-| 19 | Store IKAS Context | `84cc0a48` | memory |
-| 20 | Memory 1 | `e38be766` | memory |
-| 21 | Send to Chatwoot (No Files) 1 | `3275b7a8` | function |
+| 5 | Build Conversation Composite Key | `buildconversationcompositekey` | function |
+| 6 | fetchCustomerInformation | `5c001454` | workflow_input |
+| 7 | storeUserMessage | `d4b467d3` | memory |
+| 8 | API 1 | `ca5acc54` | api |
+| 9 | debounceWait | `bc6cc87d` | wait |
+| 10 | getLatestMessageId | `c18d418f` | api |
+| 11 | checkIfTheMessageLatest | `a057131e` | condition |
+| 12 | Loop 1 | `f2c10d85` | loop |
+| 13 | Support Agent | `35a00fab` | agent |
+| 14 | AgentVariable | `2c432318` | variables |
+| 15 | Wait 2 | `598e048a` | wait |
+| 16 | getLatestMessageId2 | `cfeba002` | api |
+| 17 | checkIfTheMessageLatest2 | `892e0602` | condition |
+| 18 | Extract Search Context | `89d6feb8` | function |
+| 19 | Has IKAS Context? | `77f980fc` | condition |
+| 20 | Store IKAS Context | `84cc0a48` | memory |
+| 21 | Memory 1 | `e38be766` | memory |
+| 22 | Send to Chatwoot (No Files) 1 | `3275b7a8` | function |
 
 > **Note:** Block IDs shown as short prefixes for readability. Full UUIDs are in `company-tests/kamatas-test-suite.md`.
 

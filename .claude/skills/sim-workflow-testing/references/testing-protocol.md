@@ -30,7 +30,7 @@ get_workflow(workflowId="<WORKFLOW_ID>", verbose=false)
 
 Verify:
 - Workflow name matches expected (e.g., "Kamatas PROD")
-- Block count matches expected (e.g., 21 blocks for Kamatas PROD)
+- Block count matches expected (e.g., 22 blocks for Kamatas PROD)
 - Workflow is not mid-deployment
 
 ### 1.2 Snapshot Block States

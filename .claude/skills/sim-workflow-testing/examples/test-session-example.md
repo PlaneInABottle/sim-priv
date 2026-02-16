@@ -120,7 +120,7 @@ Record snapshot:
 INSERT INTO test_runs (id, workflow_id, workflow_name, profile)
 VALUES ('run-voice-001', '53408cc2-52fa-46e5-85d7-402d2f42f3a4', 'Kamatas PROD', 'CONDITION_ONLY');
 
--- Snapshot all 21 blocks (showing first few)
+-- Snapshot all 22 blocks (showing first few)
 INSERT INTO block_snapshots (id, run_id, block_id, block_name, original_enabled) VALUES
 ('snap-001', 'run-voice-001', 'f3d0bdbd-2304-40ee-84ef-210613d7828a', 'Webhook 1', 1),
 ('snap-002', 'run-voice-001', 'dcad3f5b-de7c-4f67-b144-aea1bd924ea9', 'Incoming Only', 1),
@@ -128,7 +128,7 @@ INSERT INTO block_snapshots (id, run_id, block_id, block_name, original_enabled)
 ('snap-004', 'run-voice-001', 'block-b0a9fec7-4938-4c4c-bf17-87c193b468b1', 'Media Handoff', 1),
 ('snap-005', 'run-voice-001', '5c001454-9711-456e-b56c-c66baccb1d3c', 'fetchCustomerInformation', 1),
 ('snap-006', 'run-voice-001', 'd4b467d3-b1d6-4319-a7d8-356f1bbda3ed', 'storeUserMessage', 1);
--- ... (continue for all 21 blocks)
+-- ... (continue for all 22 blocks)
 ```
 
 ---
@@ -467,7 +467,7 @@ Verify restoration:
 
 ```
 get_workflow(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", verbose=false)
-→ All 21 blocks should show enabled: true
+→ All 22 blocks should show enabled: true
 ```
 
 Update SQL:
@@ -527,7 +527,7 @@ ORDER BY r.started_at, t.scenario_id;
 
   Total: 2/2 passed (100%)
   Cost:  $0.00
-  Blocks restored: ✅ All 21 blocks enabled
+  Blocks restored: ✅ All 22 blocks enabled
 
 ═══════════════════════════════════════════════════
 ```

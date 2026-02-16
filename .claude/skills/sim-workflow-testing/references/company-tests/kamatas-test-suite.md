@@ -3,8 +3,8 @@
 Test matrix for the Kamatas PROD workflow (`53408cc2-52fa-46e5-85d7-402d2f42f3a4`).
 
 **Workspace:** `ac7ec7a6-f09a-4035-8e96-e9e95b75221b`
-**Total Scenarios:** 24 (14 Condition Routing + 5 Media Handoff + 3 Text Flow + 2 Full Integration)
-**Block Count:** 21
+**Total Scenarios:** 24 (13 Condition Routing + 6 Media Handoff + 3 Text Flow + 2 Full Integration)
+**Block Count:** 22
 
 ---
 
@@ -30,23 +30,24 @@ Complete block inventory with full UUIDs for use in sim-mcp tool calls.
 | 2 | Incoming Only | `dcad3f5b-de7c-4f67-b144-aea1bd924ea9` | condition | Router |
 | 3 | Is Media Message? | `block-9f9c16f6-da15-4e56-a08a-2a036e48832a` | condition | Media |
 | 4 | Media Handoff | `block-b0a9fec7-4938-4c4c-bf17-87c193b468b1` | function | Media |
-| 5 | fetchCustomerInformation | `5c001454-9711-456e-b56c-c66baccb1d3c` | workflow_input | Text |
-| 6 | storeUserMessage | `d4b467d3-b1d6-4319-a7d8-356f1bbda3ed` | memory | Text |
-| 7 | API 1 | `ca5acc54-e9d3-45a3-965e-ef10c3b8295d` | api | Text |
-| 8 | debounceWait | `bc6cc87d-ff39-46f8-aa9f-75c2c8211e58` | wait | Text |
-| 9 | getLatestMessageId | `c18d418f-5b3e-4175-a960-08c9c92bf93a` | api | Text |
-| 10 | checkIfTheMessageLatest | `a057131e-a319-4515-b985-f2311c7f7e08` | condition | Text |
-| 11 | Loop 1 | `f2c10d85-997c-48d6-a102-a0197362ac36` | loop | Text |
-| 12 | Support Agent | `35a00fab-a271-4aa6-9ab9-87e69cd8ee59` | agent | Text |
-| 13 | AgentVariable | `2c432318-c33e-411e-b6fa-700650d85c86` | variables | Text |
-| 14 | Wait 2 | `598e048a-3ab1-4024-b4b1-355e9a2df137` | wait | Text |
-| 15 | getLatestMessageId2 | `cfeba002-3f61-4c8e-b05e-aabfc8deeb60` | api | Text |
-| 16 | checkIfTheMessageLatest2 | `892e0602-dfb4-4a92-aa61-2b7d0ca6fce7` | condition | Text |
-| 17 | Extract IKAS Context | `89d6feb8-481c-45c5-a91f-962eae28c8e1` | function | Text |
-| 18 | Has IKAS Context? | `77f980fc-5cd0-440d-ac59-72f170efa36f` | condition | Text |
-| 19 | Store IKAS Context | `84cc0a48-f4f2-407d-a5bf-bc9011de7ba2` | memory | Text |
-| 20 | Memory 1 | `e38be766-a89b-4375-9f16-d729bcd5201d` | memory | Text |
-| 21 | Send to Chatwoot (No Files) 1 | `3275b7a8-ac67-411a-bfe7-f139c90d877e` | function | Text |
+| 5 | Build Conversation Composite Key | `buildconversationcompositekey` | function | Text |
+| 6 | fetchCustomerInformation | `5c001454-9711-456e-b56c-c66baccb1d3c` | workflow_input | Text |
+| 7 | storeUserMessage | `d4b467d3-b1d6-4319-a7d8-356f1bbda3ed` | memory | Text |
+| 8 | API 1 | `ca5acc54-e9d3-45a3-965e-ef10c3b8295d` | api | Text |
+| 9 | debounceWait | `bc6cc87d-ff39-46f8-aa9f-75c2c8211e58` | wait | Text |
+| 10 | getLatestMessageId | `c18d418f-5b3e-4175-a960-08c9c92bf93a` | api | Text |
+| 11 | checkIfTheMessageLatest | `a057131e-a319-4515-b985-f2311c7f7e08` | condition | Text |
+| 12 | Loop 1 | `f2c10d85-997c-48d6-a102-a0197362ac36` | loop | Text |
+| 13 | Support Agent | `35a00fab-a271-4aa6-9ab9-87e69cd8ee59` | agent | Text |
+| 14 | AgentVariable | `2c432318-c33e-411e-b6fa-700650d85c86` | variables | Text |
+| 15 | Wait 2 | `598e048a-3ab1-4024-b4b1-355e9a2df137` | wait | Text |
+| 16 | getLatestMessageId2 | `cfeba002-3f61-4c8e-b05e-aabfc8deeb60` | api | Text |
+| 17 | checkIfTheMessageLatest2 | `892e0602-dfb4-4a92-aa61-2b7d0ca6fce7` | condition | Text |
+| 18 | Extract Search Context | `89d6feb8-481c-45c5-a91f-962eae28c8e1` | function | Text |
+| 19 | Has IKAS Context? | `77f980fc-5cd0-440d-ac59-72f170efa36f` | condition | Text |
+| 20 | Store IKAS Context | `84cc0a48-f4f2-407d-a5bf-bc9011de7ba2` | memory | Text |
+| 21 | Memory 1 | `e38be766-a89b-4375-9f16-d729bcd5201d` | memory | Text |
+| 22 | Send to Chatwoot (No Files) 1 | `3275b7a8-ac67-411a-bfe7-f139c90d877e` | function | Text |
 
 ### Path Legend
 
@@ -209,19 +210,6 @@ Complete block inventory with full UUIDs for use in sim-mcp tool calls.
 | **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = false` |
 | **Notes** | Edge case: empty message with no text/attachments. Fails hasText check (`text.length > 0` is false for empty string). Message is dropped by both conditions. |
 
-#### CR-13: Mixed Audio+Image Message → Media Path
-
-| Field | Value |
-|-------|-------|
-| **Scenario ID** | CR-13 |
-| **Payload Ref** | S-14 |
-| **Input** | `message_type: "incoming"`, `content: ""`, `attachments: [audio (.ogg), image (.jpg)]` |
-| **Expected Routing** | Incoming Only → ELSE → Is Media Message? → IF → Media Handoff |
-| **Condition Assertions** | `Incoming Only.conditionResult = false`, `Is Media Message?.conditionResult = true` |
-| **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| **Function Assertions** | `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.success EQUALS true` |
-| **Notes** | Tests audio > image priority. mediaType should resolve to "voice" even though image is present. |
-
 #### CR-14: Team-Assigned Conversation → Dropped
 
 | Field | Value |
@@ -248,6 +236,7 @@ Disable all text path blocks (keep media path enabled):
 
 ```
 DISABLE:
+  - Build Conversation Composite Key (buildconversationcompositekey)
   - fetchCustomerInformation    (5c001454-9711-456e-b56c-c66baccb1d3c)
   - storeUserMessage            (d4b467d3-b1d6-4319-a7d8-356f1bbda3ed)
   - API 1                       (ca5acc54-e9d3-45a3-965e-ef10c3b8295d)
@@ -260,7 +249,7 @@ DISABLE:
   - Wait 2                      (598e048a-3ab1-4024-b4b1-355e9a2df137)
   - getLatestMessageId2         (cfeba002-3f61-4c8e-b05e-aabfc8deeb60)
   - checkIfTheMessageLatest2    (892e0602-dfb4-4a92-aa61-2b7d0ca6fce7)
-  - Extract IKAS Context        (89d6feb8-481c-45c5-a91f-962eae28c8e1)
+  - Extract Search Context      (89d6feb8-481c-45c5-a91f-962eae28c8e1)
   - Has IKAS Context?           (77f980fc-5cd0-440d-ac59-72f170efa36f)
   - Store IKAS Context          (84cc0a48-f4f2-407d-a5bf-bc9011de7ba2)
   - Memory 1                    (e38be766-a89b-4375-9f16-d729bcd5201d)
@@ -337,6 +326,19 @@ KEEP ENABLED:
 | **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "image"`, `Media Handoff.output.result.operations LENGTH 4` |
 | **Notes** | Tests multi-attachment handling. Verify no array-out-of-bounds or single-item assumptions. |
 
+#### MH-06: Mixed Audio+Image Handoff
+
+| Field | Value |
+|-------|-------|
+| **Scenario ID** | MH-06 |
+| **Payload Ref** | S-14 |
+| **Input** | Mixed attachments: audio (.ogg) + image (.jpg), no text content |
+| **Expected Trace** | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
+| **Expected Output** | Media Handoff processes audio as primary media type (audio > image priority) |
+| **Status Assertions** | All blocks: `status = "success"` |
+| **Output Assertions** | `Media Handoff.output.result.success EQUALS true`, `Media Handoff.output.result.mediaType EQUALS "voice"`, `Media Handoff.output.result.operations LENGTH 4` |
+| **Notes** | Tests audio > image priority. mediaType should resolve to "voice" even though image is present. Originally CR-13. |
+
 ---
 
 ## Test Group 3: Text Flow
@@ -359,6 +361,7 @@ DISABLE:
 KEEP ENABLED:
   - Webhook 1                   (f3d0bdbd-2304-40ee-84ef-210613d7828a)
   - Incoming Only               (dcad3f5b-de7c-4f67-b144-aea1bd924ea9)
+  - Build Conversation Composite Key (buildconversationcompositekey)
   - fetchCustomerInformation    (5c001454-9711-456e-b56c-c66baccb1d3c)
   - storeUserMessage            (d4b467d3-b1d6-4319-a7d8-356f1bbda3ed)
   - API 1                       (ca5acc54-e9d3-45a3-965e-ef10c3b8295d)
@@ -370,7 +373,7 @@ KEEP ENABLED:
   - Wait 2                      (598e048a-3ab1-4024-b4b1-355e9a2df137)
   - getLatestMessageId2         (cfeba002-3f61-4c8e-b05e-aabfc8deeb60)
   - checkIfTheMessageLatest2    (892e0602-dfb4-4a92-aa61-2b7d0ca6fce7)
-  - Extract IKAS Context        (89d6feb8-481c-45c5-a91f-962eae28c8e1)
+  - Extract Search Context      (89d6feb8-481c-45c5-a91f-962eae28c8e1)
   - Has IKAS Context?           (77f980fc-5cd0-440d-ac59-72f170efa36f)
   - Store IKAS Context          (84cc0a48-f4f2-407d-a5bf-bc9011de7ba2)
   - Memory 1                    (e38be766-a89b-4375-9f16-d729bcd5201d)
@@ -389,7 +392,7 @@ KEEP ENABLED:
 | **Scenario ID** | TF-01 |
 | **Payload Ref** | S-01 |
 | **Input** | `content: "Merhaba"`, standard incoming text |
-| **Expected Trace** | Should include: `["Webhook 1", "Incoming Only", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait"]` |
+| **Expected Trace** | Should include: `["Webhook 1", "Incoming Only", "Build Conversation Composite Key", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait"]` |
 | **Path Assertions** | `trace CONTAINS ["Incoming Only"]`, `Incoming Only.conditionResult = true` |
 | **Status Assertions** | All executed blocks: `status = "success"` |
 | **Notes** | Tests the ingestion pipeline. Execution may stop at debounceWait (wait block) or continue through to Loop 1 depending on wait configuration. |
@@ -433,7 +436,7 @@ DISABLE:
   - Send to Chatwoot (No Files) (3275b7a8-ac67-411a-bfe7-f139c90d877e)
 
 KEEP ENABLED:
-  - All other blocks (20 blocks)
+  - All other blocks (21 blocks)
 ```
 
 > **Warning:** FULL_INTEGRATION tests consume AI tokens and may make external API calls
@@ -449,10 +452,10 @@ KEEP ENABLED:
 | **Scenario ID** | FI-01 |
 | **Payload Ref** | S-01 |
 | **Input** | `content: "Merhaba"`, standard incoming text |
-| **Expected Trace** | Full text path: `["Webhook 1", "Incoming Only", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait", "getLatestMessageId", "checkIfTheMessageLatest", "Loop 1", "Support Agent", "AgentVariable", "getLatestMessageId2", "checkIfTheMessageLatest2", "Extract IKAS Context", "Has IKAS Context?", "Memory 1"]` |
+| **Expected Trace** | Full text path: `["Webhook 1", "Incoming Only", "Build Conversation Composite Key", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait", "getLatestMessageId", "checkIfTheMessageLatest", "Loop 1", "Support Agent", "AgentVariable", "getLatestMessageId2", "checkIfTheMessageLatest2", "Extract Search Context", "Has IKAS Context?", "Memory 1"]` |
 | **Output Assertions** | `Support Agent.output.content` is a Turkish greeting response, appropriate for Kamatas customer service |
 | **Status Assertions** | All blocks: `status = "success"` |
-| **Notes** | Most expensive test. Validates full end-to-end behavior. Agent should respond with a warm Turkish greeting mentioning Kamatas. May include: "Merhaba! Kamatas'a hoş geldiniz" or similar. **Parallel execution:** fetchCustomerInformation and storeUserMessage execute in parallel. Trace may show them in either order: `['fetchCustomerInformation', 'storeUserMessage']` OR `['storeUserMessage', 'fetchCustomerInformation']`. Both are valid. **Conditional trace:** Trace assumes no existing IKAS context from fetchCustomerInformation. If fetchCustomerInformation returns ikas data, 'Store IKAS Context' will appear between 'Has IKAS Context?' and 'Memory 1'. |
+| **Notes** | Most expensive test. Validates full end-to-end behavior. Agent should respond with a warm Turkish greeting mentioning Kamatas. May include: "Merhaba! Kamatas'a hoş geldiniz" or similar. **Parallel execution:** Build Conversation Composite Key fans out to fetchCustomerInformation and storeUserMessage in parallel. Trace may show them in either order: `['fetchCustomerInformation', 'storeUserMessage']` OR `['storeUserMessage', 'fetchCustomerInformation']`. Both are valid. **Conditional trace:** Trace assumes no existing IKAS context from fetchCustomerInformation. If fetchCustomerInformation returns ikas data, 'Store IKAS Context' will appear between 'Has IKAS Context?' and 'Memory 1'. |
 
 #### FI-02: Full Media Flow — Voice Handoff
 
@@ -474,12 +477,13 @@ Summary of which blocks to disable for each test profile, using full block IDs.
 
 ### Profile: CONDITION_ONLY
 
-Disable 18 blocks, keep 3:
+Disable 19 blocks, keep 3:
 
 ```python
 # Blocks to DISABLE
 disable_blocks = [
     "block-b0a9fec7-4938-4c4c-bf17-87c193b468b1",  # Media Handoff
+    "buildconversationcompositekey",                  # Build Conversation Composite Key
     "5c001454-9711-456e-b56c-c66baccb1d3c",          # fetchCustomerInformation
     "d4b467d3-b1d6-4319-a7d8-356f1bbda3ed",          # storeUserMessage
     "ca5acc54-e9d3-45a3-965e-ef10c3b8295d",           # API 1
@@ -492,7 +496,7 @@ disable_blocks = [
     "598e048a-3ab1-4024-b4b1-355e9a2df137",           # Wait 2
     "cfeba002-3f61-4c8e-b05e-aabfc8deeb60",           # getLatestMessageId2
     "892e0602-dfb4-4a92-aa61-2b7d0ca6fce7",           # checkIfTheMessageLatest2
-    "89d6feb8-481c-45c5-a91f-962eae28c8e1",           # Extract IKAS Context
+    "89d6feb8-481c-45c5-a91f-962eae28c8e1",           # Extract Search Context
     "77f980fc-5cd0-440d-ac59-72f170efa36f",           # Has IKAS Context?
     "84cc0a48-f4f2-407d-a5bf-bc9011de7ba2",           # Store IKAS Context
     "e38be766-a89b-4375-9f16-d729bcd5201d",           # Memory 1
@@ -509,10 +513,11 @@ keep_blocks = [
 
 ### Profile: PATH_ISOLATION — Media
 
-Disable 17 blocks, keep 4:
+Disable 18 blocks, keep 4:
 
 ```python
 disable_blocks = [
+    "buildconversationcompositekey",                  # Build Conversation Composite Key
     "5c001454-9711-456e-b56c-c66baccb1d3c",          # fetchCustomerInformation
     "d4b467d3-b1d6-4319-a7d8-356f1bbda3ed",          # storeUserMessage
     "ca5acc54-e9d3-45a3-965e-ef10c3b8295d",           # API 1
@@ -525,7 +530,7 @@ disable_blocks = [
     "598e048a-3ab1-4024-b4b1-355e9a2df137",           # Wait 2
     "cfeba002-3f61-4c8e-b05e-aabfc8deeb60",           # getLatestMessageId2
     "892e0602-dfb4-4a92-aa61-2b7d0ca6fce7",           # checkIfTheMessageLatest2
-    "89d6feb8-481c-45c5-a91f-962eae28c8e1",           # Extract IKAS Context
+    "89d6feb8-481c-45c5-a91f-962eae28c8e1",           # Extract Search Context
     "77f980fc-5cd0-440d-ac59-72f170efa36f",           # Has IKAS Context?
     "84cc0a48-f4f2-407d-a5bf-bc9011de7ba2",           # Store IKAS Context
     "e38be766-a89b-4375-9f16-d729bcd5201d",           # Memory 1
@@ -542,7 +547,7 @@ keep_blocks = [
 
 ### Profile: PATH_ISOLATION — Text (Agent Disabled)
 
-Disable 4 blocks, keep 17:
+Disable 4 blocks, keep 18:
 
 ```python
 disable_blocks = [
@@ -553,13 +558,13 @@ disable_blocks = [
 ]
 
 keep_blocks = [
-    # All remaining 17 blocks
+    # All remaining 18 blocks (including Build Conversation Composite Key)
 ]
 ```
 
 ### Profile: FULL_INTEGRATION
 
-Disable 1 block, keep 20:
+Disable 1 block, keep 21:
 
 ```python
 disable_blocks = [
@@ -567,7 +572,7 @@ disable_blocks = [
 ]
 
 keep_blocks = [
-    # All other 20 blocks
+    # All other 21 blocks
 ]
 ```
 
@@ -578,14 +583,14 @@ keep_blocks = [
 Recommended order for running the complete test suite:
 
 ```
-Phase 1: CONDITION_ONLY (14 scenarios)
-├── CR-01 through CR-14
+Phase 1: CONDITION_ONLY (13 scenarios)
+├── CR-01 through CR-12, CR-14
 ├── Cheapest ($0.00), safest
 ├── Validates all routing logic
 └── If any fail → STOP, fix routing before proceeding
 
-Phase 2: PATH_ISOLATION — Media (5 scenarios)
-├── MH-01 through MH-05
+Phase 2: PATH_ISOLATION — Media (6 scenarios)
+├── MH-01 through MH-06
 ├── Moderate cost ($0.00-0.01)
 ├── Validates media handoff function
 └── If any fail → check Media Handoff function code
