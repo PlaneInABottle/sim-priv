@@ -211,7 +211,8 @@
         "position": { "x": 600, "y": 100 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "messages": [{"role": "system", "content": "Analyze the provided item."}]
+          "messages": [{"role": "system", "content": "Analyze the provided item."}],
+          "parentId": "loop_1"
         }
       },
       {
@@ -238,7 +239,12 @@
         "source": "agent_1",
         "target": "response_1"
       }
-    ]
+    ],
+    "loops": {
+      "loop_1": {
+        "nodes": ["agent_1"]
+      }
+    }
   },
 
   "knowledge_base_rag": {
@@ -322,7 +328,8 @@
         "position": { "x": 600, "y": 50 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "messages": [{"role": "system", "content": "Analyze sentiment of the provided text."}]
+          "messages": [{"role": "system", "content": "Analyze sentiment of the provided text."}],
+          "parentId": "parallel_1"
         }
       },
       {
@@ -332,7 +339,8 @@
         "position": { "x": 600, "y": 200 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "messages": [{"role": "system", "content": "Extract entities from the provided text."}]
+          "messages": [{"role": "system", "content": "Extract entities from the provided text."}],
+          "parentId": "parallel_1"
         }
       },
       {
@@ -342,7 +350,8 @@
         "position": { "x": 600, "y": 350 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "messages": [{"role": "system", "content": "Summarize the provided text."}]
+          "messages": [{"role": "system", "content": "Summarize the provided text."}],
+          "parentId": "parallel_1"
         }
       },
       {
@@ -385,7 +394,12 @@
         "source": "agent_3",
         "target": "response_1"
       }
-    ]
+    ],
+    "parallels": {
+      "parallel_1": {
+        "nodes": ["agent_1", "agent_2", "agent_3"]
+      }
+    }
   },
 
   "error_handling": {
