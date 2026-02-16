@@ -239,7 +239,11 @@ query($id: StringFilterInput) {
       brand { id name }
       tags { id name }
       metaData { slug }
-      productVariantTypes { id name values { id name } }
+      productVariantTypes {
+        order
+        variantType { id name }
+        variantValueIds
+      }
       variants {
         id sku barcodeList isActive weight sellIfOutOfStock
         prices { sellPrice buyPrice discountPrice currency }
