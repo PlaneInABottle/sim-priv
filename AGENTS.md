@@ -410,7 +410,7 @@ Enable all blocks (disable final sends if destructive) → send realistic payloa
 
 ```
 Simple Agent:      api_trigger → agent → response
-Conditional:       webhook → router → [path_a → agent_a, path_b → agent_b] → response
+Conditional:       generic_webhook → router → [path_a → agent_a, path_b → agent_b] → response
 API Integration:   start_trigger → api → function (parse) → agent → slack
 RAG:               api_trigger → knowledge (retrieve) → agent (answer) → response
 ```
