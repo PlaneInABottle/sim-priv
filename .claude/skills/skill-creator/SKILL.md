@@ -307,12 +307,12 @@ When editing the (newly-generated or existing) skill, remember that the skill is
 
 #### Learn Proven Design Patterns
 
-Consult these helpful guides based on your skill's needs:
+Use these built-in patterns based on your skill's needs:
 
-- **Multi-step processes**: See references/workflows.md for sequential workflows and conditional logic
-- **Specific output formats or quality standards**: See references/output-patterns.md for template and example patterns
+- **Multi-step processes**: Define a clear sequence with conditional branches and explicit stop/rollback points.
+- **Specific output formats or quality standards**: Include one canonical template and 1–2 concise passing examples.
 
-These files contain established best practices for effective skill design.
+Keep these patterns in SKILL.md unless your skill actually includes dedicated `references/` files for them.
 
 #### Start with Reusable Skill Contents
 
@@ -348,7 +348,21 @@ Write instructions for using the skill and its bundled resources.
 
 ### Step 5: Packaging a Skill
 
-Once development of the skill is complete, it must be packaged into a distributable .skill file that gets shared with the user. The packaging process automatically validates the skill first to ensure it meets all requirements:
+Once development of the skill is complete, it must be packaged into a distributable .skill file that gets shared with the user.
+
+#### Quick Validation
+
+To validate a skill without packaging it, run the quick validation script:
+
+```bash
+scripts/quick_validate.py <path/to/skill-folder>
+```
+
+This checks YAML frontmatter format, required fields (`name`, `description`), naming conventions, and description constraints. Use this for fast iteration before full packaging.
+
+#### Full Packaging
+
+The packaging process automatically validates the skill first to ensure it meets all requirements:
 
 ```bash
 scripts/package_skill.py <path/to/skill-folder>
