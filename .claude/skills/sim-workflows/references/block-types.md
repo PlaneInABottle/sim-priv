@@ -204,7 +204,7 @@ Use `<BlockName.field>` tag syntax in condition expressions to reference upstrea
 
 > ⚠️ Tags use display names only: `<Agent 1.content>` not `<PreviousBlock.content>`.
 
-### router
+### router_v2
 AI-powered semantic routing using an LLM to select the best path. The router sends a prompt describing the input context to an LLM provider, which selects the most appropriate route from user-defined options.
 
 > **⚠️ There are two router versions.** `router` (legacy, hidden) auto-detects downstream blocks. `router_v2` (active) uses explicit user-defined routes. Both use LLM-powered routing, NOT JavaScript expressions.

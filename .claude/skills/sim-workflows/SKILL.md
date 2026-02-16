@@ -79,7 +79,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 - Block IDs must be unique within a workflow
 - Create blocks first (`add_blocks`), then connect (`add_edge` — one call per connection)
 - For condition/router blocks: set conditions via `update_subblock` BEFORE adding edges
-- `sourceHandle` format: `"condition-{conditionId}"` or `"route-{routeId}"`
+- `sourceHandle` format: `"condition-{conditionId}"` or `"router-{routeId}"`
 
 ---
 
@@ -127,7 +127,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 | `agent` | LLM execution | `model`, `messages`, `tools`, `apiKey`, `skills` |
 | `function` | JavaScript code | `language`, `code` |
 | `condition` | Branching logic | `conditions` |
-| `router` | Multi-way routing | `prompt`, `model` |
+| `router_v2` | AI-powered routing | `context`, `routes`, `model` |
 | `response` | Return data | `data`, `dataMode` |
 
 **Agent:** ⚠️ Requires `apiKey` and `model`. No `systemPrompt` subblock — use `messages` with `{"role":"system","content":"..."}`.

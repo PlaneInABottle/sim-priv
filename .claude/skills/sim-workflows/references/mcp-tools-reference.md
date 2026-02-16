@@ -64,7 +64,7 @@ add_edge({ workflowId: "wf_abc", source: "block_a", target: "block_b" })
 | `workflowId` | ✅ | Target workflow |
 | `source` | ✅ | Source block ID |
 | `target` | ✅ | Target block ID |
-| `sourceHandle` | | For condition/router branches (e.g., `"condition-cond_1"`, `"route-0"`) |
+| `sourceHandle` | | For condition/router branches (e.g., `"condition-cond_1"`, `"router-0"`) |
 | `targetHandle` | | Target input handle |
 | `edgeId` | | Custom edge ID |
 
