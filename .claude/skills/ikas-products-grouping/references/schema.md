@@ -75,7 +75,7 @@
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `color` | string | Yes | Color name in Turkish (e.g., "Beyaz", "Antrasit") |
+| `color` | string | No | Color name in Turkish (e.g., "Beyaz", "Antrasit") |
 | `url` | string | Yes | Relative URL path (e.g., "/products/slug") |
 | `price` | number | No | Price override. Only if different from group price |
 

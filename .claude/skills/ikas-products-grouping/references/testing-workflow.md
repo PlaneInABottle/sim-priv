@@ -74,6 +74,9 @@ module.exports = { mockProducts };
 > skill (e.g., `/maximum-(\d{2,4})x(\d{2,4})/` for DUBLE products,
 > `/(\d{2,4})-cm--boy--(?:0-)?(\d{2,4})-cm/` for standard products).
 > Set `product.dims = { maxWidth, maxHeight }` if a pattern matches, or `null` otherwise.
+> `groupProducts()` internally calls `serializeDims()` on each product's `dims` to convert
+> the `{ maxWidth, maxHeight }` object to a `"WxH"` string for grouping keys. Without this,
+> dims objects would serialize as `"[object Object]"` in string interpolation.
 > This step is omitted from the mock data below for brevity — the mock tests focus on
 > color extraction and grouping logic only. In production code, parse dims first, then group.
 
@@ -135,7 +138,10 @@ module.exports = { extractColor, extractBaseType, serializeDims, KNOWN_COLORS_MU
 ### 1.3 Grouping Function
 
 ```javascript
+const { extractColor, extractBaseType, serializeDims } = require('./transformations');
+
 function groupProducts(products) {
+  products = products.map(p => ({ ...p, dims: serializeDims(p.dims) }));
   const groups = new Map();
 
   for (const product of products) {
@@ -198,8 +204,9 @@ module.exports = { groupProducts };
 ### 1.4 Test Runner
 
 ```javascript
-const { mockProducts } = require('./test-products');
-const { groupProducts, extractColor, extractBaseType, serializeDims } = require('./transformations');
+const { mockProducts } = require('./mock-data');
+const { extractColor, extractBaseType, serializeDims } = require('./transformations');
+const { groupProducts } = require('./grouping');
 
 console.log('=== Color Extraction ===');
 const product1 = mockProducts[0];
