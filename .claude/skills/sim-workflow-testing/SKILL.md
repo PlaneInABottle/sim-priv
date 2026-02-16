@@ -715,6 +715,20 @@ When you see: `"result.customer.id" doesn't exist on block "FormatCustomerRespon
 
 ---
 
+## Related Resources
+
+For broader custom tool development guidance beyond workflow testing:
+
+- **Custom Tool Development Best Practices** — See `docs/TESTING_AND_WORKFLOW_BEST_PRACTICES.md` for complete guidance on:
+  - 6-phase custom tool lifecycle (design → JS test → create → isolated test → integration → docs)
+  - Building custom tools with proper local testing before Sim deployment
+  - Anti-patterns in tool development, prompt updates, and workflow configuration
+  - Real-world case study (Kamatas product tool) showing common mistakes and corrections
+
+This skill focuses on **testing existing workflows**. The best practices guide covers **building and testing new custom tools**.
+
+---
+
 ## Roadmap & Future Expansion
 
 ### Phase 1 (Current) ✅ Complete

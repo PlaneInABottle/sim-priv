@@ -698,3 +698,262 @@ When switching between test profiles (e.g., CONDITION_ONLY → PATH_ISOLATION):
 5. **Disable per new profile** — Different block set
 
 Never switch profiles without restoring first.
+
+---
+
+## Custom Tool Isolated Testing
+
+When testing a new custom tool for the first time, use a restricted block configuration before full integration.
+
+### Setup: Minimal Blocks Profile
+
+Create a **TOOL_ONLY** test profile with:
+- **Enabled:** API trigger (or start trigger) → Agent block (uses tool) → Response block
+- **Disabled:** All other blocks (routers, conditions, secondary agents, integrations)
+
+**Why:** Isolates the tool's behavior; eliminates noise from other agents/blocks; confirms tool works before trusting it with full routing.
+
+### Phase 1: Tool Output Validation
+
+1. Snapshot workflow state
+2. Disable all blocks except trigger → agent → response
+3. Execute workflow with test input:
+   ```
+   sim-mcp-execute_workflow(
+     workflowId="<WORKFLOW_ID>",
+     input={ mainCategory: "test-category" },
+     useDraftState=true
+   )
+   ```
+4. Check execution logs:
+   - ✓ Tool executed without errors
+   - ✓ Output matches expected schema
+   - ✓ Token count reasonable (compare to baseline)
+5. Verify token savings (if tool is for optimization):
+   ```
+   cost_with_tool < cost_without_tool * 0.65  // e.g., 40% savings
+   ```
+
+### Phase 2: Agent Routing Validation
+
+1. Keep tool enabled in agent block; enable secondary routers/conditions
+2. Execute realistic user messages:
+   - "Show me products in X" → agent chooses tool
+   - "What colors available?" → agent recalls previous response
+   - Irrelevant message → agent doesn't call tool
+3. Verify agent routing via trace spans:
+   - Trace shows tool_call for relevant messages
+   - No tool_call for irrelevant messages
+
+### Phase 3: Full Integration
+
+1. Restore all blocks to original state
+2. Execute end-to-end conversations
+3. Monitor cost/performance across multiple categories
+4. Confirm tool reduces overall token usage
+
+---
+
+## Testing Anti-Patterns (Workflow Testing)
+
+Common mistakes and their corrections:
+
+### ❌ Anti-Pattern 1: Creating Parallel Test Workflows
+
+**What it looks like:**
+```
+You have "Kamatas PROD" workflow
+- Dev creates "Kamatas PROD - TEST COPY"
+- Tests new feature on copy
+- If successful, copies changes back to PROD
+```
+
+**Why it fails:**
+- Divergence: Original and copy get out of sync
+- No confidence: Changes haven't touched real workflow; breaks when deployed
+- Maintenance burden: Two workflows to maintain
+
+**✓ Correct approach:**
+- Disable blocks in the real workflow
+- Test within same workflow state
+- Restore blocks when done
+- Deploy tested changes to real workflow
+
+### ❌ Anti-Pattern 2: Manual Block Disabling (No Snapshots)
+
+**What it looks like:**
+```
+You test by manually toggling enabled=false on 15 blocks
+Leave them disabled
+Come back 2 hours later, confused about what's disabled
+```
+
+**Why it fails:**
+- Drift: Original state lost; can't restore accurately
+- Debugging: Hours spent figuring out what changed
+- Risk: Production workflow left partially disabled
+
+**✓ Correct approach:**
+```
+Use block_snapshots table:
+1. snapshot_state_before_test()
+2. disable_by_profile(profile="CONDITION_ONLY")
+3. execute_workflow()
+4. restore_from_snapshot()
+```
+
+### ❌ Anti-Pattern 3: Testing Without Verification
+
+**What it looks like:**
+```
+Execute workflow → check no errors in logs → assume success
+Never verify output schema, routing, token usage
+```
+
+**Why it fails:**
+- Silent failures: Tool runs but returns wrong format
+- Token bloat: Cost doubled, nobody notices
+- Routing failures: Agent ignores new block, nobody detects it
+
+**✓ Correct approach:**
+- Verify output schema matches expected format
+- Validate data types, required fields
+- Check token usage vs baseline
+- Trace routing decisions via trace spans
+- Use assertions, not manual review
+
+---
+
+## Testing Anti-Patterns (Custom Tools)
+
+### ❌ Anti-Pattern 1: Deploy Without Local Testing
+
+**What it looks like:**
+```
+Write transformation logic directly in Sim Studio custom tool code field
+Run execute_workflow immediately
+Hope it works
+```
+
+**Why it fails:**
+- No feedback loop: Takes 30s to execute_workflow, see error, fix, repeat
+- Hard to debug: Error messages in trace spans are vague
+- No validation: Grouping logic untested with real data
+
+**✓ Correct approach:**
+1. Create `test-tool.js` with mock data
+2. Run locally: `node test-tool.js`
+3. Verify grouping, color extraction, edge cases
+4. Only then deploy to custom tool
+
+### ❌ Anti-Pattern 2: Testing Without Token Metrics
+
+**What it looks like:**
+```
+Tool created → "It works!" → Deployed to production
+Week later: "Why did costs double?"
+```
+
+**Why it fails:**
+- No baseline: Unknown if tool saves or wastes tokens
+- No optimization: Nested objects, absolute URLs kill efficiency
+- Late detection: Only noticed after production degradation
+
+**✓ Correct approach:**
+```javascript
+// Count tokens before and after
+const before = countTokens(flatProducts);
+const after = countTokens(groupedProducts);
+const savings = 100 * (1 - after / before);
+console.log(`Token savings: ${savings}%`);
+// Expect > 30% for grouping tools
+```
+
+### ❌ Anti-Pattern 3: Modifying Tool Without Rollback Plan
+
+**What it looks like:**
+```
+Change tool schema (add field, remove field)
+Deploy immediately
+Agent breaks because field no longer exists
+No way to rollback; revert by hand
+```
+
+**Why it fails:**
+- Coupling: Tool schema and agent prompts are tightly linked
+- No testing: Changes not validated in isolation
+- No rollback: Once deployed, can't quickly revert
+
+**✓ Correct approach:**
+1. Create new tool version (e.g., `get_products_v2`)
+2. Test in isolation with agent's copy
+3. Verify all agent paths handle new schema
+4. Only when confident: retire v1, deploy v2
+5. (Optionally) keep v1 as fallback for 24h
+
+---
+
+## Custom Tool Development Lifecycle
+
+When building a new custom tool that will be used across multiple companies or workflows:
+
+### Phase 1: Design
+
+- Define input parameters (required, enum values, types)
+- Sketch expected output schema
+- Identify edge cases (null values, empty results, errors)
+- Document any assumptions (colors, dimensions, categories)
+
+### Phase 2: Local Testing (JS/Python)
+
+- Create test script with mock data
+- Implement transformation logic
+- Verify grouping, filtering, parsing
+- Measure token efficiency
+- Run 5-10 test cases including edge cases
+
+### Phase 3: Create Custom Tool in Sim
+
+- Implement tool code in custom tool UI
+- Handle errors gracefully (return error object, not throw)
+- Test with actual API (if applicable)
+
+### Phase 4: Isolated Testing (Sim Workflow)
+
+- Disable all blocks except trigger → agent → response
+- Execute with real workflow
+- Verify output format
+- Check token usage (vs baseline from Phase 2)
+
+### Phase 5: Full Integration Testing
+
+- Re-enable all blocks
+- Test agent routing (when agent uses tool vs other blocks)
+- Test edge cases (empty categories, invalid input)
+- Monitor production logs
+
+### Phase 6: Documentation
+
+- Write `docs/{company}-{tool-name}.md`
+- Document response schema (all fields)
+- List configuration options (enums, env vars)
+- Include token efficiency baseline
+- Document any limitations
+- If reusable across companies: create skill
+
+---
+
+## Checklist: New Custom Tool
+
+- [ ] Local JS/Python test script created
+- [ ] Transformation logic verified (grouping, parsing)
+- [ ] Token savings measured and documented
+- [ ] Edge cases tested (null, empty, invalid input)
+- [ ] Tool created via sim-mcp-upsert_custom_tools
+- [ ] Tool tested in isolated blocks profile (trigger → agent → response only)
+- [ ] Output schema validated (all fields present, correct types)
+- [ ] Agent routing verified (when to use tool vs other paths)
+- [ ] Error handling tested (invalid input, API failure)
+- [ ] Full workflow tested with realistic conversations
+- [ ] Documentation created with response schema, token baseline, limitations
+- [ ] If reusable: skill created via skill-creator
