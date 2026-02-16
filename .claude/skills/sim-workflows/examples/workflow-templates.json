@@ -17,7 +17,7 @@
         "position": { "x": 400, "y": 100 },
         "data": {
           "model": "gpt-4",
-          "systemPrompt": "You are a helpful assistant.",
+          "messages": [{"role": "system", "content": "You are a helpful assistant."}],
           "temperature": 0.7
         }
       },
@@ -74,7 +74,7 @@
         "position": { "x": 600, "y": 50 },
         "data": {
           "model": "gpt-4",
-          "systemPrompt": "You are a priority support agent."
+          "messages": [{"role": "system", "content": "You are a priority support agent."}]
         }
       },
       {
@@ -84,7 +84,7 @@
         "position": { "x": 600, "y": 250 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "You are a standard support agent."
+          "messages": [{"role": "system", "content": "You are a standard support agent."}]
         }
       },
       {
@@ -148,7 +148,7 @@
         "position": { "x": 600, "y": 100 },
         "data": {
           "model": "gpt-4",
-          "systemPrompt": "Analyze the user data and provide insights."
+          "messages": [{"role": "system", "content": "Analyze the user data and provide insights."}]
         }
       },
       {
@@ -210,7 +210,7 @@
         "position": { "x": 600, "y": 100 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Analyze the provided item."
+          "messages": [{"role": "system", "content": "Analyze the provided item."}]
         }
       },
       {
@@ -251,7 +251,7 @@
       },
       {
         "id": "kb_1",
-        "type": "knowledge_base",
+        "type": "knowledge",
         "name": "Search Knowledge Base",
         "position": { "x": 350, "y": 100 },
         "data": {
@@ -268,7 +268,7 @@
         "position": { "x": 600, "y": 100 },
         "data": {
           "model": "gpt-4",
-          "systemPrompt": "Answer the question using the provided context."
+          "messages": [{"role": "system", "content": "Answer the question using the provided context."}]
         }
       },
       {
@@ -320,7 +320,7 @@
         "position": { "x": 600, "y": 50 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Analyze sentiment of the provided text."
+          "messages": [{"role": "system", "content": "Analyze sentiment of the provided text."}]
         }
       },
       {
@@ -330,7 +330,7 @@
         "position": { "x": 600, "y": 200 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Extract entities from the provided text."
+          "messages": [{"role": "system", "content": "Extract entities from the provided text."}]
         }
       },
       {
@@ -340,7 +340,7 @@
         "position": { "x": 600, "y": 350 },
         "data": {
           "model": "gpt-3.5-turbo",
-          "systemPrompt": "Summarize the provided text."
+          "messages": [{"role": "system", "content": "Summarize the provided text."}]
         }
       },
       {
@@ -428,7 +428,7 @@
         "position": { "x": 850, "y": 50 },
         "data": {
           "model": "gpt-4",
-          "systemPrompt": "Process successful API response"
+          "messages": [{"role": "system", "content": "Process successful API response"}]
         }
       },
       {
@@ -438,7 +438,7 @@
         "position": { "x": 850, "y": 250 },
         "data": {
           "model": "gpt-4",
-          "systemPrompt": "Generate fallback response for API error"
+          "messages": [{"role": "system", "content": "Generate fallback response for API error"}]
         }
       },
       {

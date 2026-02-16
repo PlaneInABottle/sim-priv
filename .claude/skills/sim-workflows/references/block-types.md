@@ -205,20 +205,46 @@ Use `<BlockName.field>` tag syntax in condition expressions to reference upstrea
 > ⚠️ Tags use display names only: `<Agent 1.content>` not `<PreviousBlock.content>`.
 
 ### router
-Multi-way routing based on multiple conditions.
+AI-powered semantic routing using an LLM to select the best path. The router sends a prompt describing the input context to an LLM provider, which selects the most appropriate route from user-defined options.
 
-**Data structure:**
+> **⚠️ There are two router versions.** `router` (legacy, hidden) auto-detects downstream blocks. `router_v2` (active) uses explicit user-defined routes. Both use LLM-powered routing, NOT JavaScript expressions.
+
+**Data structure (router_v2 — current):**
 ```typescript
 {
-  routes: Array<{
-    condition: string        // JavaScript expression
-    handle: string          // Output handle name
+  context: string              // Input context for the LLM to evaluate (required, supports tags)
+  routes: Array<{              // User-defined route options
+    id: string                 // Unique route ID (used in edge sourceHandle)
+    title: string              // Route display name
+    value: string              // Description of when this route should be selected
   }>
-  defaultHandle?: string    // Fallback handle if no conditions match
+  model: string                // LLM model (default: "claude-sonnet-4-5")
+  // + provider credential subblocks (apiKey, etc.)
 }
 ```
 
-**Handles:** Dynamic based on routes configuration
+**How it works:**
+1. The `context` subblock provides the input the LLM evaluates (use `<BlockName.field>` tags)
+2. The `routes` subblock defines available destinations with descriptions
+3. The LLM uses structured output to return `{ route: "<id>", reasoning: "..." }`
+4. Temperature is fixed at 0.1 for deterministic routing
+5. If no route matches, the LLM returns `NO_MATCH` and an error is thrown
+
+**Handles:** `router-{routeId}` — each route's `id` becomes a sourceHandle
+
+**Output:** `selectedRoute` (route ID), `reasoning` (LLM explanation), `selectedPath` (target block info), `model`, `tokens`, `cost`
+
+**Key differences from condition block:**
+- **Condition:** Evaluates JavaScript expressions deterministically
+- **Router:** Uses LLM semantic understanding to select the best route
+- Router requires an LLM provider (model + API key), condition does not
+
+**Edge wiring:**
+```
+add_edge({ source: "router_1", target: "support_agent", sourceHandle: "router-support" })
+add_edge({ source: "router_1", target: "sales_agent",   sourceHandle: "router-sales" })
+add_edge({ source: "router_1", target: "general_agent", sourceHandle: "router-general" })
+```
 
 ## Loop Blocks
 

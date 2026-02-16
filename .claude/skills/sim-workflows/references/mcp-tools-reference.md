@@ -98,8 +98,8 @@ Set a block's configuration field. This is the primary way to configure blocks a
 update_subblock({
   workflowId: "wf_abc",
   blockId: "block_1",
-  subblockId: "systemPrompt",
-  value: "You are a helpful assistant."
+  subblockId: "messages",
+  value: [{ "role": "system", "content": "You are a helpful assistant." }]
 })
 ```
 
@@ -425,7 +425,8 @@ Update an existing skill.
 ```
 update_skill({
   workspaceId: "ws_id",
-  skillId: "skill-uuid",
+  id: "skill-uuid",
+  name: "sql-expert",
   description: "Updated description",
   content: "Updated instructions..."
 })
@@ -434,10 +435,10 @@ update_skill({
 | Param | Required | Description |
 |-------|----------|-------------|
 | `workspaceId` | ✅ | Workspace ID |
-| `skillId` | ✅ | Skill ID to update |
-| `name` | | New name |
-| `description` | | New description |
-| `content` | | New content |
+| `id` | ✅ | Skill ID to update |
+| `name` | ✅ | Skill name (kebab-case) |
+| `description` | ✅ | New description |
+| `content` | ✅ | New content |
 
 **Returns:** Updated skill.
 
@@ -446,13 +447,13 @@ update_skill({
 Delete a skill from a workspace.
 
 ```
-delete_skill({ workspaceId: "ws_id", skillId: "skill-uuid" })
+delete_skill({ workspaceId: "ws_id", id: "skill-uuid" })
 ```
 
 | Param | Required | Description |
 |-------|----------|-------------|
 | `workspaceId` | ✅ | Workspace ID |
-| `skillId` | ✅ | Skill ID to delete |
+| `id` | ✅ | Skill ID to delete |
 
 **Returns:** `{ success: true }`
 
@@ -464,7 +465,7 @@ const block = get_block({ workflowId: "wf_id", blockId: "agent_id" })
 const currentSkills = block.data.skills || []
 
 // 2. Filter out deleted skill
-const updatedSkills = currentSkills.filter(s => s.skillId !== "deleted_skill_id")
+const updatedSkills = currentSkills.filter(s => s.id !== "deleted_skill_id")
 
 // 3. Update agent block
 update_subblock({ 

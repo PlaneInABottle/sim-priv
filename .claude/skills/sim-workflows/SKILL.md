@@ -68,7 +68,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 
 ### Skills & Advanced
 
-- **`list_skills`**`({ workspaceId })` · **`create_skill`**`({ workspaceId, name, description, content })` · **`update_skill`**`(...)` · **`delete_skill`**`({ workspaceId, skillId })`
+- **`list_skills`**`({ workspaceId })` · **`create_skill`**`({ workspaceId, name, description, content })` · **`update_skill`**`(...)` · **`delete_skill`**`({ workspaceId, id })`
 - **`replace_workflow_state`**`({ workflowId, state })` · **`update_subflow`**`({ workflowId, id, type, config })`
 - **`list_custom_tools`**`({ workspaceId })` · **`upsert_custom_tools`**`({ workspaceId, tools })`
 
