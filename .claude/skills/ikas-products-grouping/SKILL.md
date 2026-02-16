@@ -101,22 +101,42 @@ function serializeDims(dims) {
 
 Group key = `baseType + (dims if available)`. Variants within group = different colors/prices.
 
-Example grouping (3 products → 1 group):
+Example grouping — **all same price → price hoisted to group** (3 products → 1 group):
 ```
 Input:
-  - "Akordeon DUBLE Kapı Sineklik Antrasit 290x240" → $4621.5
-  - "Akordeon DUBLE Kapı Sineklik Beyaz 290x240" → $4621.5
-  - "Akordeon DUBLE Kapı Sineklik Altınmeşe 290x240" → $5220
+  - "Akordeon DUBLE Kapı Sineklik Antrasit 290x240" → ₺4621.5
+  - "Akordeon DUBLE Kapı Sineklik Beyaz 290x240" → ₺4621.5
+  - "Akordeon DUBLE Kapı Sineklik Altınmeşe 290x240" → ₺4621.5
 
 Output:
   {
     "type": "Akordeon DUBLE Kapı Sineklik",
     "dims": "290x240",
-    "price": 4621.5,  // hoisted (all but one variant same price)
+    "price": 4621.5,  // hoisted — all 3 variants have identical price (Set.size === 1)
     "variants": [
       { "color": "Antrasit", "url": "/..." },
       { "color": "Beyaz", "url": "/..." },
-      { "color": "Altınmeşe", "price": 5220, "url": "/..." }  // only if different
+      { "color": "Altınmeşe", "url": "/..." }
+    ]
+  }
+```
+
+Example grouping — **mixed prices → price stays per-variant** (3 products → 1 group):
+```
+Input:
+  - "Plise Sineklik Antrasit 150x220" → ₺3200
+  - "Plise Sineklik Beyaz 150x220" → ₺3200
+  - "Plise Sineklik Altınmeşe 150x220" → ₺3650
+
+Output:
+  {
+    "type": "Plise Sineklik",
+    "dims": "150x220",
+    // no hoisted price — prices differ (Set.size === 3 > 1)
+    "variants": [
+      { "color": "Antrasit", "price": 3200, "url": "/..." },
+      { "color": "Beyaz", "price": 3200, "url": "/..." },
+      { "color": "Altınmeşe", "price": 3650, "url": "/..." }
     ]
   }
 ```
@@ -191,6 +211,13 @@ STORE_BASE_URL          # e.g., https://kamatas.com
 ```
 
 In Sim Studio custom tools, use template variable syntax: `{{IKAS_CLIENT_ID}}`, `{{IKAS_CLIENT_SECRET}}`
+
+> **Multi-tenant naming convention:** In production deployments with multiple stores,
+> env vars use a store-specific prefix instead of the generic `IKAS_*` names above.
+> For example, the Kamatas store uses `KAMATAS_IKAS_CLIENT_ID`, `KAMATAS_IKAS_CLIENT_SECRET`,
+> `KAMATAS_SALES_CHANNEL_ID`, and `KAMATAS_STORE_BASE_URL`.
+> Always follow your deployment's naming convention — check existing Sim Studio
+> workspace variables or `.env` files for the correct prefix.
 
 ## Real-World Example: Kamatas
 
