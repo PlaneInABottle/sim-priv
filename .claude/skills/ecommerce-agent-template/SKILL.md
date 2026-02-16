@@ -41,7 +41,7 @@ Three tiers — know what to preserve vs customize:
 
 **Universal (never modify):**
 - Memory-first rule, intent→tool routing table
-- ikas_browse mechanics, calculate_product_price formula, UUID safety
+- calculate_product_price formula, UUID safety
 - Hard rules (anti-hallucination), sanity checklist, one-question-per-message pattern
 - 3-round handoff rule, 15-message goal
 
@@ -71,20 +71,24 @@ Every ikas agent needs these four tools:
 
 Skip `calculate_product_price` if all products are fixed-price.
 
+> **Production note:** Kamatas replaces `ikas_browse` with `get_products_by_main_category` — a single-call tool returning all products grouped by type with `dims: "WxH"` strings and color variants. See the [ikas-products-grouping skill](../../ikas-products-grouping/SKILL.md) for the grouping pattern. When using this tool, navigation simplifies from multi-step browsing to: customer says category → single tool call → filter and present results. The template uses `ikas_browse` as the generic fallback; customize the navigation section for your tool.
+
 ## Dimension Extraction & Product Filtering
 
 ### Dimension Extraction (Critical)
 
-**When customer provides dimensions, ALWAYS extract and pass to search tools:**
+**When customer provides dimensions, ALWAYS extract them and use for filtering:**
 
 ```
 Customer: "80x180 menteşeli pencere"
 Extract: {width: 80, height: 180}
-Pass to tool: ikas_browse({mainCategory: "menteseli-pencere-sinekligi"})
-→ Agent filters results by extracted dimensions (width: 80, height: 180)
-
-> **Note:** Company-specific implementations may use a custom tool name (e.g., Kamatas uses `get_products_by_main_category`). The generic template name is `ikas_browse`.
+Agent calls: get_products_by_main_category("sineklikler")
+Agent filters: returned groups by dims field matching customer dimensions
 ```
+
+> **Tool-specific dimension formats:**
+> - `get_products_by_main_category` → `dims: "WxH"` string per group (e.g., `"70x130"`). Agent compares customer dimensions against this string.
+> - `ikas_browse` → `dimensions: { width: { min, max, unit }, height: { min, max, unit } }` per product. Agent checks `dimensions.width.max` / `dimensions.height.max`.
 
 **Turkish dimension patterns:**
 - `80x180` or `80×180` → width: 80, height: 180
@@ -94,34 +98,20 @@ Pass to tool: ikas_browse({mainCategory: "menteseli-pencere-sinekligi"})
 
 **Never pass `{width: 0, height: 0}`** - this disables filtering and returns all products.
 
-### Product Filter Buckets
-
-Search tools return three buckets:
-
-| Bucket | Meaning | Agent Action |
-|--------|---------|--------------|
-| **strictFit** | Product dimensions ≥ requested | Suggest these first |
-| **toleranceFit** | Product 0-2cm smaller than requested | Suggest if no strict fits |
-| **unknownDimensions** | Dimensions couldn't be parsed | Ignore OR handoff for manual verification |
-
-**Never suggest unknownDimensions products** without explicit verification.
-
 ### Cross-Category Routing
 
-When dimensions don't fit requested category, search alternative:
+When dimensions don't fit requested category, check alternatives in the same results:
 
 ```
 Customer: "80×180 menteşeli pencere"
-Agent searches: "menteşeli pencere" with {width: 80, height: 180}
-Tool returns: pencere 70×130 (too small, excluded)
-Agent recognizes: 180cm height > pencere max (~150cm)
-Agent searches: "menteşeli kapı" with {width: 80, height: 180}
-Tool returns: kapı 90×210 (fits in strictFit)
-Agent suggests: "Pencere sineklikte bu ölçü yok, kapı menteşelimizde tam uyması var: [link]"
+Agent calls: get_products_by_main_category("sineklikler")
+Agent filters: menteşeli pencere groups → max dims ~70x150 (too small for 180cm height)
+Agent checks: menteşeli kapı groups → kapı 90×210 (accommodates 80×180)
+Agent suggests: "Pencere için bu boy fazla, kapı menteşelimizde tam uyması var: [link]"
 ```
 
-**Dimension thresholds:**
-- Pencere (window): Typical max 70W × 150H cm
+**Dimension thresholds (Kamatas example):**
+- Pencere (window): Typical max 70W × 130-150H cm
 - Kapı (door): Typical max 100W × 220H cm
 
-**Routing rule:** If customer says "pencere" but height > 150cm → search kapı first.
+**Routing rule:** If customer says "pencere" but height > 150cm → filter for kapı products first.
