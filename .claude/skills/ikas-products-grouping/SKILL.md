@@ -91,8 +91,8 @@ function extractBaseType(name) {
 ```javascript
 function serializeDims(dims) {
   if (!dims) return null;
-  const w = dims.maxWidth || dims.minWidth;
-  const h = dims.maxHeight || dims.minHeight;
+  const w = dims.maxWidth ?? dims.width ?? dims.minWidth;
+  const h = dims.maxHeight ?? dims.height ?? dims.minHeight;
   return w && h ? `${w}x${h}` : null;
 }
 ```
@@ -198,8 +198,8 @@ const colors = [
 **3. Dimension Fields**
 ```javascript
 // Handle your product's dimension field names
-const w = dims.maxWidth || dims.width || dims.w;
-const h = dims.maxHeight || dims.height || dims.h;
+const w = dims.maxWidth ?? dims.width ?? dims.minWidth;
+const h = dims.maxHeight ?? dims.height ?? dims.minHeight;
 ```
 
 **4. Environment Variables**
