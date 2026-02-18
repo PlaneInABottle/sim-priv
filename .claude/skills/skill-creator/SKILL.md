@@ -1,7 +1,6 @@
 ---
 name: skill-creator
 description: Comprehensive guide for creating and managing AI skills - modular packages that extend AI assistants with specialized knowledge, workflows, and tool integrations. Use this skill when you need to write, update, or package AI skills that transform general-purpose AI agents into specialized experts for specific domains, tasks, or workflows.
-license: Complete terms in LICENSE.txt
 ---
 
 # Skill Creator
@@ -285,15 +284,15 @@ When creating a new skill from scratch, always run the `init_skill.py` script. T
 Usage:
 
 ```bash
-scripts/init_skill.py <skill-name> --path <output-directory>
+scripts/init_skill.py <skill-name> --path <output-directory> [--resources scripts,references,assets] [--examples]
 ```
 
 The script:
 
 - Creates the skill directory at the specified path
 - Generates a SKILL.md template with proper frontmatter and TODO placeholders
-- Creates example resource directories: `scripts/`, `references/`, and `assets/`
-- Adds example files in each directory that can be customized or deleted
+- Optionally creates resource directories (`scripts/`, `references/`, `assets/`) when `--resources` flag is provided
+- Adds example files in each resource directory when `--examples` flag is provided
 
 After initialization, customize or remove the generated SKILL.md and example files as needed.
 
@@ -336,7 +335,9 @@ Write the YAML frontmatter with `name` and `description`:
   - Include all "when to use" information here - Not in the body. The body is only loaded after triggering, so "When to Use This Skill" sections in the body are not helpful to the AI assistant.
   - Example description for a `docx` skill: "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. Use when the AI assistant needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
 
-Do not include any other fields in YAML frontmatter.
+Supported optional fields: `license`, `allowed-tools`, `metadata`. Avoid adding unsupported fields.
+
+Description constraints: max 1024 characters, no angle brackets (`<` or `>`).
 
 ##### Body
 
