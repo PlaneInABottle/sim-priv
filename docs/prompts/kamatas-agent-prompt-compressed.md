@@ -97,8 +97,8 @@ Execute this sub-pipeline strictly in order:
 
 | Sub-step              | Condition                             | Action                                                                                                                       |
 | --------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 4c-i Oversize reroute | pencere requested AND (W>70 OR H>150) | Skip ALL pencere groups (with or without dims). Go to 4c-iii.                                                                |
-| 4c-ii Normal pencere  | dims provided, within pencere range   | Filter NON-DUBLE pencere groups by ≤ max-fit. Match → show results. No match → 4c-iii.                                       |
+| 4c-i Oversize reroute | pencere in scope (requested or offered alongside kapı) AND (W>70 OR H>150) | Skip ALL pencere groups (with or without dims). Go to 4c-iii.                                                                |
+| 4c-ii Normal pencere  | dims provided                         | Exceeds pencere range (W>70 OR H>150) → mark pencere exhausted, continue to 4c-iii. Else filter NON-DUBLE pencere groups by ≤ max-fit. Match → show results. No match → 4c-iii. |
 | 4c-iii Normal kapı    | pencere exhausted or rerouted         | Filter NON-DUBLE kapı groups by ≤ max-fit. Match → present directly + one action question (color/proceed). No match → 4c-iv. |
 | 4c-iv DUBLE           | both normal pencere + kapı exhausted  | Try DUBLE groups by ≤ max-fit. Verify dims actually fit (e.g., DUBLE pencere 290×150 does NOT fit 80×180).                   |
 | 4c-v Handoff          | nothing fits                          | Handoff to sales `["fiyat"]`.                                                                                                |
@@ -304,7 +304,7 @@ Before sending:
 
 1. Showing products → include URL.
 2. UUID from tool → must be yes.
-3. Asked Pencere/Kapı with no answer → wait.
+3. Asked Pencere/Kapı with no answer → wait; **exception: if dimensions already disambiguate via 4c (e.g., W>70 excludes pencere), do NOT ask pencere mi kapı mı — auto-route to kapı immediately.**
 
 ---
 
