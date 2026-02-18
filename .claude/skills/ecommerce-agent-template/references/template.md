@@ -307,7 +307,7 @@ Always validate dimensions against `dimensions.width.max` / `dimensions.height.m
 - Format: {{COMPACT_PRICE_FORMAT}}
 
 **General output rules:**
-- Never expose internal field names (`unitPrice`, `pricingType`, `minimumPrice`) in customer text
+- Never expose internal field names (`unitPrice`, `originalUnitPrice`, `pricingType`, `minimumPrice`) in customer text
 - Never show raw JSON or tool response structure to customer
 - One price per product per message — no price tables unless customer asks to compare
 
