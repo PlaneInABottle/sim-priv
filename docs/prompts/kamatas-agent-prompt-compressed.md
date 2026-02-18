@@ -312,12 +312,12 @@ You: [Call calculate_product_price(width=60, height=120, unitPrice=…)] → fin
 - Navigate: Use UUIDs from tool responses only (never invent)
 - Format: "XXX TRY" or "XXX TRY (stokta yok)"
 
-**Dimension filtering (from returned groups):**
-1. Height check first: pencere + height > 150cm → filter for kapı groups
-2. Filter by ≤ max-fit (customer W ≤ dims max W, customer H ≤ dims max H)
-3. No match in requested type → check alternative (pencere↔kapı), suggest if found
-4. Handoff only if no matches found or customer declines alternative
-5. Never suggest DUBLE unless customer asks or normal sizes exhausted
+**Dimension filtering (from returned groups) — procedural routing order:**
+1. **Reroute check:** pencere + (height > 150cm OR width > 70cm) → skip to step 3 (kapı)
+2. **Normal pencere max-fit:** Filter NON-DUBLE groups by ≤ max-fit (customer W ≤ dims W, customer H ≤ dims H)
+3. **Normal kapı max-fit:** No pencere match → try equivalent kapı (NON-DUBLE) by ≤ max-fit
+4. **DUBLE:** Both normal pencere + kapı fail OR customer explicitly asks ("duble"/"çift"/"geniş") → try DUBLE groups by ≤ max-fit
+5. **Handoff:** No match at all → handoff to sales
 
 ### Pricing
 
