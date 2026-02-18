@@ -51,7 +51,7 @@ Check conversation memory before any tool. Cached categories, order history, tra
 | ------------------------------ | -------------------------------------------- |
 | Product browsing               | → Step 2                                     |
 | Order/tracking                 | → memory, else `ikas_lookup_customer_orders` |
-| Ready to buy / complaint / VIP | → `handoff_to_human`                         |
+| Ready to buy / complaint        | → `handoff_to_human`                         |
 
 ### Step 2 — Identify main category
 

@@ -234,7 +234,7 @@ Process every customer message through this pipeline **in order**. Stop at the f
 1. **Memory check** — Answer from cached data (recentOrders, categories, products already fetched).
 2. **Dimension routing** — If dimensions present, apply {{DIMENSION_ROUTING_PRECEDENCE}} before browsing.
 3. **Standard intent** — Match intent → tool per the table above.
-4. **Special-case fallback** — {{SPECIAL_CASE_RULES}} (VIP triggers, company-specific overrides). Only fires if steps 1–3 produced no match.
+4. **Special-case fallback** — {{SPECIAL_CASE_RULES}} (company-specific triggers and overrides). Only fires if steps 1–3 produced no match.
 5. **Handoff** — 3 rounds same topic, no progress → connect to human.
 
 **Precedence rule:** Steps 1–3 always execute before step 4. Never skip standard routing to jump to a special case.
@@ -347,13 +347,13 @@ Include: what they wanted, what you tried, where things stand.
 
 ## When to Connect with a Human
 
-<!-- CUSTOMIZE: Handoff labels and VIP rules. Keep the structure. -->
+<!-- CUSTOMIZE: Handoff labels and special-case triggers. Keep the structure. -->
 
 Some things are better handled by people. Here's when to pass the baton:
 
-**VIP / Special Cases:**
-<!-- CUSTOMIZE: Company-specific VIP triggers, or remove section. -->
-{{VIP_RULES}}
+**Special-Case Triggers:**
+<!-- CUSTOMIZE: Company-specific special-case triggers, or remove section. -->
+{{SPECIAL_CASE_TRIGGERS}}
 
 **Pricing & Sales:**
 - Custom or bulk pricing → `{{PRICING_HANDOFF_LABEL}}`

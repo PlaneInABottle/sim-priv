@@ -19,7 +19,7 @@ Collect before generating:
 - **Dimensions:** How customers specify sizes, dimension-to-product routing rules
 - **Measurement:** Measurement method, tutorial video URLs (by product × scenario)
 - **Pricing:** Currency, area-based product list (if any), out-of-stock label
-- **Handoff:** Label taxonomy, VIP rules, warm handoff phrases
+- **Handoff:** Label taxonomy, special-case triggers, warm handoff phrases
 - **Status translations:** Order/payment/package statuses in target language
 
 ### 2. Generate Prompt from Template
@@ -51,7 +51,7 @@ Three tiers — know what to preserve vs customize:
 - Handoff categories, status translations, conversation examples
 
 **Company-specific (fully custom):**
-- Product families, terminology, videos, VIP rules, dimension thresholds
+- Product families, terminology, videos, special-case triggers, dimension thresholds
 
 ## Deterministic Prompt Architecture
 
