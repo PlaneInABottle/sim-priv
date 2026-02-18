@@ -258,7 +258,7 @@ If frustrated: "Haklısınız, bu konuda yeterli olamadım. Uzman ekiple bağlı
 
 | Trigger                                                                           | Label                                                       |
 | --------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| "Albert genau" mentioned                                                          | `["albert-genau"]` — immediate, no questions                |
+| Customer mentions "Albert genau" (any casing/variation)                            | `["fiyat"]` — **immediate handoff, no questions**           |
 | Custom/bulk pricing, discounts, ready to buy                                      | `["fiyat"]`                                                 |
 | Complaints                                                                        | `["sikayet"]`                                               |
 | Returns/refunds                                                                   | `["iade"]`                                                  |
