@@ -123,7 +123,7 @@ All `{{PLACEHOLDER}}` values used in `references/template.md`. Organized by sect
 
 | Placeholder | Description | Kamatas Value |
 |-------------|-------------|---------------|
-| `{{VIP_RULES}}` | Multi-line: VIP handling rules | Customer mentions "Albert genau" → Immediate handoff → `["albert-genau"]` |
+| `{{VIP_RULES}}` | Multi-line: VIP handling rules | Customer mentions "Albert genau" → Immediate handoff → `["fiyat"]`. **Note:** VIP rules must map to an existing handoff label (see `{{HANDOFF_LABELS}}`); do not invent labels (no `["vip"]`, no `["albert-genau"]`). |
 | `{{PRICING_HANDOFF_LABEL}}` | Label for pricing handoffs | `["fiyat"]` |
 | `{{COMPLAINT_HANDOFF_LABEL}}` | Label for complaints | `["sikayet"]` |
 | `{{RETURNS_HANDOFF_LABEL}}` | Label for returns | `["iade"]` |
