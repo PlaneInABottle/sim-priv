@@ -7,10 +7,15 @@ import type { SerializedBlock } from '@/serializer/types'
 
 import { getBlockSchema } from './block-data'
 
-// Mock response-format utilities used by getResponseFormatSchema
+// Mock response-format utilities used transitively by getEffectiveBlockOutputs → getResponseFormatOutputs
 vi.mock('@/lib/core/utils/response-format', () => ({
   parseResponseFormatSafely: vi.fn(),
   extractFieldsFromSchema: vi.fn(),
+}))
+
+// Mock @/blocks/registry (used by getBlockSchema in block-data.ts for hasTriggerCapability)
+vi.mock('@/blocks/registry', () => ({
+  getBlock: vi.fn(),
 }))
 
 // Import mocked functions so we can control return values per test
@@ -19,8 +24,15 @@ import {
   parseResponseFormatSafely,
 } from '@/lib/core/utils/response-format'
 
+// Import mocked getBlock from @/blocks (used by getEffectiveBlockOutputs in block-outputs.ts)
+import { getBlock } from '@/blocks'
+// Import mocked getBlock from @/blocks/registry (used by getBlockSchema in block-data.ts)
+import { getBlock as getBlockRegistry } from '@/blocks/registry'
+
 const mockParseResponseFormat = vi.mocked(parseResponseFormatSafely)
 const mockExtractFields = vi.mocked(extractFieldsFromSchema)
+const mockGetBlock = vi.mocked(getBlock)
+const mockGetBlockRegistry = vi.mocked(getBlockRegistry)
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,6 +68,21 @@ function createAgentBlock(overrides: Partial<SerializedBlock> = {}): SerializedB
 describe('getBlockSchema', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Configure both getBlock mocks to return agent block config.
+    // - @/blocks/registry: used by getBlockSchema for hasTriggerCapability
+    // - @/blocks: used by getEffectiveBlockOutputs / getBlockOutputs for base outputs
+    const agentBlockConfig = {
+      type: 'agent',
+      outputs: AGENT_BASE_OUTPUTS,
+      subBlocks: [],
+      category: 'ai',
+    }
+    const getBlockImpl = ((type: string) => {
+      if (type === 'agent') return agentBlockConfig
+      return undefined
+    }) as any
+    mockGetBlockRegistry.mockImplementation(getBlockImpl)
+    mockGetBlock.mockImplementation(getBlockImpl)
   })
 
   // -----------------------------------------------------------------------
@@ -154,7 +181,7 @@ describe('getBlockSchema', () => {
 
       expect(schema).toBeDefined()
       // responseFormat's "content" type should override the base "string" type
-      expect(schema!.content).toEqual({ type: 'object' })
+      expect(schema!.content).toEqual({ type: 'object', description: 'Field from Agent: content' })
       // Other base outputs still present
       expect(schema).toHaveProperty('toolCalls')
       expect(schema).toHaveProperty('model')
@@ -184,6 +211,12 @@ describe('getBlockSchema', () => {
     })
 
     it('should return undefined when block has no outputs and no responseFormat', () => {
+      // Override mock to return agent config with no outputs for this test
+      const emptyConfig = { type: 'agent', outputs: {}, subBlocks: [], category: 'ai' }
+      const emptyImpl = ((type: string) => (type === 'agent' ? emptyConfig : undefined)) as any
+      mockGetBlockRegistry.mockImplementation(emptyImpl)
+      mockGetBlock.mockImplementation(emptyImpl)
+
       const block = createAgentBlock({ outputs: {} })
 
       const schema = getBlockSchema(block)
@@ -228,7 +261,7 @@ describe('getBlockSchema', () => {
 
       const schema = getBlockSchema(block)
 
-      // Empty fields → getResponseFormatSchema returns undefined → fallback to base outputs
+      // Empty fields → getResponseFormatOutputs returns undefined → fallback to base outputs
       expect(schema).toBeDefined()
       expect(schema).toHaveProperty('content')
       expect(schema).toHaveProperty('toolCalls')
