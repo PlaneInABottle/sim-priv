@@ -5,7 +5,7 @@ import { and, asc, eq, inArray, isNull, min } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { AuditAction, AuditResourceType, recordAudit } from '@/lib/audit/log'
-import { checkSessionOrInternalAuth } from '@/lib/auth/hybrid'
+import { checkHybridAuth } from '@/lib/auth/hybrid'
 import { generateRequestId } from '@/lib/core/utils/request'
 import { getUserEntityPermissions, workspaceExists } from '@/lib/workspaces/permissions/utils'
 import { verifyWorkspaceMembership } from '@/app/api/workflows/utils'
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const workspaceId = url.searchParams.get('workspaceId')
 
   try {
-    const auth = await checkSessionOrInternalAuth(request, { requireWorkflowId: false })
+    const auth = await checkHybridAuth(request, { requireWorkflowId: false })
     if (!auth.success || !auth.userId) {
       logger.warn(`[${requestId}] Unauthorized workflow access attempt`)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 // POST /api/workflows - Create a new workflow
 export async function POST(req: NextRequest) {
   const requestId = generateRequestId()
-  const auth = await checkSessionOrInternalAuth(req, { requireWorkflowId: false })
+  const auth = await checkHybridAuth(req, { requireWorkflowId: false })
   if (!auth.success || !auth.userId) {
     logger.warn(`[${requestId}] Unauthorized workflow creation attempt`)
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
