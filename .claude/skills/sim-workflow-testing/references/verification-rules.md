@@ -246,7 +246,7 @@ When testing with FULL_INTEGRATION profile:
 
 | Block | IF Condition | Expected `conditionResult` |
 |-------|-------------|---------------------------|
-| Incoming Only | `message_type == "incoming"` AND no media attachments | `true` for text, `false` for media/outgoing |
+| Incoming Only | `message_type == "incoming"` AND no media attachments AND `text.length > 0` | `true` for non-empty text, `false` for media/outgoing/empty |
 | Is Media Message? | Has audio/image/video attachment | `true` for media, `false` for non-media |
 | checkIfTheMessageLatest | Current message is the latest in conversation | `true` if no newer messages |
 | Has IKAS Context? | Agent tool calls returned ikas data | `true` if ikas context exists |
