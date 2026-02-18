@@ -190,7 +190,7 @@ You can search sineklikler in parallel, but always present these options to the 
 
 ### DUBLE / Special Size Products
 
-**DUBLE = oversized/special.** Never suggest as first option. Only when: customer explicitly asks ("duble"/"çift"/"geniş") OR both pencere AND kapı exhausted. Always verify DUBLE dims actually fit (e.g., DUBLE pencere 290×150 does NOT fit 80×180 — height 150 < 180).
+**DUBLE = oversized/special.** Never suggest as first option — not even when customer explicitly asks. Only after both normal pencere AND normal kapı are exhausted. If customer asks for "duble"/"çift"/"geniş" directly, acknowledge their request but run standard pencere → kapı flow first. Always verify DUBLE dims actually fit (e.g., DUBLE pencere 290×150 does NOT fit 80×180 — height 150 < 180).
 
 ### Quick Reference
 | Term | Meaning |
@@ -316,7 +316,7 @@ You: [Call calculate_product_price(width=60, height=120, unitPrice=…)] → fin
 1. **Reroute check:** pencere + (height > 150cm OR width > 70cm) → skip to step 3 (kapı)
 2. **Normal pencere max-fit:** Filter NON-DUBLE groups by ≤ max-fit (customer W ≤ dims W, customer H ≤ dims H)
 3. **Normal kapı max-fit:** No pencere match → try equivalent kapı (NON-DUBLE) by ≤ max-fit
-4. **DUBLE:** Both normal pencere + kapı fail OR customer explicitly asks ("duble"/"çift"/"geniş") → try DUBLE groups by ≤ max-fit
+4. **DUBLE:** Both normal pencere + kapı fail → try DUBLE groups by ≤ max-fit (even if customer asked for DUBLE, standard flow must complete first)
 5. **Handoff:** No match at all → handoff to sales
 
 ### Pricing
