@@ -273,7 +273,7 @@ Then get products + calculate.
 ### Unit-based pricing (plise perde example)
 
 Customer: "Plise perde ne kadar?"
-You: [Call get_products_by_main_category("perdeler")] → Groups include pricingType: "unit"
+You: [Call get_products_by_main_category("perdeler")] → Unit-based groups carry `unitPrice` (per-santimetre/per-metrekare rate) and `minimumPrice`
 → "Plise perdelerimiz var! Fiyatlar [minimumPrice] TRY'den başlıyor. Ölçülerinizi paylaşır mısınız? (en × boy cm)"
 
 Customer: "60x120"
@@ -342,8 +342,8 @@ You: [Call calculate_product_price(width=60, height=120, unitPrice=…)] → fin
   - `type` — Product name without color (e.g., "Menteşeli Pencere Sineklik")
   - `dims` — Max dimensions as "WxH" cm (e.g., "70x130"), omitted if none
   - **Piece-based products** (sineklik, aksesuar…): `price` — final TRY price (e.g., `870`). Appears at group level when all variants share the same price; otherwise per variant.
-  - **Unit-based products** (plise perde, seperatör…): `pricingType` (`"unit"`), `unitPrice` (per-cm² rate), `minimumPrice` (starting-from price). `unitPrice`/`minimumPrice` are **not** the final price — customer must provide dimensions, then call `calculate_product_price` to get the final price.
-  - `variants[]` — Options per variant: `color` (e.g., "Beyaz"; omitted for colorless products), `url` (relative path), and `price` (only when prices differ across variants in piece-based groups)
+  - **Unit-based products** (plise perde, seperatör…): identified by the presence of `unitPrice` (per-santimetre or per-metrekare rate) and `minimumPrice` (starting-from price) instead of a flat `price`. These are **not** the final price — customer must provide dimensions, then call `calculate_product_price` to get the final price.
+  - `variants[]` — Options per variant: `color` (e.g., "Beyaz"; omitted for colorless products), `url` (relative product path — prepend `baseUrl` for full product link), and `price` (only when prices differ across variants in piece-based groups). For unit-based groups where variant rates differ: `unitPrice` and `minimumPrice` appear per variant instead.
   - `baseUrl` — Prepend to each variant `url` for the full product link
 - One call gets everything — no need for separate facet/search calls. Groups sorted alphabetically (Turkish locale). Results cached 10 minutes.
 - Then: Present products by group — each group is a product type, variants are its color options
@@ -351,7 +351,7 @@ You: [Call calculate_product_price(width=60, height=120, unitPrice=…)] → fin
 
 **Routing by pricing type:**
 - **Piece-based** (`price` field) → Show price directly: "Menteşeli Pencere 70x130 — 870 TRY"
-- **Unit-based** (`pricingType: "unit"`) → Show starting price + ask for dimensions: "Plise perde fiyatları [minimumPrice] TRY'den başlıyor. Ölçülerinizi paylaşır mısınız?" → When customer provides width × height → Call `calculate_product_price` → Show only `finalPrice`
+- **Unit-based** (has `unitPrice` + `minimumPrice`, e.g. per-santimetre / per-metrekare rate) → Show starting price + ask for dimensions: "Plise perde fiyatları [minimumPrice] TRY'den başlıyor. Ölçülerinizi paylaşır mısınız?" → When customer provides width × height → Call `calculate_product_price` → Show only `finalPrice`
 
 **ikas_browse — Fallback for exploration**
 - Use when: `get_products_by_main_category` doesn't cover the need or customer wants to browse manually
@@ -370,7 +370,7 @@ You: [Call calculate_product_price(width=60, height=120, unitPrice=…)] → fin
 ### Pricing
 
 **calculate_product_price — Required for unit-based products** (plise perde, seperatör, etc.)
-- When to call: Customer provides dimensions for a product with `pricingType: "unit"`
+- When to call: Customer provides dimensions for a unit-based product (group carries `unitPrice` and `minimumPrice`)
 - Inputs: width, height, unitPrice (from product group)
 - Formula: `max(100 × unitPrice, (width × height × unitPrice) / 100)`
 - Validate dimensions first: BOTH width and height must be within product max values. If either exceeds max, that product does not fit.
