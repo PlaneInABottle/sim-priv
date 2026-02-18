@@ -584,7 +584,7 @@ Recommended order for running the complete test suite:
 
 ```
 Phase 1: CONDITION_ONLY (13 scenarios)
-├── CR-01 through CR-12, CR-14
+├── CR-01 through CR-12, CR-14 (CR-13 was renumbered to MH-06)
 ├── Cheapest ($0.00), safest
 ├── Validates all routing logic
 └── If any fail → STOP, fix routing before proceeding

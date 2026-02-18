@@ -140,7 +140,7 @@ Or restore from snapshot — see `references/error-recovery.md`.
 - **Non-deterministic Paths:** Parallel branches may execute in any order. Allow trace flexibility.
 - **External APIs:** Media Handoff makes real Chatwoot API calls. Use test conversation IDs.
 - **Draft State Only:** Tests execute against draft, not deployed snapshots.
-- **Numeric message_type:** Payloads use string `"incoming"` vs Chatwoot's numeric `0`. Doesn't affect test results.
+- **Numeric message_type:** Payloads use string `"incoming"` vs Chatwoot's documented numeric `0`. Doesn't affect test results (unverifiable from this codebase).
 
 ## Error Response Handling
 
