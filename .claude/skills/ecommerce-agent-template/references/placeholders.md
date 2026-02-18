@@ -154,8 +154,9 @@ All `{{PLACEHOLDER}}` values used in `references/template.md`. Organized by sect
 | Placeholder | Description | Kamatas Value |
 |-------------|-------------|---------------|
 | `{{DIMENSION_ROUTING_PRECEDENCE}}` | Ordered rules for dimension-based category routing (multi-line) | 1. Height >150cm → kapı first. 2. Width >100cm → kapı. 3. Otherwise → pencere. |
-| `{{PRICING_SUPPRESSED_FIELDS}}` | Internal fields never shown to customer after calculate | `unitPrice`, `originalUnitPrice`, `minimumPrice`, `pricingType`, raw `pricing` object |
+| `{{PRICING_SUPPRESSED_FIELDS}}` | Internal fields never shown to customer after calculate | `unitPrice`, `originalUnitPrice`, `minimumPrice`, `originalMinimumPrice`, `pricingType`, raw `pricing` object |
 | `{{COMPACT_PRICE_FORMAT}}` | Customer-facing price format after calculate | "[W]x[H]cm [product]: [finalPrice] [CURRENCY]" |
+| `{{STARTING_PRICE_FORMAT}}` | Pre-dimension starting-price display for area-based products | "[product]: [startingPrice] [CURRENCY]'den başlayan fiyatlarla" |
 | `{{SPECIAL_CASE_RULES}}` | Company-specific override rules that fire after standard routing (multi-line) | If customer says "DUBLE" → double-layer product variant, route after standard dimension/intent check |
 
 **Guidance:** `DIMENSION_ROUTING_PRECEDENCE` and `SPECIAL_CASE_RULES` are multi-line. `DIMENSION_ROUTING_RULES` defines the dimension-to-product mapping logic, while `DIMENSION_ROUTING_PRECEDENCE` defines the priority order in which those rules are evaluated in the decision pipeline. If your products have no dimension-based routing, set `DIMENSION_ROUTING_PRECEDENCE` to "N/A — all products are fixed-size." If no special cases, set `SPECIAL_CASE_RULES` to "None."

@@ -61,7 +61,7 @@ The template enforces a **single Decision Pipeline** — one ordered sequence th
 
 1. **Single pipeline, single truth:** All routing lives in the Decision Pipeline section. No routing logic duplicated elsewhere in the prompt.
 2. **Precedence is explicit:** Memory → Dimension routing → Standard intent → Special-case fallback → Handoff. Standard routing always precedes special cases.
-3. **Output guards are mandatory:** After `calculate_product_price`, only `finalPrice` reaches the customer. Internal fields (`unitPrice`, `originalUnitPrice`, `minimumPrice`, `pricingType`) are suppressed.
+3. **Output guards are mandatory:** After `calculate_product_price`, only `finalPrice` reaches the customer. Internal fields (`unitPrice`, `originalUnitPrice`, `minimumPrice`, `originalMinimumPrice`, `pricingType`) are suppressed.
 4. **Compact output by default:** One price per product, no raw JSON, no internal field names in customer-facing text.
 
 ### Validation Checks for Generated Prompts
@@ -70,14 +70,15 @@ After generating a prompt from the template:
 
 1. **No duplicate routing:** Routing logic should only appear in the Decision Pipeline and Intent Routing sections — not scattered across conversation examples or hard rules.
 2. **Precedence preserved:** The 5 pipeline steps must appear in order (1–5) with no inserted steps that skip standard routing.
-3. **Suppressed fields enforced:** `unitPrice`, `originalUnitPrice`, `minimumPrice`, `pricingType` must never appear in customer-facing example dialogue.
+3. **Suppressed fields enforced:** `unitPrice`, `originalUnitPrice`, `minimumPrice`, `originalMinimumPrice`, `pricingType` must never appear in customer-facing example dialogue.
 4. **Placeholder completeness:** `grep '{{' prompt.md` returns 0 matches.
 5. **Handoff label consistency:** Every label in conversation examples matches a label in the Handoff Labels block.
+6. **No redundant reconfirmation:** When routing resolves an alternative (e.g., dimension routing selects kapı over pencere), the generated prompt must not re-ask the already-resolved routing question.
 
 ## Reference Files
 
 - **`references/template.md`** — Complete prompt template with all `{{PLACEHOLDER}}` markers and `<!-- CUSTOMIZE: -->` comments. Read this to generate a new agent prompt.
-- **`references/placeholders.md`** — All ~60 placeholders with descriptions, types, Kamatas examples, and fill-in guidance. Read this for the placeholder lookup table.
+- **`references/placeholders.md`** — All placeholders with descriptions, Kamatas examples, and fill-in guidance. Read this for the placeholder lookup table.
 
 ## Tool Configuration
 
