@@ -148,3 +148,14 @@ All `{{PLACEHOLDER}}` values used in `references/template.md`. Organized by sect
 | `{{TOOL_FAILURE_MESSAGE}}` | When a tool fails | "Katalog sistemine şu an ulaşamıyorum" |
 | `{{NO_LINK_PHRASE}}` | Phrase to avoid for missing links | "link yok" |
 | `{{LANGUAGE_CHECK_EXAMPLE}}` | Language naturalness check | "bağlıyorum" not "aktarıyorum" |
+
+## Decision Pipeline & Output Guards
+
+| Placeholder | Description | Kamatas Value |
+|-------------|-------------|---------------|
+| `{{DIMENSION_ROUTING_PRECEDENCE}}` | Ordered rules for dimension-based category routing (multi-line) | 1. Height >150cm → kapı first. 2. Width >100cm → kapı. 3. Otherwise → pencere. |
+| `{{PRICING_SUPPRESSED_FIELDS}}` | Internal fields never shown to customer after calculate | `unitPrice`, `originalUnitPrice`, `minimumPrice`, `pricingType`, raw `pricing` object |
+| `{{COMPACT_PRICE_FORMAT}}` | Customer-facing price format after calculate | "[W]x[H]cm [product]: [finalPrice] [CURRENCY]" |
+| `{{SPECIAL_CASE_RULES}}` | Company-specific override rules that fire after standard routing (multi-line) | If customer says "DUBLE" → double-layer product variant, route after standard dimension/intent check |
+
+**Guidance:** `DIMENSION_ROUTING_PRECEDENCE` and `SPECIAL_CASE_RULES` are multi-line. If your products have no dimension-based routing, set `DIMENSION_ROUTING_PRECEDENCE` to "N/A — all products are fixed-size." If no special cases, set `SPECIAL_CASE_RULES` to "None."

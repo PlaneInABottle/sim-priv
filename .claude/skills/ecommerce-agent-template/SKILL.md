@@ -40,8 +40,8 @@ Replace all placeholders using `references/placeholders.md` as a lookup table. E
 Three tiers — know what to preserve vs customize:
 
 **Universal (never modify):**
-- Memory-first rule, intent→tool routing table
-- calculate_product_price formula, UUID safety
+- Memory-first rule, intent→tool routing table, **Decision Pipeline**
+- calculate_product_price formula, UUID safety, **output & pricing guards**
 - Hard rules (anti-hallucination), sanity checklist, one-question-per-message pattern
 - 3-round handoff rule, 15-message goal
 
@@ -52,6 +52,27 @@ Three tiers — know what to preserve vs customize:
 
 **Company-specific (fully custom):**
 - Product families, terminology, videos, VIP rules, dimension thresholds
+
+## Deterministic Prompt Architecture
+
+The template enforces a **single Decision Pipeline** — one ordered sequence that routes every customer message. This prevents conflicting or duplicate routing rules.
+
+### Design Constraints
+
+1. **Single pipeline, single truth:** All routing lives in the Decision Pipeline section. No routing logic duplicated elsewhere in the prompt.
+2. **Precedence is explicit:** Memory → Dimension routing → Standard intent → Special-case fallback → Handoff. Standard routing always precedes special cases.
+3. **Output guards are mandatory:** After `calculate_product_price`, only `finalPrice` reaches the customer. Internal fields (`unitPrice`, `minimumPrice`, `pricingType`) are suppressed.
+4. **Compact output by default:** One price per product, no raw JSON, no internal field names in customer-facing text.
+
+### Validation Checks for Generated Prompts
+
+After generating a prompt from the template:
+
+1. **No duplicate routing:** Routing logic should only appear in the Decision Pipeline and Intent Routing sections — not scattered across conversation examples or hard rules.
+2. **Precedence preserved:** The 5 pipeline steps must appear in order (1–5) with no inserted steps that skip standard routing.
+3. **Suppressed fields enforced:** `unitPrice`, `minimumPrice`, `pricingType` must never appear in customer-facing example dialogue.
+4. **Placeholder completeness:** `grep '{{' prompt.md` returns 0 matches.
+5. **Handoff label consistency:** Every label in conversation examples matches a label in the Handoff Labels block.
 
 ## Reference Files
 
