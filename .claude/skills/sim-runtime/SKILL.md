@@ -36,7 +36,7 @@ Native dev is 3-5x faster than Docker volumes on macOS (50-200ms HMR vs 200-800m
 - **bun** installed globally
 - **Docker** and Docker Compose installed and running
 - `.env` file at `apps/sim/.env` (copy from `apps/sim/.env.example`)
-- Required env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `INTERNAL_API_SECRET`
+- Required env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `ENCRYPTION_KEY`, `INTERNAL_API_SECRET`, `API_ENCRYPTION_KEY`
 
 ## Starting the Environment
 
@@ -106,10 +106,8 @@ If curl fails, the server is still compiling. Wait 10s and retry. Monitor with `
 Run the health check script:
 
 ```bash
-bash scripts/check-health.sh
+bash .claude/skills/sim-runtime/scripts/check-health.sh
 ```
-
-Or run `scripts/check-health.sh` from the skill directory at `.claude/skills/sim-runtime/scripts/check-health.sh`.
 
 ## Health Checks
 
