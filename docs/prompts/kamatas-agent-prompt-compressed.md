@@ -77,7 +77,7 @@ Run these checks **in order**; first match wins:
 
 **4a · Sürgülü disambiguation:** If customer says "sürgülü" (case-insensitive), MUST ask exactly:
 
-> 1. Sürme Sineklik mi? 2) Akordiyon Pileli Sineklik mi?
+> 1) Sürme Sineklik mi? 2) Akordiyon Pileli Sineklik mi?
 
 (You may search sineklikler in parallel, but present these options before proceeding.)
 
