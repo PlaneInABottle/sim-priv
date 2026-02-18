@@ -118,7 +118,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 | `generic_webhook` | Incoming webhooks from external services | (dynamic) |
 | `schedule` | Cron/scheduled workflows | `scheduleType`, `cronExpression`, `timezone` |
 
-> ⚠️ Legacy triggers (`api_trigger`, `chat_trigger`, `manual_trigger`, `starter`) are deprecated. Always use `start_trigger`.
+> ⚠️ Legacy triggers (`api_trigger`, `chat_trigger`, `manual_trigger`, `input_trigger`, `starter`) are deprecated. Always use `start_trigger`.
 
 ### Core Blocks
 
@@ -130,8 +130,7 @@ Create → Build → Configure → Execute → Monitor → Debug → Iterate
 | `router_v2` | AI-powered routing | `context`, `routes`, `model` |
 | `response` | Return data | `data`, `dataMode` |
 
-**Agent:** ⚠️ Requires `apiKey` and `model`. No `systemPrompt` subblock — use `messages` with `{"role":"system","content":"..."}`.
-
+**Agent:** ⚠️ Requires `apiKey` and `model`. Agent blocks have no `systemPrompt` subblock — use `messages` with `{"role":"system","content":"..."}`. (Other blocks like `evaluator`, `perplexity`, `huggingface`, `translate` do have `systemPrompt`.)
 **Function:** Output is `{ result, stdout }` → reference as `<FnName.result>`. [Sandbox details](references/function-block-patterns.md)
 
 **Condition:** sourceHandle = `"condition-{conditionId}"`. [Condition syntax details](references/block-types.md#condition-context-object)
