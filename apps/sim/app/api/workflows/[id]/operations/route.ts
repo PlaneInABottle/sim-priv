@@ -26,7 +26,7 @@ import { authenticateApiKeyFromHeader, updateApiKeyLastUsed } from '@/lib/api-ke
 import { getSession } from '@/lib/auth'
 import { env } from '@/lib/core/config/env'
 import { generateRequestId } from '@/lib/core/utils/request'
-import { getWorkflowAccessContext, getWorkflowById } from '@/lib/workflows/utils'
+import { authorizeWorkflowByWorkspacePermission, getWorkflowById } from '@/lib/workflows/utils'
 import { createErrorResponse, createSuccessResponse } from '@/app/api/workflows/utils'
 import {
   enrichBatchAddBlocksPayload,
@@ -115,30 +115,27 @@ async function validateWritePermission(
   userId: string,
   requestId: string
 ): Promise<{ error: NextResponse | null }> {
-  const accessContext = await getWorkflowAccessContext(workflowId, userId)
+  const authorization = await authorizeWorkflowByWorkspacePermission({
+    workflowId,
+    userId,
+    action: 'write',
+  })
 
-  if (!accessContext) {
-    logger.warn(`[${requestId}] Workflow ${workflowId} not found`)
-    return { error: createErrorResponse('Workflow not found', 404) }
-  }
-
-  const { workflow, workspacePermission, isOwner } = accessContext
-
-  // Owner always has write access
-  if (isOwner) {
-    return { error: null }
-  }
-
-  // Check workspace permissions for write access
-  if (workflow.workspaceId) {
-    const hasWritePermission = workspacePermission === 'write' || workspacePermission === 'admin'
-    if (hasWritePermission) {
-      return { error: null }
+  if (!authorization.allowed) {
+    if (authorization.status === 404) {
+      logger.warn(`[${requestId}] Workflow ${workflowId} not found`)
+    } else {
+      logger.warn(`[${requestId}] User ${userId} unauthorized to write workflow ${workflowId}`)
+    }
+    return {
+      error: createErrorResponse(
+        authorization.message ?? 'Unauthorized: Access denied to write this workflow',
+        authorization.status
+      ),
     }
   }
 
-  logger.warn(`[${requestId}] User ${userId} unauthorized to write workflow ${workflowId}`)
-  return { error: createErrorResponse('Unauthorized: Access denied to write this workflow', 403) }
+  return { error: null }
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
