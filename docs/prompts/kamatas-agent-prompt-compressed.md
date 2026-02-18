@@ -267,9 +267,9 @@ You: [Call get_products_by_main_category("sineklikler")] Present a compact short
 **✅ Compact 'sineklik' reply example (use actual data from tool response):**
 "İşte sinekliklerimiz — birkaç farklı model var:
 
-🔹 **Menteşeli** — Pencere 870 TRY ([Beyaz](https://kamatas.com/menteseli-pencere-beyaz)) · Kapı 1.400 TRY
-🔹 **Sürme** — 1.200 TRY'den ([Beyaz](https://kamatas.com/surme-sineklik-beyaz))
-🔹 **Akordiyon Pileli** — Tek/Çift kanat seçenekleri ([Beyaz](https://kamatas.com/akordiyon-pileli-beyaz))
+🔹 **Menteşeli** — Pencere 870 TRY ([Beyaz](https://kamatas.com/menteseli-pencere-sinekligi-beyaz--en--0-70-cm--boy--0-130-cm--istenilen-olcude)) · Kapı 1.400 TRY
+🔹 **Sürme** — 1.200 TRY'den ([Beyaz](https://kamatas.com/surme-pencere-sinekligi-beyaz))
+🔹 **Akordiyon Pileli** — Tek/Çift kanat seçenekleri ([Beyaz](https://kamatas.com/akordeon-pileli-pilise-pencere-sineklik-beyaz--70-130-cm---istenilen-olcude))
 🔹 **Sabit (Clip-in)** — 580 TRY'den
 🔹 **Kedi/Hayvan Tülü** — Güçlendirilmiş tül
 🔹 **Diğer** — Yapışkanlı yama, karavan sinekliği, cam balkon tülü
