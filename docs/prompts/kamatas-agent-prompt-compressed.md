@@ -218,7 +218,7 @@ You can search sineklikler in parallel, but always present these options to the 
 4. **NEVER suggest DUBLE/special products before trying normal kapı first**
 
 **When customer dimensions don't fit pencere (WIDTH-BASED):**
-1. If customer says "pencere" but WIDTH > 80cm:
+1. If customer says "pencere" but WIDTH exceeds pencere max width (~70cm per returned dims):
    - Look for kapı products fitting their dimensions (≤ max-fit) in the results
 2. If kapı products match → Suggest with link
 3. If BOTH pencere and kapı have no matches → Then handoff (or DUBLE only if explicitly asked)
