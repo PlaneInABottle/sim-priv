@@ -37,6 +37,31 @@ apps/sim/           # Main Next.js application
 
 ---
 
+## Deployment Context
+
+> ⚠️ **Read this before making any architectural or billing-related decisions.**
+
+This Sim Studio instance is **self-hosted, single-user**. The only user is the owner/operator.
+
+| Fact | Detail |
+|------|--------|
+| **Hosting** | Self-hosted (not SaaS, not cloud-managed) |
+| **Users** | 1 — the operator. No external end-users log into Sim |
+| **Billing** | None. No Stripe, no subscriptions, no per-seat charges |
+| **Workspaces** | 3 workspaces: `Ege's Workspace`, `Kamatas Workspace`, `Dynamic Config` |
+| **Clients** | Each workspace corresponds to one Chatwoot account (one business client) |
+| **Role** | Sim is used as an **AI workflow backend** — Chatwoot sends webhooks, Sim processes them |
+
+### What this means for agents
+
+- **`getWorkspaceBilledAccountUserId`** and the billing/usage machinery in `processor.ts`, `preprocessing.ts`, etc. are **upstream open-source code**. Do not design new features around them as if we have multi-tenant billing.
+- **`account` table** is Better Auth's OAuth login table (the operator's own login) — unrelated to client/tenant concepts.
+- **Workspace = client**: when differentiating between Chatwoot clients, use `workspace_id`. There is no "tenant" layer above workspaces.
+- **No Admin UI** for billing, limits, or subscription management is needed or wanted.
+- When adding rate-limiting or budget features, scope them to `workspace_id` (not `user_id`, not a "tenant" table).
+
+---
+
 ## Tech Stack
 
 | Category | Technologies |
