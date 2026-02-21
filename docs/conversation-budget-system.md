@@ -59,6 +59,8 @@ BCU limits are operator-configured per workspace/client — they are not custome
 |----------|------|
 | **Trigger** | First incoming message in a unique `(workspace_id, chatwoot_conversation_id)` pair within a given `period_key` |
 | **Period** | Monthly. `period_key` = `'YYYY-MM'` (e.g. `'2026-02'`). |
+
+> **Timezone:** All period calculations use UTC. `period_key` is generated as `new Date().toISOString().slice(0, 7)` (always UTC). All PostgreSQL `date_trunc` expressions use `AT TIME ZONE 'UTC'`.
 | **Message type filter** | Only `message_type="incoming"` can start a BCU |
 | **Human handoff** | Still counts — the bot performed work before handoff |
 | **Webhook retries** | Do NOT create new BCUs — idempotency via `chatwoot_conversation_consumptions` PRIMARY KEY constraint |
@@ -138,7 +140,7 @@ CREATE INDEX idx_chatwoot_consumptions_workspace_period
   ON chatwoot_conversation_consumptions(workspace_id, period_key);
 ```
 
-> **Drizzle ORM:** Define these tables as Drizzle schema objects in `packages/db/src/schema.ts`. Run `bun run db:generate` to generate the SQL migration, then `bun run db:migrate` to apply.
+> **Drizzle ORM:** Define these tables as Drizzle schema objects in `packages/db/schema.ts`. Run `bun run db:generate` to generate the SQL migration, then `bun run db:migrate` to apply.
 
 ---
 
@@ -159,7 +161,7 @@ Chatwoot -> POST /api/webhooks/trigger/[path]
 
 ### Proposed Pipeline (With Budget Gate)
 
-The budget gate is inserted **inside `queueWebhookExecution()` in `apps/sim/lib/webhooks/processor.ts`**, after the existing `verifyCredentialSetBilling` check (~line 1016). This follows the same guard-and-return pattern as the existing `verifyCredentialSetBilling` check, but is a separate, independent budget-cap gate.
+The budget gate is inserted **inside `queueWebhookExecution()` in `apps/sim/lib/webhooks/processor.ts`**, after the `workspaceId` null guard (line 1019–1021, after `verifyCredentialSetBilling`). This guarantees `foundWorkflow.workspaceId` is non-null when passed to `checkChatwootBudget()`. This follows the same guard-and-return pattern as the existing `verifyCredentialSetBilling` check, but is a separate, independent budget-cap gate.
 
 This gate enforces operator-defined per-client limits to control AI provider spend; it does not perform customer billing.
 
@@ -201,9 +203,28 @@ sequenceDiagram
 
 ### Insertion Code
 
+> ⚠️ **Provider detection prerequisite:** Chatwoot webhooks currently arrive with `provider = 'generic'` (via the generic webhook trigger). Before the budget gate can use Option A, a dedicated Chatwoot trigger (`apps/sim/triggers/chatwoot/`) must be created to set `provider = 'chatwoot'`. Option B (body-sniffing) works immediately but is less explicit. Option A is the recommended long-term approach.
+
+**Option A (Recommended) — Dedicated Chatwoot Trigger:**
 ```typescript
-// Inside queueWebhookExecution(), after verifyCredentialSetBilling block:
+// Inside queueWebhookExecution(), after workspaceId null guard:
+// Phase 1 prerequisite: create apps/sim/triggers/chatwoot/ trigger
+// that sets provider = 'chatwoot' on the webhook record.
+// Once done, the check becomes:
 if (foundWebhook.provider === 'chatwoot') {
+  const budgetResult = await checkChatwootBudget(body, foundWorkflow.workspaceId, options.requestId)
+  if (!budgetResult.allowed) {
+    logger.warn({ event: 'budget_exhausted', workspaceId: foundWorkflow.workspaceId })
+    return // Return 200 — never send 4xx to Chatwoot
+  }
+}
+```
+
+**Option B (Body-sniffing fallback) — detect Chatwoot by payload shape:**
+```typescript
+// Inside queueWebhookExecution(), after workspaceId null guard:
+const isChatwootWebhook = typeof body?.event === 'string' && body?.account?.id != null
+if (isChatwootWebhook) {
   const budgetResult = await checkChatwootBudget(body, foundWorkflow.workspaceId, options.requestId)
   if (!budgetResult.allowed) {
     logger.warn({ event: 'budget_exhausted', workspaceId: foundWorkflow.workspaceId })
@@ -222,7 +243,7 @@ if (foundWebhook.provider === 'chatwoot') {
 | **Mandatory** | All webhook-triggered executions pass through `queueWebhookExecution()` — no bypass possible |
 | **Atomic** | PostgreSQL `INSERT ON CONFLICT` + `UPDATE ... WHERE used < limit` guarantees no double-counting under concurrency |
 | **Consistent** | Follows the same guard-and-return pattern as the existing `verifyCredentialSetBilling` check in the same function |
-| **Reversible** | Function can be made a no-op via environment variable without touching any other code |
+| **Reversible** | Budget gate can be disabled per workspace by setting `conversation_limit = NULL` without touching any other code |
 
 ### Where It Lives in the Codebase
 
@@ -239,7 +260,22 @@ apps/sim/
 
 ## 5. Atomic Budget Check
 
-The budget check runs as a single PostgreSQL transaction with two steps:
+The budget check runs as a single PostgreSQL transaction with four steps:
+
+> **Timezone:** All period calculations use UTC. `period_key` is generated as `new Date().toISOString().slice(0, 7)` (always UTC). All PostgreSQL `date_trunc` expressions use `AT TIME ZONE 'UTC'`.
+
+### Step 0: Fail-Open Pre-Check
+
+```sql
+-- Step 0: Check if workspace has budget configured
+-- No row = no limit configured = allow execution (fail-open)
+SELECT conversation_limit
+FROM workspace_budget
+WHERE workspace_id = $1;
+-- If no row returned → skip entire budget gate, allow execution
+```
+
+If no row is returned, the workspace has no budget configured. The budget gate returns `{ allowed: true, reason: 'no_budget_configured' }` and execution proceeds with no metering.
 
 ### Step 1: Idempotent Consumption Insert
 
@@ -256,6 +292,19 @@ RETURNING *;
 - If `RETURNING` yields a row -> new conversation this period, proceed to budget increment.
 - If `RETURNING` yields nothing -> duplicate (same BCU), skip budget increment.
 
+### Step 1.5: Lazy Period Reset
+
+```sql
+-- Step 1.5: Reset counter if period has rolled over (run inside transaction, before decrement)
+UPDATE workspace_budget
+SET conversation_used = 0,
+    period_start = date_trunc('month', NOW() AT TIME ZONE 'UTC')
+WHERE workspace_id = $1
+  AND period_start < date_trunc('month', NOW() AT TIME ZONE 'UTC');
+```
+
+**Rationale:** This is a lazy reset — the counter resets atomically the first time the budget gate runs in a new month. No cron job needed. Runs inside the same transaction so it's atomic with the increment.
+
 ### Step 2: Atomic Budget Increment
 
 ```sql
@@ -263,30 +312,90 @@ UPDATE workspace_budget
 SET conversation_used = conversation_used + 1
 WHERE workspace_id = $1
   AND (conversation_limit IS NULL OR conversation_used < conversation_limit)
-RETURNING conversation_limit - conversation_used AS remaining;
+RETURNING COALESCE(conversation_limit - conversation_used, -1) AS remaining;
+-- -1 signals unlimited; any value >= 0 means limited with N remaining
 ```
 
-- If `RETURNING` yields a row -> budget incremented, `remaining` tells us how much is left.
+- If `RETURNING` yields a row -> budget incremented, `remaining` tells us how much is left (`-1` = unlimited).
 - If `RETURNING` yields nothing -> budget exhausted, skip execution.
 
 > **Note:** Exhaustion means the operator-configured monthly cap for that workspace/client has been reached.
 
 Both queries run in a **single PostgreSQL transaction**, ensuring atomicity even under concurrent webhook delivery.
 
+### Full Transaction Pseudocode (`budget-gate.ts`)
+
+```typescript
+// Full atomic budget check using Drizzle transaction
+export async function checkChatwootBudget(
+  body: unknown,
+  workspaceId: string,
+  requestId: string
+): Promise<{ allowed: boolean; reason: string }> {
+  try {
+    return await db.transaction(async (tx) => {
+      // Step 0: Fail-open if no budget row configured
+      const budgetRows = await tx.select().from(workspaceBudget)
+        .where(eq(workspaceBudget.workspaceId, workspaceId)).limit(1)
+      if (budgetRows.length === 0) return { allowed: true, reason: 'no_budget_configured' }
+
+      // Step 1.5: Lazy period reset
+      await tx.execute(sql`
+        UPDATE workspace_budget
+        SET conversation_used = 0, period_start = date_trunc('month', NOW() AT TIME ZONE 'UTC')
+        WHERE workspace_id = ${workspaceId}
+          AND period_start < date_trunc('month', NOW() AT TIME ZONE 'UTC')
+      `)
+
+      // Step 1: Idempotent consumption insert
+      const periodKey = new Date().toISOString().slice(0, 7) // 'YYYY-MM' (UTC)
+      const conversationId = body?.conversation?.id
+      if (!conversationId) return { allowed: true, reason: 'no_conversation_id' }
+
+      const inserted = await tx.insert(chatwootConversationConsumptions)
+        .values({ workspaceId, chatwootConversationId: conversationId, periodKey })
+        .onConflictDoNothing()
+        .returning()
+
+      if (inserted.length === 0) return { allowed: true, reason: 'existing_bcu' }
+
+      // Step 2: Atomic budget increment
+      const updated = await tx.execute(sql`
+        UPDATE workspace_budget
+        SET conversation_used = conversation_used + 1
+        WHERE workspace_id = ${workspaceId}
+          AND (conversation_limit IS NULL OR conversation_used < conversation_limit)
+        RETURNING COALESCE(conversation_limit - conversation_used, -1) AS remaining
+      `)
+
+      if (updated.rows.length === 0) return { allowed: false, reason: 'budget_exhausted' }
+      return { allowed: true, reason: 'budget_ok' }
+    })
+  } catch (error) {
+    logger.error({ event: 'budget_gate_error', workspaceId, error })
+    return { allowed: true, reason: 'gate_error_fail_open' } // Fail-open
+  }
+}
+```
+
 ### Atomic Budget Check Flow
 
 ```mermaid
 flowchart TD
     A["Webhook arrives with\nworkspace_id + conversation_id"] --> B["BEGIN TRANSACTION"]
-    B --> C["INSERT INTO consumptions\nON CONFLICT DO NOTHING\nRETURNING *"]
+    B --> B0{"Step 0: Budget row\nexists for workspace?"}
+    B0 -->|"No row"| B0a["COMMIT\nNo budget configured\nAllow execution fail-open"]
+    B0 -->|"Yes"| B1["Step 1.5: Lazy period reset\nReset used=0 if period rolled"]
+    B1 --> C["Step 1: INSERT INTO consumptions\nON CONFLICT DO NOTHING\nRETURNING *"]
     C --> D{"Row returned?"}
     D -->|"No - duplicate"| E["COMMIT\nSame BCU continue execution"]
-    D -->|"Yes - new"| F["UPDATE workspace_budget\nSET used = used + 1\nWHERE used lt limit\nRETURNING remaining"]
+    D -->|"Yes - new"| F["Step 2: UPDATE workspace_budget\nSET used = used + 1\nWHERE used lt limit\nRETURNING remaining"]
     F --> G{"Row returned?"}
     G -->|"Yes"| H["COMMIT\nBudget OK continue execution"]
     G -->|"No - exhausted"| I["ROLLBACK\nRemove consumption record"]
     I --> J["Skip execution\nLog budget_exhausted\nReturn 200"]
 
+    style B0a fill:#66ff66,stroke:#009900
     style E fill:#66ff66,stroke:#009900
     style H fill:#66ff66,stroke:#009900
     style J fill:#ff6666,stroke:#cc0000
@@ -319,6 +428,17 @@ This phase merges initial instrumentation work (extracting `account_id` and `con
 
 Limits are configured via DB seed or migration for MVP; Admin UI is explicitly out of scope for this self-hosted deployment. Limits are set directly in the database.
 
+```sql
+-- Seed budget rows for existing workspaces (run once during Phase 1 migration)
+-- NULL limit = unlimited (tracking only, no enforcement)
+INSERT INTO workspace_budget (workspace_id, conversation_limit, conversation_used, period_start)
+SELECT id, NULL, 0, date_trunc('month', NOW() AT TIME ZONE 'UTC')
+FROM workspace
+ON CONFLICT DO NOTHING;
+```
+
+> **Note:** New workspaces automatically get fail-open behavior (no row = unlimited) — seeding is only needed if you want to set an explicit limit.
+
 Budget events are logged using structured logger: `logger.warn({ event: 'budget_exhausted', workspace_id, used, limit })`.
 
 **Success criteria for Phase 2 promotion:**
@@ -336,20 +456,12 @@ Budget events are logged using structured logger: `logger.warn({ event: 'budget_
 | Hard enforcement | Budget gate skips execution — returns early with 200, logs `budget_exhausted` |
 | Exhaustion behavior | Return HTTP 200 to Chatwoot. Skip `queueWebhookExecution()`. Log `budget_exhausted`. Human agents see the unanswered conversation naturally in Chatwoot. |
 | Thresholds are data-driven | Use Phase 1 baseline data to set initial limits |
-| Kill switches | `BUDGET_SYSTEM_ENABLED=false` env var OR set `conversation_limit = NULL` (unlimited) |
+| Kill switches | Set `conversation_limit = NULL` for any workspace (instant, no redeploy needed) |
 | Monitoring | Structured logging dashboards for budget exhaustion events, false positives, latency impact |
 
-### Phase 2.5: Chatwoot API Graceful Handoff (Optional Enhancement)
+### Phase 2.5: Chatwoot API Graceful Handoff
 
-This is an optional enhancement that calls Chatwoot APIs to actively notify the customer when budget is exhausted, rather than silently skipping AI execution.
-
-| API Call | Purpose |
-|----------|---------|
-| `POST /api/v1/accounts/:id/conversations/:conv_id/messages` | Send handoff message to customer |
-| `POST /api/v1/accounts/:id/conversations/:conv_id/labels` | Add `ai_budget_exhausted` label |
-| `POST /api/v1/accounts/:id/conversations/:conv_id/assignments` | Reassign to human agent team |
-
-This enhancement is **not required for Phase 2** — the silent no-op (return 200, skip execution) is sufficient. Human agents already see unanswered conversations naturally in Chatwoot.
+**Removed from implementation scope.** When the budget is exhausted, human agents see unanswered conversations in their Chatwoot queue naturally — no programmatic notification is needed. This enhancement may be revisited if clients report confusion about unanswered messages.
 
 ---
 
@@ -365,7 +477,7 @@ This enhancement is **not required for Phase 2** — the silent no-op (return 20
 | **Counter reset failure** | Low | Medium — budget never resets, accumulates forever | Automatic reset when `period_start` is before current month; manual `UPDATE` as fallback | Low |
 | **Code crash in budget gate** | Low | High — all webhook executions fail | `try/catch` wrapper with fail-open behavior; crash logs `budget_gate_error` event and proceeds | Low — fail-open ensures service continuity |
 | **Period boundary edge case** | Low | Low — conversation counted in wrong period | Use `period_key` (e.g. `'2026-02'`) in consumption record; period rolls at UTC midnight | None |
-| **Multi-instance race on budget increment** | Medium | Medium — two instances both increment, overshoot by 1 | PG `UPDATE ... WHERE used < limit` is atomic across connections; overshoot is bounded to N-1 where N = concurrent instances | Very Low — at most 1 extra BCU |
+| **Multi-instance race on budget increment** | Medium | Medium — two instances both increment, overshoot by 1 | PG `UPDATE ... WHERE used < limit` is atomic across connections; PostgreSQL's READ COMMITTED isolation re-evaluates the UPDATE WHERE clause after row-level lock acquisition | Very Low — overshoot = 0: the second concurrent UPDATE sees the already-incremented value and fails the WHERE condition if at limit |
 
 ### Rollback Tiers
 
@@ -375,26 +487,20 @@ flowchart LR
         T1["Set conversation_limit = NULL\nunlimited no enforcement"]
     end
 
-    subgraph Tier2["Tier 2 Fast under 5 min"]
-        T2["Set env var\nBUDGET_SYSTEM_ENABLED=false\nbudget gate becomes no-op"]
+    subgraph Tier2["Tier 2 Full under 15 min"]
+        T2["Revert PR + redeploy\nremoves budget gate entirely\nNo DB migration to reverse"]
     end
 
-    subgraph Tier3["Tier 3 Full under 15 min"]
-        T3["Revert PR + redeploy\nremoves budget gate entirely\nNo DB migration to reverse"]
-    end
-
-    T1 --> T2 --> T3
+    T1 --> T2
 
     style T1 fill:#66ff66,stroke:#009900
-    style T2 fill:#ffff66,stroke:#999900
-    style T3 fill:#ff9966,stroke:#cc6600
+    style T2 fill:#ff9966,stroke:#cc6600
 ```
 
 | Tier | Action | Time | Data Impact | When to Use |
 |------|--------|------|------------|-------------|
-| **Tier 1 — Immediate** | Set `conversation_limit = NULL` for affected workspaces/clients | under 1 min | None — NULL means unlimited | False positives detected; specific client workspace impacted |
-| **Tier 2 — Fast** | Set `BUDGET_SYSTEM_ENABLED=false` environment variable | under 5 min | None — gate becomes no-op, consumption records still written | Systemic issue; all client workspaces affected |
-| **Tier 3 — Full** | Revert the PR, redeploy | under 15 min | None in Phase 1 (no blocking); Phase 2 may need consumption table cleanup | Critical bug; system fundamentally broken |
+| **Tier 1 — Immediate** | Set `conversation_limit = NULL` for affected workspaces/clients | under 1 min | None — NULL means unlimited | False positives detected; specific or all client workspaces impacted |
+| **Tier 2 — Full** | Revert the PR, redeploy | under 15 min | None in Phase 1 (no blocking); Phase 2 may need consumption table cleanup | Critical bug; system fundamentally broken |
 
 ---
 
@@ -454,9 +560,15 @@ The consumption table's PRIMARY KEY on `(workspace_id, chatwoot_conversation_id,
 This project uses **Drizzle ORM** for all database schema management. All new tables must be defined as Drizzle schema objects — do NOT run raw SQL migrations manually.
 
 ### Schema file
-`packages/db/src/schema.ts`
+`packages/db/schema.ts`
 
 Add the two new table definitions:
+
+```typescript
+// Add primaryKey to existing drizzle-orm/pg-core import in packages/db/schema.ts:
+// import { ..., primaryKey } from 'drizzle-orm/pg-core'
+// Note: this is the first composite PK in the schema
+```
 
 ```typescript
 export const workspaceBudget = pgTable('workspace_budget', {
@@ -500,7 +612,7 @@ bun run db:migrate    # Apply pending migrations to database
 | **Period Key** | A string like `'2026-02'` representing the monthly budget period for grouping consumptions |
 | **Soft Limit** | Phase 1 behavior — log budget violations but do not block execution |
 | **Hard Limit** | Phase 2 behavior — skip execution when budget is exhausted |
-| **Kill Switch** | `BUDGET_SYSTEM_ENABLED=false` env var to instantly disable all budget enforcement |
+| **Kill Switch** | Set `conversation_limit = NULL` on workspace to instantly disable budget enforcement for that workspace |
 | **Client Workspace** | A Sim workspace corresponding to one Chatwoot account/business managed by the operator |
 
 ## Appendix: Related Files
@@ -513,5 +625,5 @@ bun run db:migrate    # Apply pending migrations to database
 | `apps/sim/lib/core/idempotency/service.ts` | Existing idempotency service |
 | `apps/sim/lib/billing/calculations/usage-monitor.ts` | Pre-existing upstream usage-limit module — NOT a dependency of this conversation budget system |
 | `apps/sim/lib/execution/budget-gate.ts` | **NEW** — `checkChatwootBudget()`, `consumeConversation()` |
-| `packages/db/src/schema.ts` | Drizzle schema definitions (add `workspace_budget` and `chatwoot_conversation_consumptions` tables here) |
-| `packages/db/src/migrations/` | Generated SQL migration files |
+| `packages/db/schema.ts` | Drizzle schema definitions (add `workspace_budget` and `chatwoot_conversation_consumptions` tables here) |
+| `packages/db/migrations/` | Generated SQL migration files |
