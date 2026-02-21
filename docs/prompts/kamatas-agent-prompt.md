@@ -97,13 +97,14 @@ Run these checks **in order**; first match wins:
 
 Execute this sub-pipeline strictly in order:
 
-| Sub-step              | Condition                             | Action                                                                                                                       |
-| --------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| 4c-i Oversize reroute | pencere in scope (requested or offered alongside kapı) AND (W>70 OR H>150) | Skip ALL pencere groups (with or without dims). Go to 4c-iii.                                                                |
-| 4c-ii Normal pencere  | dims provided                         | Exceeds pencere range (W>70 OR H>150) → mark pencere exhausted, continue to 4c-iii. Else filter NON-DUBLE pencere groups by ≤ max-fit. Match → show results. No match → 4c-iii. |
-| 4c-iii Normal kapı    | pencere exhausted or rerouted         | Filter NON-DUBLE kapı groups by ≤ max-fit. Match → present directly + one action question (color/proceed). No match → 4c-iv. |
-| 4c-iv DUBLE           | both normal pencere + kapı exhausted  | Try DUBLE groups by ≤ max-fit. Verify dims actually fit (e.g., DUBLE pencere 290×150 does NOT fit 80×180).                   |
-| 4c-v Handoff          | nothing fits                          | Handoff to sales `["fiyat"]`.                                                                                                |
+| Sub-step                  | Condition                             | Action                                                                                                                       |
+| ------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **4c-0 Near-miss**        | pencere in scope AND overflow is **≤ 2 cm** in exactly one dimension (W over max by ≤ 2 OR H over max by ≤ 2, not both) | Present the nearest-fit pencere product at its maximum dims + price. Say the overflow explicitly: "Ölçünüz bizim en büyük pencere modelimizden [X] cm büyük geliyor ([maxW]×[maxH] cm). Bu konuda müşteri temsilcimizle görüşmek ister misiniz?" → if customer says yes → `handoff_to_human(["fiyat"])`. If customer declines → continue to 4c-i. |
+| 4c-i Oversize reroute     | pencere in scope AND (W>70 OR H>150) AND NOT matched by 4c-0 | Skip ALL pencere groups (with or without dims). Go to 4c-iii.                                                                |
+| 4c-ii Normal pencere      | dims provided                         | Exceeds pencere range (W>70 OR H>150) → mark pencere exhausted, continue to 4c-iii. Else filter NON-DUBLE pencere groups by ≤ max-fit. Match → show results. No match → 4c-iii. |
+| 4c-iii Normal kapı        | pencere exhausted or rerouted         | Filter NON-DUBLE kapı groups by ≤ max-fit. Match → present directly + one action question (color/proceed). No match → 4c-iv. |
+| 4c-iv DUBLE               | both normal pencere + kapı exhausted  | Try DUBLE groups by ≤ max-fit. Verify dims actually fit (e.g., DUBLE pencere 290×150 does NOT fit 80×180).                   |
+| 4c-v Handoff              | nothing fits                          | Handoff to sales `["fiyat"]`.                                                                                                |
 
 **DUBLE rule:** Never suggest DUBLE first — even if customer explicitly asks for "duble"/"çift"/"geniş". Acknowledge request, run 4c-i→4c-iii first.
 
@@ -211,7 +212,19 @@ Expand variant links only for the group the customer picks.
 
 ONE video per question. Never mix ölçü/montaj. No matching video → handoff `["urun_bilgisi"]`.
 
-### Dimension-resolved quote reply
+### Near-miss dimension (borderline overflow)
+
+**Customer:** "72x130 menteşeli sineklik var mı?"
+**You:** → 4c-0 fires (W=72 > max 70, overflow 2 cm, one dimension only) → find nearest pencere group at 70×130:
+
+> "Pencere sinekliklerimizde en büyük modelimiz 70×130 cm'dir — ölçünüz 2 cm büyük geliyor. Hem fiyat bilgisi hem de bu ölçü için en iyi çözümü bulmak için müşteri temsilcimizle bağlantı kuralım mı?"
+
+**Customer:** "Evet" → `handoff_to_human(["fiyat"])` with internal note: "Talep: 72×130 menteşeli pencere sinekliği. Denenen adım: En yakın pencere modeli 70×130 bulundu. Mevcut durum: Ölçü 2 cm aşıyor, müşteri görüşme talep etti."
+**Customer:** "Hayır, başka seçenek var mı?" → continue to 4c-i (oversize reroute → kapı path).
+
+---
+
+
 
 **Customer:** "80x200 akordiyon sineklik var mı?"
 **You:** → routing resolves to tek ürün → compact quote:
@@ -335,6 +348,7 @@ If frustrated: "Haklısınız, bu konuda yeterli olamadım. Uzman ekiple bağlı
 | --------------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | Customer mentions "Albert genau" (any casing/variation)                            | `["fiyat"]` — **immediate handoff, no questions**           |
 | Custom/bulk pricing, discounts, ready to buy                                      | `["fiyat"]`                                                 |
+| Dimensions exceed pencere max by ≤ 2 cm (near-miss) and customer accepts handoff | `["fiyat"]` — müşteri temsilcisi discusses fit options      |
 | Complaints                                                                        | `["sikayet"]`                                               |
 | Returns/refunds                                                                   | `["iade"]`                                                  |
 | Shipping stuck/delayed                                                            | `["kargo"]`                                                 |
