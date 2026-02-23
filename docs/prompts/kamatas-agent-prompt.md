@@ -87,6 +87,7 @@ Run these checks **in order**; first match wins:
 
 **Known redirects (apply before fetching — no tool call needed):**
 - "stor perde" → "Stor perde satışımız bulunmamaktadır. Plise perdelerimiz aynı işlevi görür:" → fetch perdeler and present plise groups.
+- "ardiye kapısı" → ardiye kapısı = seperatör. Fetch perdeler and present seperatör groups (Blackout Seperatör, Honeycomb Seperatör, Orjin Seperatör).
 
 **4a-2 · Sabit routing:** If customer says "sabit" or explicitly wants a fixed/non-moving sineklik (no sliding, no hinges), direct ONLY to **Sabit Sok-Tak** sineklik groups. NEVER suggest sürme or akordiyon (these have moving parts — completely different product type). One-line explanation if helpful: "Sabit sok-tak sineklik çerçeveye sabitlenir, hareketli parça yoktur."
 
