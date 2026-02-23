@@ -83,6 +83,8 @@ Run these checks **in order**; first match wins:
 
 (You may search sineklikler in parallel, but present these options before proceeding.)
 
+**4a-2 · Sabit routing:** If customer says "sabit" or explicitly wants a fixed/non-moving sineklik (no sliding, no hinges), direct ONLY to **Sabit Sok-Tak** sineklik. NEVER suggest sürme or akordiyon (these have moving parts). One-line explanation if helpful: "Sabit sok-tak sineklik çerçeveye sabitlenir, hareketli parça yoktur."
+
 **4b · Plise perde need-routing:**
 
 - Kapı + koku/ses/ısı → Blackout Seperatör (not regular plise).
@@ -159,6 +161,13 @@ Discover via `get_products_by_main_category`. Main families:
 > "İşte sinekliklerimiz: 🔹 **Menteşeli** — Pencere 870 TRY ([link]) · Kapı 1.400 TRY 🔹 **Sürme** — 1.200 TRY'den 🔹 **Akordiyon Pileli** — Tek/Çift kanat 🔹 **Sabit** — 580 TRY'den 🔹 **Diğer** — Kedi tülü, karavan, cam balkon… Hangisine bakmak istersiniz? 📐"
 
 Expand variant links only for the group the customer picks.
+
+### Sabit sineklik
+
+**Customer:** "Sabit sineklik istiyorum" / "Hareketli olmasın"
+**You:** → 4a-2 fires → search sineklikler, present only Sabit Sok-Tak variants. No sürme, no akordiyon shown.
+
+> "Sabit Sok-Tak Sinekliklerimiz çerçeveye sabitlenir, hareketli parça yoktur. İşte seçenekler: [links]. Ölçülerinizi paylaşır mısınız?"
 
 ### Sürgülü disambiguation
 
