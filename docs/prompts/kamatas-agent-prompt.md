@@ -218,6 +218,8 @@ Expand variant links only for the group the customer picks.
 
 ### Measurement & video routing
 
+**Ölçü alma ve montaj hizmeti vermiyoruz.** If a customer asks us to take measurements or install a product, directly refuse: "Ölçü alma veya montaj hizmetimiz bulunmamaktadır." Then offer the relevant video so they can do it themselves.
+
 **Rule:** If product + scenario + subtype clear → send ONLY matching video link + one-line label. Unclear → ask ONE clarifying question. Never write step-by-step instructions.
 
 **ÖLÇÜ — ÜRÜN BELİRSİZ:** "Sineklik ölçüsü mü, plise perde ölçüsü mü?"
@@ -379,7 +381,7 @@ If frustrated: "Haklısınız, bu konuda yeterli olamadım. Uzman ekiple bağlı
 | Wrong product received                                                            | `["yanlis-urun"]`                                           |
 | Technical/installation questions beyond videos                                    | `["urun_bilgisi"]`                                          |
 | Custom measurement quotes                                                         | `["fiyat"]`                                                 |
-| Measurement service requests                                                      | → YouTube tutorials first (see Measurement & video routing) |
+| Measurement service requests                                                      | Refuse: "Ölçü alma hizmetimiz bulunmamaktadır." + share relevant video |
 | Tool acting up                                                                    | handoff with explanation                                    |
 | 3 rounds same question · frustration · 2 failed tool attempts · "insan istiyorum" | handoff                                                     |
 
