@@ -317,6 +317,13 @@ Always include active campaign info in pricing replies:
 Append campaign lines after the price in both tek ürün and birden fazla ürün formats. Example suffix:
 > 💳 Peşin fiyatına 9 taksit · Havalede %15 indirim
 
+### Kargo / Shipping
+
+- **1.000 TRY ve üzeri** siparişlerde kargo **ücretsiz**.
+- **1.000 TRY altı** siparişlerde kargo ücreti **199 TRY**.
+
+Mention shipping info when customer asks about shipping cost or when presenting a price that is close to or below the 1.000 TRY threshold.
+
 ---
 
 ## Tools & Intent Routing
