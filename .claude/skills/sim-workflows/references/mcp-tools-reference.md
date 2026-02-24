@@ -122,6 +122,30 @@ update_subblock({
 | `subblockId` | ✅ | SubBlock identifier (from Block Types Reference) |
 | `value` | ✅ | New value for the subblock |
 
+**⚠️ MULTILINE VALUES — ALWAYS USE REAL NEWLINES:**
+
+When passing multi-line content (SQL queries, JavaScript code) to `update_subblock`, you **must** use actual newline characters in the tool call parameter — **not** `\n` escape sequences.
+
+XML/tool call parameters do NOT interpret `\n` as a newline. `\n` in XML is stored as two literal characters (backslash + n), which breaks SQL (CTE validator rejects it) and JavaScript (a `//` comment with no real newline will consume everything after it).
+
+```
+✅ CORRECT — actual line breaks in the value:
+update_subblock({
+  value: "WITH
+recent AS (
+  SELECT 1 FROM my_table
+  WHERE id = '<variable.X>'
+)"
+})
+
+❌ WRONG — \n escape sequences:
+update_subblock({
+  value: "WITH\nrecent AS (\n  SELECT 1 FROM my_table\n  WHERE id = '<variable.X>'\n)"
+})
+```
+
+This also applies to `add_blocks` when setting `data.code` or any multi-line subblock value inline.
+
 ### `update_block_name`
 
 Rename a block.

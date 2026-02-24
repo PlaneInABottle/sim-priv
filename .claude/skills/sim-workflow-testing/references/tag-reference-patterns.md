@@ -109,6 +109,21 @@ WHERE workspace_id = '<variable.WORKSPACE_ID>'
 
 This is safe and expected. Tags are resolved **before** query validation/execution.
 
+### ⚠️ Writing Multi-line SQL/Code via `update_subblock`
+
+When updating a `query` or `code` subblock via `sim-mcp`, **always use real newline characters** in the tool call — never `\n` escape sequences.
+
+XML tool parameters do **not** interpret `\n` as a newline — it becomes a literal backslash-n. This causes:
+- **SQL:** CTE validator regex `/^(with)\s+/i` fails → query rejected before execution
+- **JavaScript:** `//` comments have no real line terminator → the comment swallows everything after it
+
+```
+✅ Pass value with actual line breaks (multi-line XML content)
+❌ Pass value with \n escape sequences — stored as literal backslash-n
+```
+
+> See `sim-workflows/references/mcp-tools-reference.md → update_subblock` for full examples.
+
 ---
 
 ## GraphQL Schema Validation Errors

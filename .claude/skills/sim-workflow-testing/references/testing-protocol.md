@@ -199,6 +199,31 @@ Disable:
   - Send to Chatwoot (No Files) 1 (prevents real message delivery)
 ```
 
+### How Block Disabling Propagates
+
+**Key rule: Disabling a block stops the entire downstream chain from executing.**
+
+In Sim's execution model, a disabled block produces no output and sends no trigger to its connected blocks. Downstream blocks are only executed when they receive a trigger from an upstream block — so if the upstream is disabled, they never fire.
+
+**Practical implication:** You only need to disable the *earliest* block in a path you want to suppress. You do NOT need to disable every block in the chain after it.
+
+```
+Example: A → B → C → D
+
+To suppress path B→C→D:  disable B only ✅
+Do NOT need to:           disable B, C, AND D ❌ (wasteful)
+```
+
+**Exception:** If a block has multiple input edges from different upstream blocks, disabling only one upstream is not enough — the block will still fire from the other enabled upstream.
+
+```
+Example: A → C ← B
+
+To suppress C: disable BOTH A and B (or disable C directly)
+```
+
+**Consequence for CONDITION_ONLY profile:** You only need to disable the first block in each non-condition branch, not every block in the branch. Check the workflow's edge map — identify the first non-condition block in each unwanted path and disable only that.
+
 ### 2.2 Toggle Blocks Off
 
 For each block to disable, call:
