@@ -2512,7 +2512,7 @@ export const jwks = pgTable('jwks', {
   createdAt: timestamp('created_at').notNull(),
 })
 
-// [budget-system] Per-workspace monthly AI conversation limit.
+// [budget-system] Per-workspace flat AI conversation limit (no monthly reset).
 // Allows disabling budget enforcement per workspace (is_enabled = false for testing/emergencies).
 // No budget row = fail-open (all traffic allowed). See docs/conversation-budget-system.md.
 export const workspaceBudget = pgTable(
@@ -2523,17 +2523,14 @@ export const workspaceBudget = pgTable(
       .notNull()
       .unique()
       .references(() => workspace.id, { onDelete: 'cascade' }),
-    monthlyLimit: integer('monthly_limit').notNull().default(100),
+    conversationLimit: integer('conversation_limit').notNull().default(100),
     isEnabled: boolean('is_enabled').notNull().default(true),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   }
 )
 
-// [budget-system] One row per conversation session (24h window).
-// A conversation can have multiple rows if it re-engages after 24h idle (each counts as a new token).
-// No unique constraint on conversation_id by design — multiple sessions per conversation allowed.
-// See docs/conversation-budget-system.md for the full writable CTE and session logic.
+// [budget-system] One row per 24h conversation session consumed. No UNIQUE constraint by design — same conversation can be charged again after 24h. See docs/conversation-budget-system.md.
 export const chatwootConversationConsumptions = pgTable(
   'chatwoot_conversation_consumptions',
   {
@@ -2542,16 +2539,12 @@ export const chatwootConversationConsumptions = pgTable(
       .notNull()
       .references(() => workspace.id, { onDelete: 'cascade' }),
     chatwootConversationId: bigint('chatwoot_conversation_id', { mode: 'number' }).notNull(),
-    periodKey: text('period_key').notNull(), // Format: 'YYYY-MM'
     workflowExecutionId: text('workflow_execution_id'), // nullable — reserved for future tracing
     consumedAt: timestamp('consumed_at').notNull().defaultNow(),
   },
   (table) => ({
-    // For fast monthly usage COUNT queries
-    workspacePeriodIdx: index('chatwoot_conv_consumptions_workspace_period_idx').on(
-      table.workspaceId,
-      table.periodKey
-    ),
+    // For fast all-time usage COUNT queries
+    workspaceIdx: index('chatwoot_conv_consumptions_workspace_idx').on(table.workspaceId),
     // For fast 24h session lookups (Drizzle defaults to ASC; PostgreSQL backward scan is equivalent)
     recentIdx: index('chatwoot_conv_consumptions_recent_idx').on(
       table.workspaceId,
