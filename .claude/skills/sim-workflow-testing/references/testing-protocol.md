@@ -572,6 +572,102 @@ All blocks restored to original state ✅
 
 ---
 
+## Modifying Workflow State During Testing (Proper vs Improper)
+
+When testing workflows that depend on external state (database configs, feature flags, budget limits), you must use the **same interface that operators will use in production**.
+
+### ❌ IMPROPER: Direct Database Modification
+
+```sql
+-- WRONG: Direct SQL update bypasses the operational interface
+UPDATE workspace_budget SET is_enabled = false WHERE workspace_id = '...';
+UPDATE user_config SET feature_flag = true WHERE id = 123;
+```
+
+**Why this is wrong:**
+- Operators in production don't have direct database access
+- Tests don't verify the actual code path operators will use
+- Edge cases in the API/UI layer are never tested
+- State changes aren't validated by application constraints
+
+### ✅ PROPER: Use Operational Interfaces
+
+#### Option 1: sim-mcp Block Configuration (for workflow-embedded configs)
+
+If the config is stored in a workflow block's subblock value:
+
+```typescript
+// Use sim-mcp to update the block's configuration
+sim-mcp-update_subblock({
+  workflowId: '68ef6353...',
+  blockId: 'a1b2c3d4-0002...',  // The configuration block
+  subblockId: 'is_enabled',       // The field to toggle
+  value: false                     // New value
+})
+```
+
+Then execute the workflow. This tests **the actual code path** the operator configuration triggers.
+
+#### Option 2: API Call (for dedicated admin endpoints)
+
+```bash
+curl -X POST https://localhost:3000/api/workspace/825eaf6a/budget \
+  -H "Authorization: Bearer $API_KEY" \
+  -d '{"is_enabled": false, "monthly_limit": 10}'
+```
+
+Then execute the workflow.
+
+#### Option 3: Database + Validation Layer (last resort)
+
+If the application has a stored procedure or transaction that enforces constraints:
+
+```sql
+CALL update_workspace_config('825eaf6a', '{"is_enabled": false}');
+-- NOT: UPDATE workspace_budget SET is_enabled = false;
+```
+
+### Real-World Example: Budget System Testing
+
+**Scenario:** Test that disabling the budget system (operational toggle) allows all conversations.
+
+**WRONG approach:**
+```sql
+UPDATE workspace_budget SET is_enabled = false;  -- ❌ Direct SQL
+execute_workflow(...)
+UPDATE workspace_budget SET is_enabled = true;   -- ❌ Restore via SQL
+```
+
+**CORRECT approach (using sim-mcp):**
+```typescript
+// Read current subblock value
+const blockConfig = sim-mcp-get_block({ workflowId, blockId })
+const originalValue = blockConfig.subBlocks.find(s => s.id === 'is_enabled').value
+
+// Toggle via sim-mcp (simulates UI/API operator action)
+await sim-mcp-update_subblock({ workflowId, blockId, subblockId: 'is_enabled', value: false })
+
+// Execute workflow (now responds to the config change)
+const result = await sim-mcp-execute_workflow({ workflowId, input })
+
+// Verify state change took effect
+assert(result.data.allowed === true)  // is_enabled=false allows all
+
+// Restore via sim-mcp (not SQL)
+await sim-mcp-update_subblock({ workflowId, blockId, subblockId: 'is_enabled', value: originalValue })
+```
+
+### Checklist: Testing State-Dependent Workflows
+
+- [ ] Identify which operational interface governs the state (sim-mcp block config, API endpoint, stored procedure)
+- [ ] Use ONLY that interface to modify state during tests
+- [ ] Never use raw SQL for test setup/teardown (use it only for read-only verification)
+- [ ] Document the interface in your test (so operators understand how to replicate the scenario)
+- [ ] Verify state change via trace spans or API response (not by inspecting the database directly)
+- [ ] Restore state using the same interface you used to modify it
+
+---
+
 ## See Also
 
 - **[error-recovery.md](error-recovery.md)** — Error handling, rollback procedures, multi-scenario batch protocol, profile transitions
