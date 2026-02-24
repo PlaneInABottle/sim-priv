@@ -12,6 +12,8 @@ Sim workflow test executions.
 3. [Output Pattern Matching](#output-pattern-matching)
 4. [Failure Detection](#failure-detection)
 5. [Success Criteria by Profile](#success-criteria-by-profile)
+6. [Database State Assertion](#database-state-assertion-for-data-driven-workflows)
+7. [Block-Specific Output Semantics](#block-specific-output-semantics)
 
 ---
 
@@ -334,3 +336,75 @@ Scenario S-04 (Voice message):
   ✅ PATH_ISOLATION  → Media Handoff executes successfully
   ✅ FULL_INTEGRATION → Complete media handling produces correct acknowledgment
 ```
+
+---
+
+## Database State Assertion (for data-driven workflows)
+
+When testing workflows with SQL blocks (PostgreSQL, MongoDB, etc.) or memory writes, verify **persistent state changes** via database queries.
+
+### Before-Execute-After Pattern
+
+```sql
+-- BEFORE: Get baseline state
+SELECT COUNT(*) as baseline FROM table WHERE condition;
+
+-- [Execute workflow via execute_workflow]
+
+-- AFTER: Get final state
+SELECT COUNT(*) as final FROM table WHERE condition;
+
+-- Assert: final = baseline + expected_rows
+```
+
+### Idempotency Verification
+
+For workflows that should not duplicate data on re-execution:
+
+```sql
+-- First execution: baseline = 0 → final = 1 ✅
+-- Second execution: baseline = 1 → final = 1 ✅ (idempotent)
+-- If final = 2 on second run: ❌ BUG (duplicate inserted)
+```
+
+### Consumption/Budget Verification
+
+For workflows with state-dependent branches (e.g., budget exhaustion):
+
+```sql
+-- State 1: Budget available
+UPDATE budget SET limit = 10, used = 0;
+execute_workflow(...) → expect allowed = true, rows inserted
+
+-- State 2: Budget exhausted
+UPDATE budget SET used = 10;
+execute_workflow(...) → expect allowed = false, NO new rows
+```
+
+### Checklist for Data-Driven Workflows
+
+- [ ] Baseline query captures initial state (row count, specific values)
+- [ ] Workflow executes (and completes without errors)
+- [ ] After query verifies expected state change
+- [ ] Row count matches expectation (inserted, deleted, updated correctly)
+- [ ] Idempotency test: re-run same payload, verify no duplicate
+- [ ] Boundary test: state at exact limit, verify correct routing
+- [ ] Cleanup: restore original state for next test
+
+---
+
+## Block-Specific Output Semantics
+
+### PostgreSQL Block Output Semantics
+
+When verifying trace spans from PostgreSQL blocks:
+
+| Field | Meaning | Example |
+|---|---|---|
+| `rows` | Array of query result rows | `rows: [{"allowed": true}]` for SELECT |
+| `rowCount` | Number of rows in result set (NOT insert count) | CTE query returning 1 row: `rowCount: 1` |
+| `error` | Error message (if query failed) | Validation error, connection error, etc. |
+
+**Gotcha:** For INSERT...RETURNING or CTE with INSERT, `rowCount` reflects the **SELECT result count**, not the INSERT row count.
+
+Example: CTE with 1 row inserted + 1 row selected returns `rowCount: 1` (the SELECT), not 2.

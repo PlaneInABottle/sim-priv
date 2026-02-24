@@ -97,6 +97,18 @@ if (<Extract Search Context.result.hasContext>) { ... }
 
 **Lesson:** Conditions are JavaScript. Tags resolve to values before JS sees them. Don't quote or wrap tags.
 
+### Tag Resolution Inside SQL Strings
+
+Tags resolve correctly inside multi-line SQL/CTE queries.
+
+✅ **CORRECT:**
+```sql
+WHERE workspace_id = '<variable.WORKSPACE_ID>'
+  AND conversation_id = '<Webhook 1.input.conversation.id>'
+```
+
+This is safe and expected. Tags are resolved **before** query validation/execution.
+
 ---
 
 ## GraphQL Schema Validation Errors

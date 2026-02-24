@@ -230,6 +230,26 @@ get_workflow(workflowId="<WORKFLOW_ID>", verbose=false)
 
 **Checkpoint:** Count enabled vs disabled blocks. Compare against expected profile.
 
+### 2.4 Creating Mock Blocks for Side-Effect-Free Testing
+
+For workflows with external API calls (Chatwoot handoff, Slack notifications), create temporary **mock function blocks** to eliminate dependencies and costs during testing.
+
+**Pattern:** Replace the real block with a lightweight function block returning static JSON.
+
+**Example:** Budget system testing
+- Real handoff: calls Chatwoot `/toggle_status` API
+- Mock handoff: function block returning `{"handoff": true, "reason": "budget_exceeded"}`
+- Benefit: Test routing + logic without side effects, zero cost, deterministic
+
+**Implementation:**
+1. Create function block with simple code: `return { handoff: true, reason: '...' }`
+2. Wire it as the target for your test condition/path
+3. Execute in CONDITION_ONLY or PATH_ISOLATION profile (both skip real function execution)
+4. Verify route reaches mock block via trace spans
+5. Delete mock block after testing, restore real block
+
+**When to use:** Any workflow with external APIs (Slack, Chatwoot, email, webhooks). Mock blocks make tests fast, cheap, and repeatable.
+
 ---
 
 ## Phase 3: EXECUTE
