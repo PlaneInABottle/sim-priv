@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Conversation Budget System enforces a **per-workspace monthly limit** on unique Chatwoot conversations processed by AI in Sim Studio. It is designed for a self-hosted, single-operator deployment with 3 workspaces — each representing one Chatwoot business client.
+The Conversation Budget System enforces a **per-workspace flat conversation limit** on unique Chatwoot conversations processed by AI in Sim Studio. It is designed for a self-hosted, single-operator deployment with 3 workspaces — each representing one Chatwoot business client.
 
 The entire system is implemented via **3 workflow blocks** — a PostgreSQL Execute block, a Condition block, and a Function block — inserted at the top of each Chatwoot webhook workflow. There are **zero changes to Sim Studio source code**; the mechanism lives entirely in PostgreSQL (2 tables) and workflow configuration managed through sim-mcp.
 
@@ -32,7 +32,7 @@ The entire system is implemented via **3 workflow blocks** — a PostgreSQL Exec
                        /toggle_status → "open"
 ```
 
-The PostgreSQL Execute block runs a single writable CTE that atomically checks the workspace's monthly limit, applies 24h session logic, inserts a new session row if needed, and returns one field: `allowed` (boolean). The Condition block reads `<Budget Check.rows[0].allowed>` and gates execution. If `true`, the workflow continues. If `false` (budget exhausted) or if the PG block throws an error (DB down), both paths lead to the **Budget Exceeded Handoff** function — it calls `/toggle_status → open` to hand the conversation to a human agent.
+The PostgreSQL Execute block runs a single writable CTE that atomically checks the workspace's conversation limit, applies 24h session logic, inserts a new session row if needed, and returns one field: `allowed` (boolean). The Condition block reads `<Budget Check.rows[0].allowed>` and gates execution. If `true`, the workflow continues. If `false` (budget exhausted) or if the PG block throws an error (DB down), both paths lead to the **Budget Exceeded Handoff** function — it calls `/toggle_status → open` to hand the conversation to a human agent.
 
 ---
 
@@ -46,7 +46,7 @@ Use this for direct migration or `psql` execution:
 CREATE TABLE workspace_budget (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL UNIQUE REFERENCES workspace(id) ON DELETE CASCADE,
-  monthly_limit INTEGER NOT NULL DEFAULT 100,
+  conversation_limit INTEGER NOT NULL DEFAULT 100,
   is_enabled BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP NOT NULL DEFAULT now(),
   updated_at TIMESTAMP NOT NULL DEFAULT now()
@@ -56,14 +56,13 @@ CREATE TABLE chatwoot_conversation_consumptions (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
   chatwoot_conversation_id BIGINT NOT NULL,
-  period_key TEXT NOT NULL,
   workflow_execution_id TEXT,
   consumed_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
--- One row per session (a conversation can have multiple rows if it re-engages after 24h)
-CREATE INDEX chatwoot_conv_consumptions_workspace_period_idx
-  ON chatwoot_conversation_consumptions (workspace_id, period_key);
+-- For fast all-time COUNT(*) queries per workspace
+CREATE INDEX chatwoot_conv_consumptions_workspace_idx
+  ON chatwoot_conversation_consumptions (workspace_id);
 
 -- For fast 24h activity lookups: "has this conversation been active recently?"
 CREATE INDEX chatwoot_conv_consumptions_recent_idx
@@ -81,7 +80,7 @@ export const workspaceBudget = pgTable(
       .notNull()
       .unique()
       .references(() => workspace.id, { onDelete: 'cascade' }),
-    monthlyLimit: integer('monthly_limit').notNull().default(100),
+    conversationLimit: integer('conversation_limit').notNull().default(100),
     isEnabled: boolean('is_enabled').notNull().default(true),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -96,15 +95,13 @@ export const chatwootConversationConsumptions = pgTable(
       .notNull()
       .references(() => workspace.id, { onDelete: 'cascade' }),
     chatwootConversationId: bigint('chatwoot_conversation_id', { mode: 'number' }).notNull(),
-    periodKey: text('period_key').notNull(),
     workflowExecutionId: text('workflow_execution_id'),
     consumedAt: timestamp('consumed_at').notNull().defaultNow(),
   },
   (table) => ({
     // No unique constraint — one row per session, multiple sessions per conversation allowed
-    workspacePeriodIdx: index('chatwoot_conv_consumptions_workspace_period_idx').on(
-      table.workspaceId,
-      table.periodKey
+    workspaceIdx: index('chatwoot_conv_consumptions_workspace_idx').on(
+      table.workspaceId
     ),
     // For fast 24h activity lookups (raw SQL uses DESC for forward scan; Drizzle defaults to ASC — functionally equivalent via backward scan)
     recentIdx: index('chatwoot_conv_consumptions_recent_idx').on(
@@ -134,26 +131,24 @@ recent AS (
   LIMIT 1
 ),
 budget AS (
-  SELECT monthly_limit, is_enabled FROM workspace_budget
+  SELECT conversation_limit, is_enabled FROM workspace_budget
   WHERE workspace_id = '<variable.WORKSPACE_ID>'
 ),
 usage AS (
   SELECT COUNT(*)::INTEGER AS used FROM chatwoot_conversation_consumptions
   WHERE workspace_id = '<variable.WORKSPACE_ID>'
-    AND period_key = to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM')
 ),
 ins AS (
   INSERT INTO chatwoot_conversation_consumptions
-    (id, workspace_id, chatwoot_conversation_id, period_key, consumed_at)
+    (id, workspace_id, chatwoot_conversation_id, consumed_at)
   SELECT
     gen_random_uuid()::TEXT,
     '<variable.WORKSPACE_ID>',
     CAST('<Webhook 1.conversation.id>' AS BIGINT),
-    to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM'),
     NOW()
   WHERE NOT EXISTS (SELECT 1 FROM recent)
     AND (SELECT is_enabled FROM budget) = TRUE
-    AND (SELECT used FROM usage) < (SELECT monthly_limit FROM budget)
+    AND (SELECT used FROM usage) < (SELECT conversation_limit FROM budget)
   RETURNING 1
 )
 SELECT CASE
@@ -168,7 +163,7 @@ END AS allowed
 **How it works:**
 1. `recent` — checks if this conversation had activity within the last 24h (active session → free pass)
 2. `budget` — reads the workspace's limit and enabled flag
-3. `usage` — counts sessions consumed this month
+3. `usage` — counts all sessions consumed for the workspace (all-time, no period filter)
 4. `ins` — conditionally inserts a new session row (only if not recent, enabled, and under limit)
 5. Final `SELECT CASE` — returns `allowed` boolean based on all of the above
 
@@ -210,7 +205,7 @@ SELECT id, name FROM workspace ORDER BY created_at;
 ### Step 5: Seed budget config
 
 ```sql
-INSERT INTO workspace_budget (id, workspace_id, monthly_limit, is_enabled)
+INSERT INTO workspace_budget (id, workspace_id, conversation_limit, is_enabled)
 VALUES
   (gen_random_uuid()::text, 'ws_id_here', 500, true)
 ON CONFLICT (workspace_id) DO NOTHING;
@@ -343,20 +338,19 @@ return { ok: res.ok, status: res.status };
 
 ## Operations Quick Reference
 
-### Check current month usage for a workspace
+### Check current usage for a workspace
 
 ```sql
 SELECT
-  wb.monthly_limit,
+  wb.conversation_limit,
   wb.is_enabled,
   COALESCE(COUNT(c.id), 0) AS used,
-  wb.monthly_limit - COALESCE(COUNT(c.id), 0) AS remaining
+  wb.conversation_limit - COALESCE(COUNT(c.id), 0) AS remaining
 FROM workspace_budget wb
 LEFT JOIN chatwoot_conversation_consumptions c
   ON c.workspace_id = wb.workspace_id
-  AND c.period_key = to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM')
 WHERE wb.workspace_id = 'ws_xxx'
-GROUP BY wb.monthly_limit, wb.is_enabled;
+GROUP BY wb.conversation_limit, wb.is_enabled;
 ```
 
 ### View all workspaces: usage vs limit
@@ -364,26 +358,25 @@ GROUP BY wb.monthly_limit, wb.is_enabled;
 ```sql
 SELECT
   w.name,
-  wb.monthly_limit,
+  wb.conversation_limit,
   wb.is_enabled,
   COALESCE(usage.used, 0) AS used,
-  wb.monthly_limit - COALESCE(usage.used, 0) AS remaining
+  wb.conversation_limit - COALESCE(usage.used, 0) AS remaining
 FROM workspace_budget wb
 JOIN workspace w ON w.id = wb.workspace_id
 LEFT JOIN (
   SELECT workspace_id, COUNT(*) AS used
   FROM chatwoot_conversation_consumptions
-  WHERE period_key = to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM')
   GROUP BY workspace_id
 ) usage ON usage.workspace_id = wb.workspace_id
 ORDER BY w.name;
 ```
 
-### Change monthly limit
+### Change conversation limit
 
 ```sql
 UPDATE workspace_budget
-SET monthly_limit = 200, updated_at = now()
+SET conversation_limit = 200, updated_at = now()
 WHERE workspace_id = 'ws_xxx';
 ```
 
@@ -399,22 +392,21 @@ UPDATE workspace_budget SET is_enabled = false WHERE workspace_id = 'ws_xxx';
 UPDATE workspace_budget SET is_enabled = true WHERE workspace_id = 'ws_xxx';
 ```
 
-### Reset current month (e.g., after testing)
+### Reset consumption history (e.g., after testing)
 
 ```sql
 DELETE FROM chatwoot_conversation_consumptions
-WHERE workspace_id = 'ws_xxx'
-  AND period_key = to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM');
+WHERE workspace_id = 'ws_xxx';
 ```
 
-### View full usage history by month
+### View full usage history
 
 ```sql
-SELECT period_key, COUNT(*) AS conversations
+SELECT DATE(consumed_at) AS day, COUNT(*) AS conversations
 FROM chatwoot_conversation_consumptions
 WHERE workspace_id = 'ws_xxx'
-GROUP BY period_key
-ORDER BY period_key DESC;
+GROUP BY DATE(consumed_at)
+ORDER BY day DESC;
 ```
 
 ### Debug: find a specific conversation
@@ -434,7 +426,6 @@ WHERE chatwoot_conversation_id = 12345;
 | Writable CTE (no stored function) | Stored function with `FOR UPDATE` | No extra migration for function; logic visible in workflow block; minor race condition (1-2 token over-spend) acceptable for single-operator low-volume setup |
 | Error edge → handoff | Fail-open (ignore DB errors) | DB errors open the conversation for a human agent instead of silently dropping it |
 | `is_enabled` column | `toggle_block_enabled` MCP call | `toggle_block_enabled` severs the DAG — all downstream blocks become unreachable. `is_enabled` lets the CTE short-circuit without changing workflow topology |
-| `period_key TEXT 'YYYY-MM'` | `DATE` column / partition | Human-readable, simple equality checks, trivial to generate with `to_char()`, no date arithmetic needed |
-| Session-based counting (24h window) | Count per-message / count once per period | Each conversation session costs 1 token. Re-engagement after 24h idle counts as a new session (new token) |
+| Session-based counting (24h window) | Count per-message / count once lifetime | Each conversation session costs 1 token. Re-engagement after 24h idle counts as a new session (new token) |
 | 2 tables, no audit log | 3rd audit/history table | Consumptions table IS the history — rows accumulate, never deleted. `updated_at` on `workspace_budget` shows when limits changed |
 | Budget exceeded → open conversation | Dead-end / Response block | Response block has `singleInstance: true` — can't add a second one. Function block calls `/toggle_status → open` to hand conversation to a human agent |
