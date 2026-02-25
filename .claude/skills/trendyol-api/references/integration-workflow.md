@@ -129,7 +129,7 @@ A workflow combining both APIs produces a unified view:
     "id": 12345,
     "text": "Bu ürün su geçirmez mi?",
     "status": "WAITING_FOR_ANSWER",
-    "customerName": "Ahmet Y.",
+    "userName": "Ahmet Y.",
     "creationDate": 1760531038063
   },
   "product": {
