@@ -30,7 +30,7 @@ get_workflow(workflowId="<WORKFLOW_ID>", verbose=false)
 
 Verify:
 - Workflow name matches expected (e.g., "Kamatas PROD")
-- Block count matches expected (e.g., 22 blocks for Kamatas PROD)
+- Block count matches expected (e.g., 25 blocks for Kamatas PROD)
 - Workflow is not mid-deployment
 
 ### 1.2 Snapshot Block States
@@ -134,32 +134,32 @@ Look up the disable list for your test profile in the company test suite.
 
 ```
 Keep enabled:
-  - Webhook 1 (trigger — always enabled)
-  - Incoming Only (condition under test)
-  - Is Media Message? (condition under test)
+  - webhook (trigger — always enabled)
+  - routeByType (condition under test)
+  - isMediaMessage (condition under test)
 
 Disable:
+  - All postgresql blocks (budgetCheck)
   - All function blocks
   - All memory blocks
-  - All API blocks
+  - All upstash blocks
   - All agent blocks
   - All wait blocks
   - All loop blocks
   - All variable blocks
-  - All workflow_input blocks
 ```
 
 **PATH_ISOLATION (media path)** — Keep only the media path enabled:
 
 ```
 Keep enabled:
-  - Webhook 1
-  - Incoming Only
-  - Is Media Message?
-  - Media Handoff
+  - webhook
+  - routeByType
+  - isMediaMessage
+  - mediaHandoff
 
 Disable:
-  - All text path blocks (fetchCustomerInfo through Send to Chatwoot)
+  - All text/budget path blocks (budgetCheck through sendToChatwoot)
 ```
 
 **⚠️ Side-Effect Warning (PATH_ISOLATION media):**
@@ -178,15 +178,15 @@ To minimize production impact during testing:
 
 ```
 Keep enabled:
-  - Webhook 1
-  - Incoming Only
-  - Text path blocks (fetchCustomerInfo → ... → Send to Chatwoot)
+  - webhook
+  - routeByType
+  - Text path blocks (budgetCheck → ... → sendToChatwoot)
 
 Disable:
-  - Is Media Message?
-  - Media Handoff
-  - Optionally: Support Agent (to avoid token cost)
-  - Optionally: Send to Chatwoot (to avoid real messages)
+  - isMediaMessage
+  - mediaHandoff
+  - Optionally: supportAgent (to avoid token cost)
+  - Optionally: sendToChatwoot (to avoid real messages)
 ```
 
 **FULL_INTEGRATION** — Keep everything except the final send:
@@ -196,7 +196,7 @@ Keep enabled:
   - All blocks
 
 Disable:
-  - Send to Chatwoot (No Files) 1 (prevents real message delivery)
+  - sendToChatwoot (prevents real message delivery)
 ```
 
 ### How Block Disabling Propagates
@@ -413,23 +413,23 @@ Trace spans show which blocks executed and in what order. Example structure:
 {
     "traceSpans": [
         {
-            "blockId": "f3d0bdbd-2304-40ee-84ef-210613d7828a",
-            "blockName": "Webhook 1",
+            "blockId": "51aa80c7-1069-42d6-8388-f0cc5752b3eb",
+            "blockName": "webhook",
             "blockType": "generic_webhook",
             "startTime": "2026-02-11T10:00:00.100Z",
             "endTime": "2026-02-11T10:00:00.150Z",
             "status": "success"
         },
         {
-            "blockId": "dcad3f5b-de7c-4f67-b144-aea1bd924ea9",
-            "blockName": "Incoming Only",
+            "blockId": "5023fc47-0d49-4537-a52b-56a77dc8a806",
+            "blockName": "routeByType",
             "blockType": "condition",
             "startTime": "2026-02-11T10:00:00.155Z",
             "endTime": "2026-02-11T10:00:00.160Z",
             "status": "success",
             "output": {
                 "conditionResult": true,
-                "selectedOption": "condition-9dd96cb8-if"
+                "selectedOption": "condition-9dd96cb8-c79f-4ebb-82b0-f767ec7365f0-if"
             }
         }
     ]
@@ -442,23 +442,23 @@ Apply verification rules from `verification-rules.md`. Four assertion types:
 
 **Path Assertion** — Check which blocks executed:
 ```
-ASSERT: trace_block_names EQUALS ["Webhook 1", "Incoming Only"]
+ASSERT: trace_block_names EQUALS ["webhook", "routeByType"]
 ```
 
 **Condition Result Assertion** — Check condition routing:
 ```
-ASSERT: block("Incoming Only").conditionResult EQUALS true
-ASSERT: block("Incoming Only").selectedOption CONTAINS "if"
+ASSERT: block("routeByType").conditionResult EQUALS true
+ASSERT: block("routeByType").selectedOption CONTAINS "if"
 ```
 
 **Status Assertion** — Check block success/failure:
 ```
-ASSERT: block("Webhook 1").status EQUALS "success"
+ASSERT: block("webhook").status EQUALS "success"
 ```
 
 **Output Assertion** — Check block output content:
 ```
-ASSERT: block("Media Handoff").output.result CONTAINS "handoff"
+ASSERT: block("mediaHandoff").output.result CONTAINS "handoff"
 ```
 
 ### 4.4 Record Verification Results
@@ -638,7 +638,7 @@ Then execute the workflow. This tests **the actual code path** the operator conf
 ```bash
 curl -X POST https://localhost:3000/api/workspace/825eaf6a/budget \
   -H "Authorization: Bearer $API_KEY" \
-  -d '{"is_enabled": false, "monthly_limit": 10}'
+  -d '{"is_enabled": false, "conversation_limit": 10}'
 ```
 
 Then execute the workflow.

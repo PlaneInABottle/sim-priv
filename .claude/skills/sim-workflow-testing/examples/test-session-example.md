@@ -94,7 +94,7 @@ Fetch current block states:
 
 ```
 get_workflow(
-    workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4",
+    workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56",
     verbose=false
 )
 ```
@@ -118,7 +118,7 @@ Record snapshot:
 
 ```sql
 INSERT INTO test_runs (id, workflow_id, workflow_name, profile)
-VALUES ('run-voice-001', '53408cc2-52fa-46e5-85d7-402d2f42f3a4', 'Kamatas PROD', 'CONDITION_ONLY');
+VALUES ('run-voice-001', '98c363ef-febc-42cc-82d2-d40b501c5b56', 'Kamatas PROD', 'CONDITION_ONLY');
 
 -- Snapshot all 22 blocks (showing first few)
 INSERT INTO block_snapshots (id, run_id, block_id, block_name, original_enabled) VALUES
@@ -141,32 +141,32 @@ For CONDITION_ONLY, we keep only: Webhook 1, Incoming Only, Is Media Message?.
 Disable all 19 other blocks:
 
 ```
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="block-b0a9fec7-4938-4c4c-bf17-87c193b468b1", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="buildconversationcompositekey", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="5c001454-9711-456e-b56c-c66baccb1d3c", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="d4b467d3-b1d6-4319-a7d8-356f1bbda3ed", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="ca5acc54-e9d3-45a3-965e-ef10c3b8295d", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="bc6cc87d-ff39-46f8-aa9f-75c2c8211e58", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="c18d418f-5b3e-4175-a960-08c9c92bf93a", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="a057131e-a319-4515-b985-f2311c7f7e08", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="f2c10d85-997c-48d6-a102-a0197362ac36", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="35a00fab-a271-4aa6-9ab9-87e69cd8ee59", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="2c432318-c33e-411e-b6fa-700650d85c86", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="598e048a-3ab1-4024-b4b1-355e9a2df137", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="cfeba002-3f61-4c8e-b05e-aabfc8deeb60", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="892e0602-dfb4-4a92-aa61-2b7d0ca6fce7", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="89d6feb8-481c-45c5-a91f-962eae28c8e1", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="77f980fc-5cd0-440d-ac59-72f170efa36f", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="84cc0a48-f4f2-407d-a5bf-bc9011de7ba2", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="e38be766-a89b-4375-9f16-d729bcd5201d", enabled=false)
-toggle_block_enabled(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", blockId="3275b7a8-ac67-411a-bfe7-f139c90d877e", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="block-b0a9fec7-4938-4c4c-bf17-87c193b468b1", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="buildconversationcompositekey", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="5c001454-9711-456e-b56c-c66baccb1d3c", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="d4b467d3-b1d6-4319-a7d8-356f1bbda3ed", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="ca5acc54-e9d3-45a3-965e-ef10c3b8295d", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="bc6cc87d-ff39-46f8-aa9f-75c2c8211e58", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="c18d418f-5b3e-4175-a960-08c9c92bf93a", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="a057131e-a319-4515-b985-f2311c7f7e08", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="f2c10d85-997c-48d6-a102-a0197362ac36", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="35a00fab-a271-4aa6-9ab9-87e69cd8ee59", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="2c432318-c33e-411e-b6fa-700650d85c86", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="598e048a-3ab1-4024-b4b1-355e9a2df137", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="cfeba002-3f61-4c8e-b05e-aabfc8deeb60", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="892e0602-dfb4-4a92-aa61-2b7d0ca6fce7", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="89d6feb8-481c-45c5-a91f-962eae28c8e1", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="77f980fc-5cd0-440d-ac59-72f170efa36f", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="84cc0a48-f4f2-407d-a5bf-bc9011de7ba2", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="e38be766-a89b-4375-9f16-d729bcd5201d", enabled=false)
+toggle_block_enabled(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", blockId="3275b7a8-ac67-411a-bfe7-f139c90d877e", enabled=false)
 ```
 
 ### 3.2 Execute with Voice Message Payload
 
 ```
 execute_workflow(
-    workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4",
+    workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56",
     triggerType="webhook",
     useDraftState=true,
     input={
@@ -338,8 +338,8 @@ Since we're switching profiles, restore all blocks:
 
 ```
 -- Re-enable all 19 disabled blocks (showing key ones)
-toggle_block_enabled(workflowId="53408cc2-...", blockId="block-b0a9fec7-...", enabled=true)
-toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=true)
+toggle_block_enabled(workflowId="98c363ef-...", blockId="block-b0a9fec7-...", enabled=true)
+toggle_block_enabled(workflowId="98c363ef-...", blockId="5c001454-...", enabled=true)
 // ... (re-enable all 19)
 ```
 
@@ -347,7 +347,7 @@ toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=
 
 ```sql
 INSERT INTO test_runs (id, workflow_id, workflow_name, profile)
-VALUES ('run-voice-002', '53408cc2-52fa-46e5-85d7-402d2f42f3a4', 'Kamatas PROD', 'PATH_ISOLATION');
+VALUES ('run-voice-002', '98c363ef-febc-42cc-82d2-d40b501c5b56', 'Kamatas PROD', 'PATH_ISOLATION');
 ```
 
 ### 4.3 Disable Text Path Blocks
@@ -355,9 +355,9 @@ VALUES ('run-voice-002', '53408cc2-52fa-46e5-85d7-402d2f42f3a4', 'Kamatas PROD',
 For PATH_ISOLATION (media), disable 18 blocks (all text path blocks):
 
 ```
-toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=false)   # fetchCustomerInfo
-toggle_block_enabled(workflowId="53408cc2-...", blockId="d4b467d3-...", enabled=false)   # storeUserMessage
-toggle_block_enabled(workflowId="53408cc2-...", blockId="ca5acc54-...", enabled=false)   # API 1
+toggle_block_enabled(workflowId="98c363ef-...", blockId="5c001454-...", enabled=false)   # fetchCustomerInfo
+toggle_block_enabled(workflowId="98c363ef-...", blockId="d4b467d3-...", enabled=false)   # storeUserMessage
+toggle_block_enabled(workflowId="98c363ef-...", blockId="ca5acc54-...", enabled=false)   # API 1
 // ... (disable all 18 text path blocks — see kamatas-test-suite.md for full list)
 ```
 
@@ -365,7 +365,7 @@ toggle_block_enabled(workflowId="53408cc2-...", blockId="ca5acc54-...", enabled=
 
 ```
 execute_workflow(
-    workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4",
+    workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56",
     triggerType="webhook",
     useDraftState=true,
     input={ /* Same voice message payload as Step 3.2 */ }
@@ -377,7 +377,7 @@ execute_workflow(
 ```
 get_execution_logs(
     workspaceId="ac7ec7a6-f09a-4035-8e96-e9e95b75221b",
-    workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4",
+    workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56",
     details="full",
     includeTraceSpans=true,
     includeFinalOutput=true,
@@ -474,15 +474,15 @@ VALUES ('res-mh01', 'run-voice-002', 'MH-01', 'Voice Message Handoff', 'media_ha
 
 ```
 -- Re-enable all 18 disabled text path blocks
-toggle_block_enabled(workflowId="53408cc2-...", blockId="5c001454-...", enabled=true)
-toggle_block_enabled(workflowId="53408cc2-...", blockId="d4b467d3-...", enabled=true)
+toggle_block_enabled(workflowId="98c363ef-...", blockId="5c001454-...", enabled=true)
+toggle_block_enabled(workflowId="98c363ef-...", blockId="d4b467d3-...", enabled=true)
 // ... (re-enable all 18)
 ```
 
 Verify restoration:
 
 ```
-get_workflow(workflowId="53408cc2-52fa-46e5-85d7-402d2f42f3a4", verbose=false)
+get_workflow(workflowId="98c363ef-febc-42cc-82d2-d40b501c5b56", verbose=false)
 → All 22 blocks should show enabled: true
 ```
 
@@ -529,7 +529,7 @@ ORDER BY r.started_at, t.scenario_id;
   VOICE HANDOFF VERIFICATION — TEST REPORT
 ═══════════════════════════════════════════════════
 
-  Workflow:  Kamatas PROD (53408cc2-...)
+  Workflow:  Kamatas PROD (98c363ef-...)
   Date:      2026-02-11T10:05:00Z
   Duration:  ~3 minutes
 
@@ -570,7 +570,7 @@ text path instead of the media path. Diagnosis:
 
 1. **Check the condition logic** — Is "Incoming Only" checking for attachments, or just `message_type`?
    ```
-   get_block(workflowId="53408cc2-...", blockId="dcad3f5b-...")
+   get_block(workflowId="98c363ef-...", blockId="dcad3f5b-...")
    ```
 2. **Inspect the condition expression** — Does it check `attachments.length > 0`?
 3. **Verify the payload** — Is the `attachments` array correctly populated?

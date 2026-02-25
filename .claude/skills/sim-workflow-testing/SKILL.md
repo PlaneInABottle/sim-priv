@@ -87,7 +87,7 @@ Expected time: 5–15 minutes per scenario depending on profile.
 | Identifier | Value |
 |-----------|-------|
 | **workspaceId** | `ac7ec7a6-f09a-4035-8e96-e9e95b75221b` |
-| **workflowId** | `53408cc2-52fa-46e5-85d7-402d2f42f3a4` |
+| **workflowId** | `98c363ef-febc-42cc-82d2-d40b501c5b56` |
 | **blockMap** | See `references/block-management.md` |
 
 ---

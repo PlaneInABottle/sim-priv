@@ -42,11 +42,11 @@ trace_block_names = [span["blockName"] for span in log["traceSpans"]]
 **Examples:**
 ```
 # Text message should hit text path blocks
-ASSERT: trace_block_names CONTAINS ["Webhook 1", "Incoming Only"]
-ASSERT: trace_block_names NOT_CONTAINS ["Media Handoff"]
+ASSERT: trace_block_names CONTAINS ["webhook", "routeByType"]
+ASSERT: trace_block_names NOT_CONTAINS ["mediaHandoff"]
 
 # Voice message should hit media path blocks
-ASSERT: trace_block_names CONTAINS ["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]
+ASSERT: trace_block_names CONTAINS ["webhook", "routeByType", "isMediaMessage", "mediaHandoff"]
 ASSERT: trace_block_names NOT_CONTAINS ["storeUserMessage"]
 ```
 
@@ -64,34 +64,43 @@ ASSERT: block("<BLOCK_NAME>").selectedOption EQUALS "<FULL_OPTION_ID>"
 **How to extract:**
 ```python
 # Find the condition block in trace spans
-condition_span = next(s for s in log["traceSpans"] if s["blockName"] == "Incoming Only")
+condition_span = next(s for s in log["traceSpans"] if s["blockName"] == "routeByType")
 condition_result = condition_span["output"]["conditionResult"]
 selected_option = condition_span["output"]["selectedOption"]
 ```
 
 **Examples:**
 ```
-# Text message: Incoming Only should select IF path
-ASSERT: block("Incoming Only").conditionResult EQUALS true
-ASSERT: block("Incoming Only").selectedOption CONTAINS "if"
+# Text message: routeByType should select IF path
+ASSERT: block("routeByType").conditionResult EQUALS true
+ASSERT: block("routeByType").selectedOption CONTAINS "if"
 
-# Voice message: Incoming Only should select ELSE path
-ASSERT: block("Incoming Only").conditionResult EQUALS false
-ASSERT: block("Incoming Only").selectedOption CONTAINS "else"
+# Voice message: routeByType should select ELSE path
+ASSERT: block("routeByType").conditionResult EQUALS false
+ASSERT: block("routeByType").selectedOption CONTAINS "else"
 
-# Voice message: Is Media Message? should select IF path
-ASSERT: block("Is Media Message?").conditionResult EQUALS true
+# Voice message: isMediaMessage should select IF path
+ASSERT: block("isMediaMessage").conditionResult EQUALS true
+
+# Budget allowed: budgetGate should select IF path
+ASSERT: block("budgetGate").conditionResult EQUALS true
+ASSERT: block("budgetGate").selectedOption EQUALS "condition-budget-gate-if"
+
+# Budget exceeded: budgetGate should select ELSE path
+ASSERT: block("budgetGate").conditionResult EQUALS false
+ASSERT: block("budgetGate").selectedOption EQUALS "condition-budget-gate-else"
 ```
 
-**Known Condition Option IDs (Kamatas PROD):**
+**Known Condition Option IDs (Kamatas PROD — `98c363ef-febc-42cc-82d2-d40b501c5b56`):**
 
-| Block | IF Option ID | ELSE Option ID |
-|-------|-------------|----------------|
-| Incoming Only | `condition-9dd96cb8-...-if` | `condition-9dd96cb8-...-else` |
-| Is Media Message? | `condition-block-9f9c16f6-...-if` | implicit else (no match) |
-| checkIfTheMessageLatest | `condition-6c9c86c3-...-if` | implicit else |
-| checkIfTheMessageLatest2 | `condition-35e2d3f8-...-if` | implicit else |
-| Has IKAS Context? | `condition-has-context-if` | `condition-has-context-else` |
+| Block | Block ID | IF Handle | ELSE Handle |
+|-------|----------|-----------|-------------|
+| routeByType | `5023fc47-0d49-4537-a52b-56a77dc8a806` | `condition-9dd96cb8-c79f-4ebb-82b0-f767ec7365f0-if` | `condition-9dd96cb8-c79f-4ebb-82b0-f767ec7365f0-else` |
+| budgetGate | `budget-gate-block` | `condition-budget-gate-if` | `condition-budget-gate-else` |
+| isMediaMessage | `ba283aa5-f95a-444f-91b6-677ad0ba0a5d` | `condition-block-9f9c16f6-da15-4e56-a08a-2a036e48832a-if` | implicit else |
+| checkIfTheMessageLatest | `403b0102-11a6-4e5f-a11e-e26690b4d366` | `condition-6c9c86c3-b760-4afe-94a1-54aeffac67b5-if` | implicit else |
+| checkIfTheMessageLatest2 | `38f4065f-7a60-4002-b3ed-0ede1988ee21` | `condition-35e2d3f8-9317-4e7a-9ff3-350bc975ef18-if` | implicit else |
+| hasIkasContext | `453d7dc6-900d-4d7e-adcd-acada210b69d` | `condition-has-context-if` | `condition-has-context-else` |
 
 ### 3. Status Assertion
 
@@ -105,7 +114,7 @@ ASSERT: execution.status EQUALS "success"|"error"
 
 **How to extract:**
 ```python
-block_span = next(s for s in log["traceSpans"] if s["blockName"] == "Media Handoff")
+block_span = next(s for s in log["traceSpans"] if s["blockName"] == "mediaHandoff")
 block_status = block_span["status"]
 
 # Overall execution status
@@ -115,9 +124,9 @@ execution_status = log["level"]  # "info" = success, "error" = failure
 **Examples:**
 ```
 # All blocks in the executed path should succeed
-ASSERT: block("Webhook 1").status EQUALS "success"
-ASSERT: block("Incoming Only").status EQUALS "success"
-ASSERT: block("Media Handoff").status EQUALS "success"
+ASSERT: block("webhook").status EQUALS "success"
+ASSERT: block("routeByType").status EQUALS "success"
+ASSERT: block("mediaHandoff").status EQUALS "success"
 
 # Overall execution should succeed
 ASSERT: execution.status EQUALS "success"
@@ -140,7 +149,7 @@ ASSERT: final_output CONTAINS "<SUBSTRING>"
 **How to extract:**
 ```python
 # Block output from trace span
-block_span = next(s for s in log["traceSpans"] if s["blockName"] == "Media Handoff")
+block_span = next(s for s in log["traceSpans"] if s["blockName"] == "mediaHandoff")
 block_output = block_span.get("output", {})
 
 # Final workflow output
@@ -150,19 +159,22 @@ final_output = log.get("output", {})
 **Examples:**
 ```
 # Media Handoff should produce structured handoff result
-ASSERT: block("Media Handoff").output.result.mediaType EQUALS "voice"
-    OR: block("Media Handoff").output.result.mediaType EQUALS "image"
-    OR: block("Media Handoff").output.result.mediaType EQUALS "video"
+ASSERT: block("mediaHandoff").output.result.mediaType EQUALS "voice"
+    OR: block("mediaHandoff").output.result.mediaType EQUALS "image"
+    OR: block("mediaHandoff").output.result.mediaType EQUALS "video"
 
 # Verify handoff operation count and success
-ASSERT: block("Media Handoff").output.result.operations LENGTH 4
-ASSERT: block("Media Handoff").output.result.success EQUALS true
-ASSERT: block("Media Handoff").output.result.errors LENGTH 0
-ASSERT: block("Media Handoff").output.stdout NOT_EMPTY
+ASSERT: block("mediaHandoff").output.result.operations LENGTH 4
+ASSERT: block("mediaHandoff").output.result.success EQUALS true
+ASSERT: block("mediaHandoff").output.result.errors LENGTH 0
+ASSERT: block("mediaHandoff").output.stdout NOT_EMPTY
 
 # Support Agent should produce a response
-ASSERT: block("Support Agent").output.content NOT_EMPTY
-ASSERT: block("Support Agent").output.content LENGTH > 10
+ASSERT: block("supportAgent").output.content NOT_EMPTY
+ASSERT: block("supportAgent").output.content LENGTH > 10
+
+# Budget check should return allowed status
+ASSERT: block("budgetCheck").output.rows[0].allowed EQUALS true
 ```
 
 ---
@@ -171,45 +183,43 @@ ASSERT: block("Support Agent").output.content LENGTH > 10
 
 Quick reference for which blocks should appear in trace spans for each scenario.
 
+> **Note:** Block names below use the live display names from workflow `98c363ef-febc-42cc-82d2-d40b501c5b56`.
+> See `references/block-management.md` for full block ID mapping.
+
 ### CONDITION_ONLY Profile
 
 Only condition blocks + trigger are enabled, so traces are short:
 
 | Scenario | Expected Trace Blocks |
 |----------|-----------------------|
-| S-01: Text greeting | `["Webhook 1", "Incoming Only"]` |
-| S-02: Product inquiry | `["Webhook 1", "Incoming Only"]` |
-| S-03: Order status | `["Webhook 1", "Incoming Only"]` |
-| S-04: Voice message | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-05: Image message | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-06: Video message | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-07: Outgoing message | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-08: Activity message | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-09: Text with image | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-10: Document attachment | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-11: Multiple attachments | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-12: Empty content | `["Webhook 1", "Incoming Only", "Is Media Message?"]` |
-| S-13: Measurement question | `["Webhook 1", "Incoming Only"]` |
+| CR-01: Text greeting | `["webhook", "routeByType"]` |
+| CR-02: Product inquiry | `["webhook", "routeByType"]` |
+| CR-03: Voice message | `["webhook", "routeByType", "isMediaMessage"]` |
+| CR-04: Outgoing message | `["webhook", "routeByType", "isMediaMessage"]` |
+
+### PATH_ISOLATION — Budget Path
+
+| Scenario | Expected Trace Blocks |
+|----------|-----------------------|
+| BG-01: Budget available | `["webhook", "routeByType", "budgetCheck", "budgetGate", "buildCompositeKey", ...]` |
+| BG-02: Budget exceeded | `["webhook", "routeByType", "budgetCheck", "budgetGate", "budgetHandoff"]` |
+| BG-03: Budget disabled | `["webhook", "routeByType", "budgetCheck", "budgetGate", "buildCompositeKey", ...]` |
 
 ### PATH_ISOLATION — Media Path
 
 | Scenario | Expected Trace Blocks |
 |----------|-----------------------|
-| S-04: Voice | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| S-05: Image | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| S-06: Video | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| S-09: Text+Image | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| S-11: Multi-image | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
-| S-14: Mixed Audio+Image | `["Webhook 1", "Incoming Only", "Is Media Message?", "Media Handoff"]` |
+| MH-01: Voice handoff | `["webhook", "routeByType", "isMediaMessage", "mediaHandoff"]` |
 
-### PATH_ISOLATION — Text Path (Agent Disabled)
+### FULL_INTEGRATION
 
 | Scenario | Expected Trace Blocks |
 |----------|-----------------------|
-| S-01: Text greeting | `["Webhook 1", "Incoming Only", "Build Conversation Composite Key", "fetchCustomerInformation", "storeUserMessage", "API 1", "debounceWait", ...]` |
+| FI-01: Full text flow | `["webhook", "routeByType", "budgetCheck", "budgetGate", "buildCompositeKey", "fetchCustomerInformation", "storeUserMessage", "setLatestMessageId", "debounceWait", "getLatestMessageId", "checkIfTheMessageLatest", "agentLoop", "supportAgent", "agentVariable", ...]` |
 
-> Note: Exact trace depends on which blocks are kept enabled. With Support Agent disabled,
-> execution may stop at Loop 1 entry or continue through the loop with errors.
+> Note: Full trace continues through post-agent processing (getLatestMessageId2 → checkIfTheMessageLatest2 →
+> extractSearchContext → hasIkasContext → [storeIkasContext →] conversationHistory). Parallel blocks
+> (fetchCustomerInformation / storeUserMessage) may appear in either order.
 
 ---
 
@@ -217,7 +227,7 @@ Only condition blocks + trigger are enabled, so traces are short:
 
 ### Media Handoff Expected Outputs
 
-The Media Handoff function block should produce output that includes:
+The mediaHandoff function block should produce output that includes:
 
 | Media Type | Expected Output Pattern |
 |------------|------------------------|
@@ -248,10 +258,11 @@ When testing with FULL_INTEGRATION profile:
 
 | Block | IF Condition | Expected `conditionResult` |
 |-------|-------------|---------------------------|
-| Incoming Only | `message_type == "incoming"` AND no media attachments AND `text.length > 0` | `true` for non-empty text, `false` for media/outgoing/empty |
-| Is Media Message? | Has audio/image/video attachment | `true` for media, `false` for non-media |
+| routeByType | `message_type == "incoming"` AND no media attachments AND `text.length > 0` | `true` for non-empty text, `false` for media/outgoing/empty |
+| budgetGate | `budgetCheck.rows[0].allowed == true` | `true` when budget available or disabled, `false` when exceeded |
+| isMediaMessage | Has audio/image/video attachment | `true` for media, `false` for non-media |
 | checkIfTheMessageLatest | Current message is the latest in conversation | `true` if no newer messages |
-| Has IKAS Context? | Agent tool calls returned ikas data | `true` if ikas context exists |
+| hasIkasContext | Agent tool calls returned ikas data | `true` if ikas context exists |
 
 ---
 
@@ -288,9 +299,9 @@ When a test fails:
 | Symptom | Looks Like | Actually Is |
 |---------|-----------|-------------|
 | No blocks in trace | Workflow broken | Trigger block not matching payload format |
-| Only Webhook 1 in trace | Condition dropping everything | Condition evaluating payload fields incorrectly |
+| Only webhook in trace | Condition dropping everything | Condition evaluating payload fields incorrectly |
 | Media goes to text path | Media detection broken | Payload missing `attachments` array |
-| Text goes to media path | Routing wrong | Incoming Only condition modified to exclude text+attachment |
+| Text goes to media path | Routing wrong | routeByType condition modified to exclude text+attachment |
 
 ---
 
@@ -332,8 +343,8 @@ A scenario is fully validated when it passes all applicable profiles:
 
 ```
 Scenario S-04 (Voice message):
-  ✅ CONDITION_ONLY  → Routes to media path (Is Media Message? = true)
-  ✅ PATH_ISOLATION  → Media Handoff executes successfully
+  ✅ CONDITION_ONLY  → Routes to media path (isMediaMessage = true)
+  ✅ PATH_ISOLATION  → mediaHandoff executes successfully
   ✅ FULL_INTEGRATION → Complete media handling produces correct acknowledgment
 ```
 
@@ -372,13 +383,26 @@ For workflows that should not duplicate data on re-execution:
 For workflows with state-dependent branches (e.g., budget exhaustion):
 
 ```sql
--- State 1: Budget available
-UPDATE budget SET limit = 10, used = 0;
-execute_workflow(...) → expect allowed = true, rows inserted
+-- Verify budget state before testing (read-only check)
+SELECT
+    w.conversation_limit,
+    COUNT(c.id) AS used,
+    w.is_enabled,
+    CASE
+        WHEN w.is_enabled = false THEN true          -- disabled = always allowed
+        WHEN COUNT(c.id) < w.conversation_limit THEN true
+        ELSE false
+    END AS allowed
+FROM workspace_budget w
+LEFT JOIN chatwoot_conversation_consumptions c
+    ON c.workspace_id = w.id
+    AND c.created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+WHERE w.workspace_id = 'ac7ec7a6-f09a-4035-8e96-e9e95b75221b'
+GROUP BY w.conversation_limit, w.is_enabled;
 
--- State 2: Budget exhausted
-UPDATE budget SET used = 10;
-execute_workflow(...) → expect allowed = false, NO new rows
+-- State 1: conversation_limit = 500, used = 0 → allowed = true
+-- State 2: conversation_limit = 5, used = 5  → allowed = false
+-- State 3: is_enabled = false                 → allowed = true (fail-open)
 ```
 
 ### Checklist for Data-Driven Workflows
