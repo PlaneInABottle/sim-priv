@@ -1,67 +1,62 @@
 # Query Parameters
 
-Complete parameter reference for the Trendyol Customer Questions filter endpoint.
+All parameters below are from the official documentation:
+[Müşteri Sorularını Çekme](https://developers.trendyol.com/docs/müşteri-sorularını-çekme)
 
-## Filter Endpoint Parameters
+These parameters apply to the **GET questionsFilter** endpoint:
+`GET /integration/qna/sellers/{supplierId}/questions/filter`
 
-```
-GET /integration/qna/sellers/{sellerId}/questions/filter
-```
+---
 
-| Parameter | Type | Required | Constraints | Description |
-|-----------|------|----------|-------------|-------------|
-| `supplierId` | long | **Yes** | — | Seller/supplier ID (same as `{sellerId}` in path) |
-| `barcode` | string | No | — | Filter questions for a specific product barcode |
-| `page` | int | No | 0-indexed | Page number to return (default: 0) |
-| `size` | int | No | Max **50** | Number of results per page (default varies, max 50) |
-| `startDate` | long | No | Timestamp (ms) | Return questions created after this date |
-| `endDate` | long | No | Timestamp (ms) | Return questions created before this date |
-| `status` | string | No | See status values | Filter by question status |
-| `orderByField` | string | No | `CreatedDate` or `LastModifiedDate` | Field to sort by |
-| `orderByDirection` | string | No | `ASC` or `DESC` | Sort direction |
+## Service Parameters (Servis Parametreleri)
 
-## Status Values
+> **`supplierId`** must be sent as a required field in the request.
 
-| Status | Description |
-|--------|-------------|
-| `WAITING_FOR_ANSWER` | New question, awaiting seller response |
-| `WAITING_FOR_APPROVE` | Answer submitted, pending Trendyol review/approval |
-| `ANSWERED` | Answer approved and published on trendyol.com |
-| `REPORTED` | Question reported by the seller (via Trendyol Seller Panel only) |
-| `REJECTED` | Answer was rejected by Trendyol moderation |
+| Parameter | Parameter Value | Description | Type |
+|-----------|----------------|-------------|------|
+| `barcode` | | For questions related to a specific barcode value | long |
+| `page` | | Returns only the specified page | int |
+| `size` | Maximum 50 | Maximum number to list per page | int |
+| `supplierId` | | Supplier ID must be sent (required) | long |
+| `endDate` | | Fetches questions up to the specified date. Must be sent as Timestamp (millisecond) | long |
+| `startDate` | | Fetches questions after the specified date. Must be sent as Timestamp (millisecond) | long |
+| `status` | `WAITING_FOR_ANSWER`, `WAITING_FOR_APPROVE`, `ANSWERED`, `REPORTED`, `REJECTED` | Fetches questions by their status | string |
+| `orderByField` | `LastModifiedDate` | Sorts by last modified date | string |
+| `orderByField` | `CreatedDate` | Sorts by question creation date | string |
+| `orderByDirection` | `ASC` | Sorts from old to new | string |
+| `orderByDirection` | `DESC` | Sorts from new to old | string |
+
+---
 
 ## Date Range Constraints
 
-- **No date params:** Returns questions from the **last 7 days** (default)
-- **With date params:** Maximum range is **2 weeks** (14 days)
-- **Format:** Unix timestamp in **milliseconds** (e.g., `1700000000000`)
+From the official docs:
+- **No date parameters:** Returns questions from the last **1 week**
+- **With `startDate` and `endDate`:** Maximum range is **2 weeks**
+- Date values must be **timestamps in milliseconds** (e.g., 13-digit Unix timestamp)
 
-```js
-// Example: last 3 days
-const endDate = Date.now();
-const startDate = endDate - (3 * 24 * 60 * 60 * 1000);
-// Use: ?startDate=${startDate}&endDate=${endDate}
-```
+---
+
+## Status Values
+
+| Status | Description (from docs) |
+|--------|------------------------|
+| `WAITING_FOR_ANSWER` | Question awaiting seller answer |
+| `WAITING_FOR_APPROVE` | Answer submitted, pending approval |
+| `ANSWERED` | Answer approved and published |
+| `REPORTED` | Question reported (via Seller Panel only — see field descriptions) |
+| `REJECTED` | Answer rejected |
+
+---
 
 ## Sorting Options
 
-### `orderByField` values
+| `orderByField` Value | Meaning |
+|---------------------|---------|
+| `LastModifiedDate` | Sort by last modification date |
+| `CreatedDate` | Sort by question creation date |
 
-| Value | Description |
-|-------|-------------|
-| `CreatedDate` | Sort by when the question was asked |
-| `LastModifiedDate` | Sort by last change (useful for change-based polling) |
-
-### `orderByDirection` values
-
-| Value | Description |
-|-------|-------------|
-| `ASC` | Ascending (oldest first) |
-| `DESC` | Descending (newest first) |
-
-## Status Filtering for Efficient Polling
-
-- **Always** filter by `status=WAITING_FOR_ANSWER` for actionable questions
-- To monitor rejected answers, also poll for `status=REJECTED`
-- Use `orderByField=LastModifiedDate` for change-based polling
-- Use `orderByField=CreatedDate` for new-question-based polling
+| `orderByDirection` Value | Meaning |
+|-------------------------|---------|
+| `ASC` | Old to new (eskiden yeniye) |
+| `DESC` | New to old (yeniden eskiye) |

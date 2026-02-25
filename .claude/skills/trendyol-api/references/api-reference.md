@@ -1,187 +1,112 @@
 # API Reference
 
-## Environments
-
-| Environment | Base URL |
-|-------------|----------|
-| **Production** | `https://apigw.trendyol.com` |
-| **Stage** | `https://stageapigw.trendyol.com` |
-
-## Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| **GET** | `/integration/qna/sellers/{sellerId}/questions/filter` | List/filter customer questions with pagination |
-| **GET** | `/integration/qna/sellers/{sellerId}/questions/{id}` | Get a single question by its ID |
-| **POST** | `/integration/qna/sellers/{sellerId}/questions/{id}/answers` | Submit an answer to a specific question |
+All information below is from the official Trendyol documentation:
+- [Müşteri Sorularını Çekme](https://developers.trendyol.com/docs/müşteri-sorularını-çekme)
+- [Müşteri Sorularını Cevaplama](https://developers.trendyol.com/docs/müşteri-sorularını-cevaplama)
 
 ---
 
-## 1. List/Filter Customer Questions
+## Base URLs
 
-### Endpoint
+| Environment | Base URL |
+|-------------|----------|
+| **PROD** | `https://apigw.trendyol.com/integration/qna/sellers/{supplierId}` |
+| **STAGE** | `https://stageapigw.trendyol.com/integration/qna/sellers/{supplierId}` |
 
-```
-GET https://apigw.trendyol.com/integration/qna/sellers/{sellerId}/questions/filter
-```
+---
 
-### Path Parameters
+## 1. GET questionsFilter — List/Filter Questions
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `sellerId` | long | **Yes** | Seller/supplier ID |
+**Endpoint:** `GET /integration/qna/sellers/{supplierId}/questions/filter`
 
-### Query Parameters
+Fetches all customer questions asked to the supplier. Without date parameters, returns questions from the **last 1 week**. With `startDate` and `endDate`, the maximum range is **2 weeks**.
 
-See [Parameters Reference](parameters.md) for the complete parameter table.
+The docs also mention a "Recommended Endpoint" (Önerilen Endpoint) variant for PROD.
 
-### Response Structure
+**Query Parameters:** See [Parameters](parameters.md) for the full table.
+
+**Example Response (from official docs):**
 
 ```json
 {
   "content": [
     {
-      "id": 12345678,
-      "customerId": 9876543,
-      "text": "Bu ürün su geçirmez mi?",
-      "userName": "Müşteri Adı",
-      "showUserName": true,
-      "status": "WAITING_FOR_ANSWER",
+      "answer": {
+        "creationDate": 0,
+        "hasPrivateInfo": true,
+        "id": 0,
+        "reason": "string",
+        "text": "string"
+      },
+      "answeredDateMessage": "string",
+      "creationDate": 0,
+      "customerId": 0,
+      "id": 0,
+      "imageUrl": "string",
+      "productName": "string",
       "public": true,
-      "creationDate": 1700000000000,
-      "productName": "Outdoor Ceket - Siyah",
-      "productMainId": "SKU-12345",
-      "imageUrl": "https://cdn.trendyol.com/...",
-      "webUrl": "https://www.trendyol.com/...",
-      "answeredDateMessage": null,
-      "reason": null,
-      "rejectedDate": null,
-      "reportReason": null,
-      "reportedDate": null,
-      "answer": null,
-      "rejectedAnswer": null
+      "reason": "string",
+      "rejectedAnswer": {
+        "creationDate": 0,
+        "id": 0,
+        "reason": "string",
+        "text": "string"
+      },
+      "rejectedDate": 0,
+      "reportReason": "string",
+      "reportedDate": 0,
+      "showUserName": true,
+      "status": "string",
+      "text": "string",
+      "userName": "string",
+      "webUrl": "string",
+      "productMainId": "1234567"
     }
   ],
-  "page": 0,
-  "size": 50,
+  "page": 10,
+  "size": 2,
   "totalElements": 864,
-  "totalPages": 18
+  "totalPages": 432
 }
 ```
 
-### Pagination Envelope Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `content` | array | Array of question objects |
-| `page` | int | Current page number (0-indexed) |
-| `size` | int | Page size used in the request |
-| `totalElements` | int | Total number of matching questions |
-| `totalPages` | int | Total number of pages |
+**Response comments from official docs:**
+- `answer.creationDate`: Date when the answer was given (Cevabın verildiği tarih)
+- `rejectedAnswer.creationDate`: Creation date of the last rejected answer (En son red edilen cevabın oluşturulma tarihi)
+- `id`: The question's ID (Sorunun id'si)
 
 ---
 
-## 2. Get Single Question Detail
+## 2. GET question by ID — Single Question Detail
 
-### Endpoint
+**Endpoint:** `GET /integration/qna/sellers/{supplierId}/questions/{id}`
 
-```
-GET https://apigw.trendyol.com/integration/qna/sellers/{sellerId}/questions/{id}
-```
+Fetches a single question by its `id` value returned from the filter endpoint.
 
-### Path Parameters
+From the docs: "You can fetch questions individually and process them using the question `id` value returned from the above service."
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `sellerId` | long | **Yes** | Seller/supplier ID |
-| `id` | long | **Yes** | Question ID (from the filter response `content[].id`) |
-
-### Response
-
-Returns the full question object (same shape as a single item in the `content` array from the filter endpoint). See [Data Models](data-models.md) for the complete Question schema.
+The response is the same question object structure as shown in the `content` array above.
 
 ---
 
-## 3. Answer a Customer Question
+## 3. POST createAnswer — Answer a Question
 
-### Endpoint
+**Endpoint:** `POST /integration/qna/sellers/{sellerId}/questions/{id}/answers`
 
-```
-POST https://apigw.trendyol.com/integration/qna/sellers/{sellerId}/questions/{id}/answers
-```
+Submits an answer to a customer question fetched via the fetching service.
 
-### Path Parameters
+**Constraint:** Answer text must be minimum **10** characters, maximum **2000** characters.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `sellerId` | long | **Yes** | Seller/supplier ID |
-| `id` | long | **Yes** | Question ID to answer |
-
-### Request Body
+**Request Body (from official docs):**
 
 ```json
 {
-  "text": "Evet, ürünümüz su geçirmez özelliğe sahiptir. IPX4 sertifikası bulunmaktadır."
+  "text": "string"
 }
 ```
 
-### Validation Rules
-
-| Rule | Constraint |
-|------|-----------|
-| **Minimum length** | 10 characters |
-| **Maximum length** | 2,000 characters |
-| **Required fields** | `text` (string) |
-
-### Response
+**Response (from official docs):**
 
 ```
-HTTP 200 (Success — no response body)
-```
-
-### Important Notes
-
-- After submitting an answer, the question status moves to `WAITING_FOR_APPROVE`
-- Trendyol moderates answers before publishing them on trendyol.com
-- If rejected, the question moves to `REJECTED` status with a `rejectedAnswer` object containing the rejection reason
-- You can re-answer rejected questions by POSTing a new answer
-
----
-
-## Error Responses
-
-All endpoints may return the following error HTTP status codes:
-
-| Status | Meaning | Common Cause | Action |
-|--------|---------|--------------|--------|
-| **400** | Bad Request | Invalid parameters, validation failure (e.g., answer too short/long) | Check request body and query parameters |
-| **401** | Unauthorized | Invalid or missing API Key / API Secret in Basic Auth header | Verify credentials from Seller Panel → Entegrasyon Bilgileri |
-| **403** | Forbidden | Missing `User-Agent` header, or incorrect seller ID / permissions | Add `User-Agent` header (see [Authentication](authentication.md)); verify seller ID |
-| **404** | Not Found | Invalid question ID or endpoint path | Verify the question ID exists and URL is correct |
-| **429** | Too Many Requests | Rate limit exceeded (50 requests per endpoint per 10 seconds) | Implement exponential backoff; wait before retrying |
-| **500+** | Server Error | Trendyol internal error | Retry with exponential backoff (see [Polling Strategy](polling-strategy.md)) |
-
----
-
-## Question Lifecycle & Status Flow
-
-```
-Customer asks question on trendyol.com
-    ↓
-[WAITING_FOR_ANSWER]  ←── Seller polls this status
-    ↓
-Seller submits answer via API
-    ↓
-[WAITING_FOR_APPROVE]  ←── Trendyol moderation
-    ↓
-    ├── Approved → [ANSWERED]  (published on trendyol.com)
-    │
-    └── Rejected → [REJECTED]  (rejectedAnswer populated)
-                       ↓
-               Seller can re-answer → back to [WAITING_FOR_APPROVE]
-
-(Separate flow)
-Seller reports question via Trendyol Seller Panel
-    ↓
-[REPORTED]  (reportReason populated)
+"HTTP 200"
 ```

@@ -1,153 +1,55 @@
 ---
 name: trendyol-api
-description: Complete guide for Trendyol Customer Questions API integration in Sim Studio workflows. Covers fetching customer questions via polling, answering questions, authentication, data models, and scheduling strategies.
+description: Reference for Trendyol Customer Questions API — fetching and answering customer questions. Based exclusively on official Trendyol developer documentation.
 ---
 
 # Trendyol Customer Questions API
 
-Complete guide for integrating Trendyol's Customer Questions (Q&A) API into Sim Studio workflows — covering polling-based question retrieval, answer submission, and automated response workflows.
+Reference for Trendyol's Customer Questions (Q&A) API — fetching customer questions and submitting answers.
 
-## Quick Start
+**Source documentation:**
+- [Müşteri Sorularını Çekme](https://developers.trendyol.com/docs/müşteri-sorularını-çekme) (Fetching)
+- [Müşteri Sorularını Cevaplama](https://developers.trendyol.com/docs/müşteri-sorularını-cevaplama) (Answering)
 
-**Base URL (Production):** `https://apigw.trendyol.com/integration/qna/sellers/{sellerId}`
-**Base URL (Stage):** `https://stageapigw.trendyol.com/integration/qna/sellers/{sellerId}`
-**Protocol:** REST (JSON) | **Auth:** HTTP Basic Auth (API Key + API Secret)
-
-> **Important:** Trendyol does NOT support webhooks for customer questions. Questions must be retrieved via **polling** (scheduled GET requests). See [Polling Strategy](references/polling-strategy.md) for details.
-
-> **⚠️ Sim Studio Note:** `btoa()` and `URLSearchParams` are **not available** in Sim's
-> isolated-vm sandbox. Use manual Base64 encoding and query string building.
-> See [Authentication](references/authentication.md) for the helper functions.
-
-```js
-// Quick example: fetch unanswered questions
-const sellerId = '123456';
-
-// Manual Base64 encoder — btoa() is NOT available in Sim's isolated-vm
-function base64Encode(str) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-  let output = '';
-  for (let i = 0; i < str.length; i += 3) {
-    const a = str.charCodeAt(i);
-    const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
-    const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
-    output += chars[(a >> 2) & 63];
-    output += chars[((a << 4) | (b >> 4)) & 63];
-    output += i + 1 < str.length ? chars[((b << 2) | (c >> 6)) & 63] : '=';
-    output += i + 2 < str.length ? chars[c & 63] : '=';
-  }
-  return output;
-}
-
-const credentials = base64Encode('your-api-key:your-api-secret');
-
-const res = await fetch(
-  `https://apigw.trendyol.com/integration/qna/sellers/${sellerId}/questions/filter?status=WAITING_FOR_ANSWER&size=50&page=0`,
-  {
-    method: 'GET',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/json',
-      'User-Agent': `${sellerId} - SelfIntegration`  // MANDATORY — 403 without this
-    }
-  }
-);
-const data = await res.json();
-// data.content = array of question objects
-// data.totalElements = total matching questions
-```
-
----
-
-## Table of Contents
-
-| Reference | Description |
-|-----------|-------------|
-| [API Reference](references/api-reference.md) | All 3 endpoints, methods, base URLs, response structures, lifecycle flow |
-| [Parameters](references/parameters.md) | Complete query parameter table, status values, sorting, date constraints |
-| [Data Models](references/data-models.md) | Question, Answer, RejectedAnswer, Pagination schemas with field descriptions |
-| [Authentication](references/authentication.md) | Basic Auth, API Key setup, credential storage, seller ID requirement |
-| [Code Examples](references/code-examples.md) | All JavaScript/TypeScript snippets — fetch, answer, polling loop, retry |
-| [Polling Strategy](references/polling-strategy.md) | Intervals, watermark tracking, pagination, deduplication, retry/backoff |
-| [Sim Integration](references/sim-integration.md) | Custom tool schemas, workflow architecture, agent prompts, tag syntax |
-| [Best Practices](references/best-practices.md) | Error handling, rate limiting, idempotency, answer quality, data consistency |
-| [Gotchas & Constraints](references/gotchas-and-constraints.md) | 15 critical pitfalls, API limitations, regional considerations |
-
----
-
-## API Endpoints Summary
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| **GET** | `.../questions/filter` | List/filter questions with pagination |
-| **GET** | `.../questions/{id}` | Get single question detail |
-| **POST** | `.../questions/{id}/answers` | Submit an answer (10-2000 chars) |
+| **GET** | `.../sellers/{supplierId}/questions/filter` | List/filter questions with pagination |
+| **GET** | `.../sellers/{supplierId}/questions/{id}` | Get single question by ID |
+| **POST** | `.../sellers/{sellerId}/questions/{id}/answers` | Submit an answer to a question |
 
-Full details: [API Reference](references/api-reference.md)
+## Key Constraints (from official docs)
 
-## Key Status Values
+- No date parameters → returns last **1 week** of questions
+- With `startDate`/`endDate` → maximum range is **2 weeks**
+- Page size maximum: **50**
+- Answer text: minimum **10** characters, maximum **2000** characters
+- `supplierId` is **required** in the filter request
+- Timestamps use **milliseconds** (not seconds)
 
-| Status | Meaning |
-|--------|---------|
-| `WAITING_FOR_ANSWER` | Awaiting seller response (poll this) |
-| `WAITING_FOR_APPROVE` | Submitted, pending Trendyol moderation |
+## Status Values
+
+| Status | Description |
+|--------|-------------|
+| `WAITING_FOR_ANSWER` | Awaiting seller response |
+| `WAITING_FOR_APPROVE` | Submitted, pending approval |
 | `ANSWERED` | Approved and published |
-| `REJECTED` | Answer rejected — can re-submit |
-| `REPORTED` | Reported via Seller Panel (UI only) |
+| `REJECTED` | Answer rejected |
+| `REPORTED` | Reported (via Trendyol Seller Panel only) |
 
-Full details: [Parameters](references/parameters.md)
+## References
 
-## Question Lifecycle
-
-```
-[WAITING_FOR_ANSWER] → Submit answer → [WAITING_FOR_APPROVE]
-    → Approved → [ANSWERED]
-    → Rejected → [REJECTED] → Re-answer → [WAITING_FOR_APPROVE]
-```
-
-Full flow diagram: [API Reference — Lifecycle](references/api-reference.md#question-lifecycle--status-flow)
-
----
-
-## Top Gotchas (Quick Reference)
-
-1. **Timestamps are milliseconds** (13-digit), not seconds
-2. **Pages are 0-indexed** (`page=0` is first page)
-3. **Max page size is 50**
-4. **Date range max is 2 weeks**; no params = last 7 days only
-5. **No webhooks for Q&A** — polling only
-6. **User-Agent header is mandatory** — 403 without it
-7. **Rate limit: 50 req/endpoint/10s** — poll at ≥ 3-minute intervals
-8. **`btoa()` / `URLSearchParams` unavailable** in Sim isolated-vm
-
-Full list: [Gotchas & Constraints](references/gotchas-and-constraints.md)
-
----
+| File | Contents |
+|------|----------|
+| [API Reference](references/api-reference.md) | All 3 endpoints with URLs, methods, and response examples |
+| [Parameters](references/parameters.md) | Query parameters for the filter endpoint |
+| [Data Models](references/data-models.md) | Response JSON structures and field descriptions |
+| [Authentication](references/authentication.md) | Basic Auth note |
 
 ## When to Use This Skill
 
-Use this skill when you need to:
-
-- **Fetch customer questions** from Trendyol marketplace via API
-- **Answer customer questions** programmatically
-- **Build automated Q&A workflows** in Sim Studio with polling
-- **Create custom tools** for Trendyol Q&A in Sim workspaces
-- **Understand Trendyol Q&A data models** and status lifecycle
-- **Set up polling strategies** since webhooks aren't available for Q&A
-
-## Navigation
-
-### Getting Started
-→ [Authentication](references/authentication.md) — Set up credentials
-→ [API Reference](references/api-reference.md) — Understand the endpoints
-
-### Building
-→ [Code Examples](references/code-examples.md) — Copy-paste JavaScript snippets
-→ [Polling Strategy](references/polling-strategy.md) — Set up scheduled polling
-→ [Sim Integration](references/sim-integration.md) — Workflow patterns & custom tools
-
-### Reference
-→ [Parameters](references/parameters.md) — Query parameter details
-→ [Data Models](references/data-models.md) — JSON schemas
-→ [Best Practices](references/best-practices.md) — Production guidelines
-→ [Gotchas & Constraints](references/gotchas-and-constraints.md) — Avoid common mistakes
+Use when you need to:
+- Fetch customer questions from Trendyol marketplace
+- Answer customer questions via the API
+- Understand the Q&A data model and status values

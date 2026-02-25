@@ -1,108 +1,124 @@
 # Data Models
 
-Complete JSON schemas and field descriptions for all Trendyol Customer Questions API objects.
+All structures and field descriptions below are from the official documentation:
+[Müşteri Sorularını Çekme](https://developers.trendyol.com/docs/müşteri-sorularını-çekme)
+
+---
+
+## Paginated Response Envelope
+
+The filter endpoint returns a paginated response:
+
+```json
+{
+  "content": [ /* array of question objects */ ],
+  "page": 10,
+  "size": 2,
+  "totalElements": 864,
+  "totalPages": 432
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `content` | array | Array of question objects |
+| `page` | int | Current page number |
+| `size` | int | Page size |
+| `totalElements` | int | Total matching questions |
+| `totalPages` | int | Total number of pages |
+
+---
 
 ## Question Object
 
-The main data model returned by the filter and detail endpoints.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | long | Unique question ID |
-| `customerId` | long | Customer's trendyol.com registered ID |
-| `text` | string | The question text asked by the customer |
-| `userName` | string | Customer's display name |
-| `showUserName` | boolean | Whether the customer's name is shown on trendyol.com |
-| `status` | string | Question status (see [Parameters — Status Values](parameters.md#status-values)) |
-| `public` | boolean | Whether the question is publicly visible on trendyol.com |
-| `creationDate` | long | Timestamp (ms) when the customer asked the question |
-| `productName` | string | Name of the product the question is about |
-| `productMainId` | string | Product's main ID / model code (seller's SKU reference) |
-| `imageUrl` | string | Product image URL |
-| `webUrl` | string | Product page URL on trendyol.com |
-| `answeredDateMessage` | string\|null | Human-readable answer timing message |
-| `reason` | string\|null | Rejection reason (if question was rejected) |
-| `rejectedDate` | long\|null | Timestamp (ms) when the question was rejected |
-| `reportReason` | string\|null | Seller's report reason (only set via Trendyol Seller Panel) |
-| `reportedDate` | long\|null | Timestamp (ms) when the question was reported |
-| `answer` | object\|null | The approved answer object (if answered) |
-| `rejectedAnswer` | object\|null | The most recently rejected answer (if any) |
-
-### Example Question JSON
+Each item in the `content` array:
 
 ```json
 {
-  "id": 12345678,
-  "customerId": 9876543,
-  "text": "Bu ürün su geçirmez mi?",
-  "userName": "Müşteri Adı",
-  "showUserName": true,
-  "status": "WAITING_FOR_ANSWER",
+  "answer": {
+    "creationDate": 0,
+    "hasPrivateInfo": true,
+    "id": 0,
+    "reason": "string",
+    "text": "string"
+  },
+  "answeredDateMessage": "string",
+  "creationDate": 0,
+  "customerId": 0,
+  "id": 0,
+  "imageUrl": "string",
+  "productName": "string",
   "public": true,
-  "creationDate": 1700000000000,
-  "productName": "Outdoor Ceket - Siyah",
-  "productMainId": "SKU-12345",
-  "imageUrl": "https://cdn.trendyol.com/...",
-  "webUrl": "https://www.trendyol.com/...",
-  "answeredDateMessage": null,
-  "reason": null,
-  "rejectedDate": null,
-  "reportReason": null,
-  "reportedDate": null,
-  "answer": null,
-  "rejectedAnswer": null
+  "reason": "string",
+  "rejectedAnswer": {
+    "creationDate": 0,
+    "id": 0,
+    "reason": "string",
+    "text": "string"
+  },
+  "rejectedDate": 0,
+  "reportReason": "string",
+  "reportedDate": 0,
+  "showUserName": true,
+  "status": "string",
+  "text": "string",
+  "userName": "string",
+  "webUrl": "string",
+  "productMainId": "1234567"
 }
 ```
 
 ---
 
-## Answer Object
+## Field Descriptions (from official docs)
 
-Nested in `question.answer` when a question has been answered and approved.
+| Field | Description (translated from Turkish) |
+|-------|---------------------------------------|
+| `customerId` | Customer's registered ID on trendyol.com |
+| `answeredDateMessage` | Question answering duration/time message |
+| `creationDate` | Date when the customer asked the question on trendyol.com |
+| `imageUrl` | Image link of the product the question is about |
+| `productName` | Name of the product the question is about |
+| `public` | Whether the question is shown on trendyol.com |
+| `reason` | Returned value if the question is rejected |
+| `rejectedAnswer` | Details of the last rejected answer for the question |
+| `rejectedDate` | Date when the question was rejected |
+| `reportReason` | Description written when the seller reports the question. This action can only be done from the Trendyol Seller Panel |
+| `reportedDate` | Date when the seller reported the question |
+| `showUserName` | Whether the customer's name is shown on trendyol.com |
+| `status` | The question's status |
+| `text` | The question text asked by the customer |
+| `userName` | The customer's name |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | long | Answer ID |
-| `text` | string | Answer text content |
-| `creationDate` | long | Timestamp (ms) when the answer was submitted |
-| `hasPrivateInfo` | boolean | Whether the answer contains private/personal information |
-| `reason` | string\|null | Additional context or reason |
+**Additional fields from the JSON example (with inline comments in official docs):**
+
+| Field | Comment from docs |
+|-------|-------------------|
+| `id` | The question's ID (Sorunun id'si) |
+| `answer.creationDate` | Date when the answer was given (Cevabın verildiği tarih) |
+| `rejectedAnswer.creationDate` | Creation date of the last rejected answer (En son red edilen cevabın oluşturulma tarihi) |
+
+**Fields present in the JSON but without explicit description in docs:**
+- `answer.hasPrivateInfo` (boolean)
+- `answer.id` (int)
+- `answer.reason` (string)
+- `answer.text` (string)
+- `rejectedAnswer.id` (int)
+- `rejectedAnswer.reason` (string)
+- `rejectedAnswer.text` (string)
+- `webUrl` (string)
+- `productMainId` (string — example value "1234567")
 
 ---
 
-## Rejected Answer Object
+## Answer Request Body
 
-Nested in `question.rejectedAnswer` when an answer has been rejected by Trendyol moderation.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | long | Rejected answer ID |
-| `text` | string | The answer text that was rejected |
-| `creationDate` | long | Timestamp (ms) when the rejected answer was created |
-| `reason` | string | Reason the answer was rejected by Trendyol moderation |
-
----
-
-## Pagination Envelope
-
-Wraps the `content` array in list/filter responses.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `content` | array | Array of question objects for this page |
-| `page` | int | Current page number (0-indexed) |
-| `size` | int | Page size |
-| `totalElements` | int | Total matching records across all pages |
-| `totalPages` | int | Total number of pages |
-
-### Example Pagination Envelope
+For the POST createAnswer endpoint:
 
 ```json
 {
-  "content": [ /* ...question objects... */ ],
-  "page": 0,
-  "size": 50,
-  "totalElements": 864,
-  "totalPages": 18
+  "text": "string"
 }
 ```
+
+Constraints: minimum 10 characters, maximum 2000 characters.
