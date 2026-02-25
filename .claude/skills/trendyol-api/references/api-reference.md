@@ -148,6 +148,21 @@ HTTP 200 (Success — no response body)
 
 ---
 
+## Error Responses
+
+All endpoints may return the following error HTTP status codes:
+
+| Status | Meaning | Common Cause | Action |
+|--------|---------|--------------|--------|
+| **400** | Bad Request | Invalid parameters, validation failure (e.g., answer too short/long) | Check request body and query parameters |
+| **401** | Unauthorized | Invalid or missing API Key / API Secret in Basic Auth header | Verify credentials from Seller Panel → Entegrasyon Bilgileri |
+| **403** | Forbidden | Missing `User-Agent` header, or incorrect seller ID / permissions | Add `User-Agent` header (see [Authentication](authentication.md)); verify seller ID |
+| **404** | Not Found | Invalid question ID or endpoint path | Verify the question ID exists and URL is correct |
+| **429** | Too Many Requests | Rate limit exceeded (50 requests per endpoint per 10 seconds) | Implement exponential backoff; wait before retrying |
+| **500+** | Server Error | Trendyol internal error | Retry with exponential backoff (see [Polling Strategy](polling-strategy.md)) |
+
+---
+
 ## Question Lifecycle & Status Flow
 
 ```

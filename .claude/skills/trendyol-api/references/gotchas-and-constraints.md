@@ -55,6 +55,30 @@ Critical pitfalls, limitations, and regional considerations for the Trendyol Cus
 - The previous rejected answer remains in the `rejectedAnswer` field
 - The new answer goes back to `WAITING_FOR_APPROVE`
 
+### 13. Rate Limiting (50 Requests per 10 Seconds)
+- Trendyol enforces a rate limit of **50 requests per endpoint per 10 seconds**
+- Exceeding this limit returns **HTTP 429 (Too Many Requests)**
+- Recommendation: Use a **minimum 3-minute polling interval** for scheduled workflows
+- Implement **exponential backoff** on 429 responses (see [Polling Strategy](polling-strategy.md))
+
+### 14. User-Agent Header is Mandatory
+- All API requests **MUST** include a `User-Agent` header
+- Format: `"{sellerId} - {IntegrationCompanyName}"` (e.g., `"123456 - SelfIntegration"`)
+- Missing `User-Agent` results in **HTTP 403 Forbidden**
+- See [Authentication](authentication.md) for details
+
+### 15. Sim Studio Isolated-VM Execution Constraints
+- Sim custom tool code runs in an **isolated-vm sandbox** with limited globals
+- The following standard JavaScript APIs are **NOT available**:
+  - `btoa()` / `atob()` — use manual Base64 encoding (see [Authentication](authentication.md))
+  - `URLSearchParams` — use manual query string building
+  - `URL` — construct URL strings manually
+  - `Buffer` — not available in the sandbox
+  - `crypto` — not available in the sandbox
+  - `require()` / `import` — no module system
+- **Available globals**: `fetch`, `console`, `setTimeout`, `sleep`, `JSON`, `Math`, `Date`, `encodeURIComponent`, `decodeURIComponent`
+- All custom tool code examples in this skill use manual implementations compatible with isolated-vm
+
 ## Regional Considerations
 
 - The API serves the **Turkish marketplace** (trendyol.com)
@@ -72,7 +96,13 @@ Critical pitfalls, limitations, and regional considerations for the Trendyol Cus
 | Default date range (no params) | 7 days |
 | Answer min length | 10 characters |
 | Answer max length | 2,000 characters |
+| Rate limit | 50 requests per endpoint per 10 seconds |
+| Rate limit response | HTTP 429 Too Many Requests |
+| Recommended poll interval | ≥ 3 minutes |
+| User-Agent header | **Mandatory** (403 without it) |
 | Webhook support | ❌ Not available for Q&A |
 | Report via API | ❌ Seller Panel only |
 | Timestamp format | Unix milliseconds (13-digit) |
 | Page indexing | 0-based |
+| `btoa()` in Sim custom tools | ❌ Not available (use manual Base64) |
+| `URLSearchParams` in Sim | ❌ Not available (use manual query string) |

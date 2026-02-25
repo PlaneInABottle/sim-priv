@@ -11,7 +11,7 @@ GET /integration/qna/sellers/{sellerId}/questions/filter
 | Parameter | Type | Required | Constraints | Description |
 |-----------|------|----------|-------------|-------------|
 | `supplierId` | long | **Yes** | — | Seller/supplier ID (same as `{sellerId}` in path) |
-| `barcode` | long | No | — | Filter questions for a specific product barcode |
+| `barcode` | string | No | — | Filter questions for a specific product barcode |
 | `page` | int | No | 0-indexed | Page number to return (default: 0) |
 | `size` | int | No | Max **50** | Number of results per page (default varies, max 50) |
 | `startDate` | long | No | Timestamp (ms) | Return questions created after this date |

@@ -11,14 +11,35 @@ Complete guide for integrating Trendyol's Customer Questions (Q&A) API into Sim 
 
 **Base URL (Production):** `https://apigw.trendyol.com/integration/qna/sellers/{sellerId}`
 **Base URL (Stage):** `https://stageapigw.trendyol.com/integration/qna/sellers/{sellerId}`
-**Protocol:** REST (JSON) | **Auth:** HTTP Basic Auth OR API Key
+**Protocol:** REST (JSON) | **Auth:** HTTP Basic Auth (API Key + API Secret)
 
 > **Important:** Trendyol does NOT support webhooks for customer questions. Questions must be retrieved via **polling** (scheduled GET requests). See [Polling Strategy](references/polling-strategy.md) for details.
+
+> **⚠️ Sim Studio Note:** `btoa()` and `URLSearchParams` are **not available** in Sim's
+> isolated-vm sandbox. Use manual Base64 encoding and query string building.
+> See [Authentication](references/authentication.md) for the helper functions.
 
 ```js
 // Quick example: fetch unanswered questions
 const sellerId = '123456';
-const credentials = btoa('username:password');
+
+// Manual Base64 encoder — btoa() is NOT available in Sim's isolated-vm
+function base64Encode(str) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let output = '';
+  for (let i = 0; i < str.length; i += 3) {
+    const a = str.charCodeAt(i);
+    const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+    const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+    output += chars[(a >> 2) & 63];
+    output += chars[((a << 4) | (b >> 4)) & 63];
+    output += i + 1 < str.length ? chars[((b << 2) | (c >> 6)) & 63] : '=';
+    output += i + 2 < str.length ? chars[c & 63] : '=';
+  }
+  return output;
+}
+
+const credentials = base64Encode('your-api-key:your-api-secret');
 
 const res = await fetch(
   `https://apigw.trendyol.com/integration/qna/sellers/${sellerId}/questions/filter?status=WAITING_FOR_ANSWER&size=50&page=0`,
@@ -26,7 +47,8 @@ const res = await fetch(
     method: 'GET',
     headers: {
       'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'User-Agent': `${sellerId} - SelfIntegration`  // MANDATORY — 403 without this
     }
   }
 );
@@ -49,7 +71,7 @@ const data = await res.json();
 | [Polling Strategy](references/polling-strategy.md) | Intervals, watermark tracking, pagination, deduplication, retry/backoff |
 | [Sim Integration](references/sim-integration.md) | Custom tool schemas, workflow architecture, agent prompts, tag syntax |
 | [Best Practices](references/best-practices.md) | Error handling, rate limiting, idempotency, answer quality, data consistency |
-| [Gotchas & Constraints](references/gotchas-and-constraints.md) | 12 critical pitfalls, API limitations, regional considerations |
+| [Gotchas & Constraints](references/gotchas-and-constraints.md) | 15 critical pitfalls, API limitations, regional considerations |
 
 ---
 
@@ -94,6 +116,9 @@ Full flow diagram: [API Reference — Lifecycle](references/api-reference.md#que
 3. **Max page size is 50**
 4. **Date range max is 2 weeks**; no params = last 7 days only
 5. **No webhooks for Q&A** — polling only
+6. **User-Agent header is mandatory** — 403 without it
+7. **Rate limit: 50 req/endpoint/10s** — poll at ≥ 3-minute intervals
+8. **`btoa()` / `URLSearchParams` unavailable** in Sim isolated-vm
 
 Full list: [Gotchas & Constraints](references/gotchas-and-constraints.md)
 

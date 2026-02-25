@@ -41,30 +41,56 @@ Create a custom tool named `trendyol_fetch_questions` in your Sim workspace.
 
 ```js
 const sellerId = '{{TRENDYOL_SELLER_ID}}';
-const credentials = btoa('{{TRENDYOL_API_USER}}' + ':' + '{{TRENDYOL_API_PASS}}');
+
+// Manual Base64 encoder — btoa() is NOT available in Sim's isolated-vm sandbox
+function base64Encode(str) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let output = '';
+  for (let i = 0; i < str.length; i += 3) {
+    const a = str.charCodeAt(i);
+    const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+    const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+    output += chars[(a >> 2) & 63];
+    output += chars[((a << 4) | (b >> 4)) & 63];
+    output += i + 1 < str.length ? chars[((b << 2) | (c >> 6)) & 63] : '=';
+    output += i + 2 < str.length ? chars[c & 63] : '=';
+  }
+  return output;
+}
+
+const credentials = base64Encode('{{TRENDYOL_API_KEY}}' + ':' + '{{TRENDYOL_API_SECRET}}');
 
 const status = params.status || 'WAITING_FOR_ANSWER';
 const page = params.page || 0;
 
-const queryParams = new URLSearchParams({
+// Manual query string builder — URLSearchParams is NOT available in isolated-vm
+function buildQueryString(paramsObj) {
+  return Object.entries(paramsObj)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(String(v)))
+    .join('&');
+}
+
+const queryObj = {
   status: status,
   size: '50',
   page: String(page),
   orderByField: 'CreatedDate',
   orderByDirection: 'DESC'
-});
+};
 
 if (params.barcode) {
-  queryParams.set('barcode', params.barcode);
+  queryObj.barcode = params.barcode;
 }
 
-const url = `https://apigw.trendyol.com/integration/qna/sellers/${sellerId}/questions/filter?${queryParams}`;
+const url = `https://apigw.trendyol.com/integration/qna/sellers/${sellerId}/questions/filter?${buildQueryString(queryObj)}`;
 
 const response = await fetch(url, {
   method: 'GET',
   headers: {
     'Authorization': `Basic ${credentials}`,
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'User-Agent': `${sellerId} - SelfIntegration`
   }
 });
 
@@ -74,9 +100,12 @@ if (!response.ok) {
 
 const data = await response.json();
 
+// Defensive null-check on data.content before mapping
+const questions = (data && data.content) ? data.content : [];
+
 return {
   success: true,
-  questions: data.content.map(q => ({
+  questions: questions.map(q => ({
     id: q.id,
     question: q.text,
     product: q.productName,
@@ -86,11 +115,11 @@ return {
     status: q.status,
     imageUrl: q.imageUrl,
     hasRejectedAnswer: q.rejectedAnswer !== null,
-    rejectionReason: q.rejectedAnswer?.reason || null
+    rejectionReason: q.rejectedAnswer ? q.rejectedAnswer.reason : null
   })),
-  total: data.totalElements,
-  page: data.page,
-  totalPages: data.totalPages
+  total: data.totalElements || 0,
+  page: data.page || 0,
+  totalPages: data.totalPages || 0
 };
 ```
 
@@ -130,7 +159,24 @@ Create a custom tool named `trendyol_answer_question`.
 
 ```js
 const sellerId = '{{TRENDYOL_SELLER_ID}}';
-const credentials = btoa('{{TRENDYOL_API_USER}}' + ':' + '{{TRENDYOL_API_PASS}}');
+
+// Manual Base64 encoder — btoa() is NOT available in Sim's isolated-vm sandbox
+function base64Encode(str) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let output = '';
+  for (let i = 0; i < str.length; i += 3) {
+    const a = str.charCodeAt(i);
+    const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+    const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+    output += chars[(a >> 2) & 63];
+    output += chars[((a << 4) | (b >> 4)) & 63];
+    output += i + 1 < str.length ? chars[((b << 2) | (c >> 6)) & 63] : '=';
+    output += i + 2 < str.length ? chars[c & 63] : '=';
+  }
+  return output;
+}
+
+const credentials = base64Encode('{{TRENDYOL_API_KEY}}' + ':' + '{{TRENDYOL_API_SECRET}}');
 
 const { questionId, answer } = params;
 
@@ -148,7 +194,8 @@ const response = await fetch(url, {
   method: 'POST',
   headers: {
     'Authorization': `Basic ${credentials}`,
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'User-Agent': `${sellerId} - SelfIntegration`
   },
   body: JSON.stringify({ text: answer })
 });
@@ -205,9 +252,9 @@ Rules:
 - If you cannot answer, say so and suggest contacting customer service
 - Never include personal information or contact details
 
-Question: {{question.text}}
-Product: {{question.productName}}
-Product ID: {{question.productMainId}}
+Question: <loop.currentItem.question>
+Product: <loop.currentItem.product>
+Product ID: <loop.currentItem.productId>
 ```
 
 ---
@@ -222,9 +269,9 @@ Question: <functionBlock.output.questions[0].question>
 Customer: <functionBlock.output.questions[0].customer>
 ```
 
-Or in a loop context:
+Or in a loop context (inside a Loop block iterating over questions):
 ```
-<loopItem.question>
-<loopItem.product>
-<loopItem.id>
+<loop.currentItem.question>
+<loop.currentItem.product>
+<loop.currentItem.id>
 ```

@@ -11,7 +11,8 @@ Error handling, rate limiting, idempotency, and quality guidelines for the Trend
 
 ## Rate Limiting
 
-- Trendyol does **not** document explicit rate limits for the Q&A API
+- Trendyol enforces a rate limit of **50 requests per endpoint per 10 seconds**
+- Exceeding this returns **HTTP 429 (Too Many Requests)**
 - Be **conservative**: poll no more frequently than every **3 minutes**
 - Use exponential backoff on `429` or `5xx` errors
 - Batch operations where possible (fetch page of 50, then process)
