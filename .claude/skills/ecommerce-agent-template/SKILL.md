@@ -110,6 +110,131 @@ For full auth flow and token lifecycle details, see [ikas-api skill quick start]
 
 > **Production note:** Kamatas replaces `ikas_browse` with `get_products_by_main_category` — a single-call tool returning all products grouped by type with `dims: "WxH"` strings and color variants. See the [ikas-products-grouping skill](../../ikas-products-grouping/SKILL.md) for the grouping pattern. When using this tool, navigation simplifies from multi-step browsing to: customer says category → single tool call → filter and present results. The template uses `ikas_browse` as the generic fallback; customize the navigation section for your tool.
 
+### Order Context Capture Pattern
+
+When tools like `ikas_lookup_customer_orders` return data, **inject the results into agent memory** so the agent can reference them on subsequent turns without re-fetching from the ikas API.
+
+#### Why This Matters
+
+Without context capture, every follow-up question about orders (cargo status, payment details, tracking numbers) triggers a new API call. With capture, the agent remembers the customer's order data across the conversation — enabling natural multi-turn support.
+
+#### Flow
+
+```
+┌─────────────────────┐
+│ 1. Tool Call         │  Agent or router calls ikas_lookup_customer_orders(phone)
+│    (ikas API)        │  → Returns raw order JSON (customer, orders, tracking)
+└────────┬────────────┘
+         ▼
+┌─────────────────────┐
+│ 2. Extract & Format │  extractSearchContext function block:
+│    (Function Block)  │  - Reads <Tool Block.response>
+│                      │  - Calls formatOrdersResult() to build readable text
+│                      │  - Output: contextText (structured order summary)
+└────────┬────────────┘
+         ▼
+┌─────────────────────┐
+│ 3. Store in Memory   │  storeIkasContext memory block:
+│    (Memory Block)    │  - Injects contextText as role: "system" message
+│                      │  - Agent slides this context across turns (24h+ window)
+└────────┬────────────┘
+         ▼
+┌─────────────────────┐
+│ 4. Agent Recalls     │  On next customer message, agent sees order context
+│    (Agent Block)     │  in memory — answers cargo/status/tracking questions
+│                      │  without re-querying ikas API
+└─────────────────────┘
+```
+
+#### Code Pattern: `extractSearchContext` Block
+
+The function block collects tool outputs and formats them into human-readable context text:
+
+```javascript
+// extractSearchContext — collects results from tool blocks
+const CONFIG = {
+  toolNames: [
+    'ikas_browse_products',
+    'ikas_lookup_customer_orders',
+    'get_products_by_main_category',
+    'calculate_product_price'
+  ]
+}
+
+async function collectResults(blockInputs) {
+  const results = {}
+  for (const toolName of CONFIG.toolNames) {
+    const block = blockInputs.find(b => b.blockName === toolName)
+    if (block?.response) {
+      if (toolName === 'ikas_lookup_customer_orders') {
+        results.orderData = formatOrdersResult(block.response)
+      }
+      // Add similar handlers for other tools as needed
+    }
+  }
+  return results
+}
+
+function formatOrdersResult(response) {
+  const { customer, orders } = response
+  let text = `[Order Lookup]\nCustomer: ${customer.fullName} (${customer.phone})\n`
+  orders.forEach(o => {
+    text += `Order #${o.orderNumber}: ${o.status}`
+    text += ` | Payment: ${o.paymentStatus}`
+    text += ` | Package: ${o.packageStatus}\n`
+    // Append tracking info when available
+    o.packages?.forEach(p => {
+      text += `  Tracking: ${p.trackingNumber} (${p.cargoCompany})`
+      text += ` - ${p.fulfillStatus}\n`
+    })
+  })
+  return text
+}
+
+// Build final contextText from all collected results
+function buildContextText(results) {
+  const parts = []
+  if (results.orderData) parts.push(results.orderData)
+  // Add other result types here
+  return parts.join('\n---\n')
+}
+```
+
+#### Memory Injection: `storeIkasContext` Block
+
+The memory block takes the formatted `contextText` and injects it into the agent's conversation memory:
+
+| Setting | Value |
+|---------|-------|
+| **Input** | `contextText` (formatted order/product/search data from extract block) |
+| **Operation** | `memory.set({ role: 'system', content: contextText }, compositeKey)` |
+| **Retrieval** | Agent reads via sliding window on next turn — context persists across messages |
+| **TTL** | 24h+ sliding window (configurable per deployment) |
+
+The `compositeKey` should combine conversation ID + customer identifier to scope context per customer session.
+
+#### When to Use
+
+- **Customer has existing orders** — phone-based lookup returns order history, agent needs to discuss specific orders across multiple messages
+- **Cargo/tracking queries** — customer asks "where is my order?" then follows up with "which cargo company?" — agent recalls tracking data without re-fetching
+- **Multi-order customers** — customer has 5+ orders, agent needs to help navigate between them over several turns
+
+#### Example: Kamatas PROD Agent Handling Cargo Query
+
+```
+Turn 1 — Customer: "Siparişim nerede? 05551234567"
+  → ikas_lookup_customer_orders("05551234567") returns 3 orders
+  → extractSearchContext formats: order numbers, statuses, tracking
+  → storeIkasContext injects into memory
+
+Turn 2 — Customer: "Kargo takip numaram ne?"
+  → Agent sees in memory: Order #1042 Tracking: YK-123456 (Yurtiçi Kargo)
+  → Responds directly: "Kargo takip numaranız: YK-123456 (Yurtiçi Kargo)"
+  → No API call needed
+```
+
+> **Tip:** This pattern applies to any tool that returns data the agent may need across turns — not just order lookups. Product browsing results, price calculations, and customer profiles can all be captured the same way.
+
 ## Dimension Extraction & Product Filtering
 
 ### Dimension Extraction (Critical)
