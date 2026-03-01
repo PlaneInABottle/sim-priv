@@ -40,6 +40,7 @@ echo -e "${GREEN}PostgreSQL is ready.${NC}"
 echo -e "${YELLOW}[3/3] Running database migrations...${NC}"
 cd packages/db
 bunx drizzle-kit migrate --config=./drizzle.config.ts
+bunx drizzle-kit migrate --config=./drizzle-local.config.ts
 cd "$REPO_ROOT"
 echo -e "${GREEN}Migrations complete.${NC}"
 

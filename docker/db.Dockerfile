@@ -39,6 +39,7 @@ COPY --chown=nextjs:nodejs package.json ./package.json
 
 # Copy package configuration files (needed for migrations)
 COPY --chown=nextjs:nodejs packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
+COPY --chown=nextjs:nodejs packages/db/drizzle-local.config.ts ./packages/db/drizzle-local.config.ts
 
 # Copy tsconfig package (needed for workspace symlink resolution)
 COPY --chown=nextjs:nodejs packages/tsconfig ./packages/tsconfig

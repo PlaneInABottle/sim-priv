@@ -116,7 +116,9 @@ COPY --from=deps --chown=nextjs:nodejs /app/node_modules/isolated-vm ./node_modu
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/bun.lock ./bun.lock
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/drizzle.config.ts ./packages/db/drizzle.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/packages/db/drizzle-local.config.ts ./packages/db/drizzle-local.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/migrations ./packages/db/migrations
+COPY --from=builder --chown=nextjs:nodejs /app/packages/db/local-migrations ./packages/db/local-migrations
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/package.json ./packages/db/package.json
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/index.ts ./packages/db/index.ts
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/schema.ts ./packages/db/schema.ts
