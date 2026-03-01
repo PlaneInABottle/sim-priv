@@ -66,18 +66,14 @@ psql "postgresql://sim_production_user:<password>@REDACTED-HOST/sim_production"
 **Common production DB tasks:**
 ```sql
 -- Check migration state
-SELECT id, hash FROM drizzle.__drizzle_migrations ORDER BY id DESC LIMIT 10;
+SELECT COUNT(*) FROM drizzle.__drizzle_migrations;
+SELECT id, created_at FROM drizzle.__drizzle_migrations ORDER BY id DESC LIMIT 5;
 
 -- Verify table existence (post-migration check)
 SELECT to_regclass('public.credential_member'), to_regclass('public.workspace_budget');
-
--- Remove stale migration entries (rebase remediation pattern)
-DELETE FROM drizzle.__drizzle_migrations WHERE id = (
-  SELECT id FROM drizzle.__drizzle_migrations ORDER BY id DESC LIMIT 1
-);
 ```
 
-> ⚠️ **Rebase remediation note:** After rebasing onto `sim-origin/main`, if the production deploy fails with `DROP INDEX ... does not exist`, the production DB has stale budget migration rows. Connect with `psql "$PROD_DATABASE_URL"`, verify `credential_member` table is absent, then delete the last N stale rows using the pattern above.
+> ⚠️ **Rebase remediation:** Drizzle uses `MAX(created_at)` as a watermark — entries with `folderMillis` ≤ that value are skipped. After a rebase, stale local migration rows have out-of-sequence timestamps and must all be deleted. Delete every row whose `created_at` exceeds the last legitimate upstream entry. If a deploy fails with `CREATE TRIGGER ... already exists`, drop the conflicting triggers before redeploying.
 
 ### What this means for agents
 
