@@ -45,12 +45,39 @@ This Sim Studio instance is **self-hosted, single-user**. The only user is the o
 
 | Fact | Detail |
 |------|--------|
-| **Hosting** | Self-hosted (not SaaS, not cloud-managed) |
+| **Hosting** | Render (Frankfurt region) |
 | **Users** | 1 — the operator. No external end-users log into Sim |
 | **Billing** | None. No Stripe, no subscriptions, no per-seat charges |
 | **Workspaces** | 3 workspaces: `Ege's Workspace`, `Kamatas Workspace`, `Dynamic Config` |
 | **Clients** | Each workspace corresponds to one Chatwoot account (one business client) |
 | **Role** | Sim is used as an **AI workflow backend** — Chatwoot sends webhooks, Sim processes them |
+| **Prod DB** | `$PROD_DATABASE_URL` in `apps/sim/.env` — Render PostgreSQL (Frankfurt) |
+
+### Connecting to the Production Database
+
+```bash
+# Using the env var (recommended)
+source apps/sim/.env && psql "$PROD_DATABASE_URL"
+
+# Direct psql
+psql "postgresql://sim_production_user:<password>@REDACTED-HOST/sim_production"
+```
+
+**Common production DB tasks:**
+```sql
+-- Check migration state
+SELECT id, hash FROM drizzle.__drizzle_migrations ORDER BY id DESC LIMIT 10;
+
+-- Verify table existence (post-migration check)
+SELECT to_regclass('public.credential_member'), to_regclass('public.workspace_budget');
+
+-- Remove stale migration entries (rebase remediation pattern)
+DELETE FROM drizzle.__drizzle_migrations WHERE id = (
+  SELECT id FROM drizzle.__drizzle_migrations ORDER BY id DESC LIMIT 1
+);
+```
+
+> ⚠️ **Rebase remediation note:** After rebasing onto `sim-origin/main`, if the production deploy fails with `DROP INDEX ... does not exist`, the production DB has stale budget migration rows. Connect with `psql "$PROD_DATABASE_URL"`, verify `credential_member` table is absent, then delete the last N stale rows using the pattern above.
 
 ### What this means for agents
 
