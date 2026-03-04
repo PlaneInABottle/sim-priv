@@ -2,7 +2,7 @@
 
 <!-- ============================================================
   E-COMMERCE AGENT PROMPT TEMPLATE
-  Reference: docs/prompts/kamatas-agent-prompt-compressed.md
+  Reference: docs/prompts/kamatas-agent-prompt.md
 
   Replace all {{PLACEHOLDER}} values with company-specific data.
   Search "CUSTOMIZE:" for guidance on each section.

@@ -34,6 +34,7 @@ create_workflow({ name: "My Workflow", workspaceId: "ws_id" })
 | `description` | | Optional description |
 | `color` | | Hex color (default: `#3972F6`) |
 | `folderId` | | Folder placement |
+| `sortOrder` | | Sort order within folder/workspace |
 
 ---
 

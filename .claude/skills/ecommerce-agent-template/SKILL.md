@@ -5,7 +5,7 @@ description: Reusable template for creating e-commerce support agent prompts for
 
 # E-Commerce Agent Prompt Template
 
-Reusable prompt template for ikas-based e-commerce support agents. Modeled on the Kamatas agent (repo root: `docs/prompts/kamatas-agent-prompt-compressed.md`).
+Reusable prompt template for ikas-based e-commerce support agents. Modeled on the Kamatas agent (repo root: `docs/prompts/kamatas-agent-prompt.md`).
 
 ## Workflow
 

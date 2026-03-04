@@ -64,10 +64,10 @@ Expected: `localhost:5432 - accepting connections`
 ### Step 2: Run Database Migrations
 
 ```bash
-cd packages/db && bunx drizzle-kit migrate --config=./drizzle.config.ts
+bun run db:migrate
 ```
 
-Run from repo root. Requires `DATABASE_URL` in `apps/sim/.env`.
+Run from repo root. Runs both upstream migrations (`drizzle.config.ts`) and local fork migrations (`drizzle-local.config.ts`) which include the budget tables. Requires `DATABASE_URL` in `apps/sim/.env`.
 
 ### Step 3: Start App + Socket Server
 
@@ -168,7 +168,7 @@ docker compose -f docker-compose.local.yml down -v
 ### Re-run Migrations
 
 ```bash
-cd packages/db && bunx drizzle-kit migrate --config=./drizzle.config.ts
+bun run db:migrate
 ```
 
 ### Clear Next.js Cache
@@ -182,7 +182,7 @@ Then restart the app process.
 ### Push Schema Changes (Dev Only)
 
 ```bash
-cd packages/db && bunx drizzle-kit push --config=./drizzle.config.ts
+bun run --cwd packages/db drizzle-kit push --config=./drizzle.config.ts
 ```
 
 ## Quick Troubleshooting

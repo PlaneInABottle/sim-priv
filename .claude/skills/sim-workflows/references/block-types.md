@@ -359,6 +359,16 @@ Send HTTP POST requests to external webhook URLs with optional HMAC signing.
 
 > **Note:** Do not confuse with `generic_webhook` (a trigger block that *receives* webhooks). `webhook_request` is an action block that *sends* outbound webhook requests.
 
+## Recent Additions (v0.5.104)
+| Block Type | Name | Category |
+|-----------|------|----------|
+| `brandfetch` | Brandfetch | tools |
+| `google_meet` | Google Meet | tools |
+| `dub` | Dub.co | tools |
+| `amplitude` | Amplitude | tools |
+| `google_pagespeed` | Google PageSpeed | tools |
+| `pagerduty` | PagerDuty | tools |
+
 ## Data & Storage Blocks
 
 ### response
