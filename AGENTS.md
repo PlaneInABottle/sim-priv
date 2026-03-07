@@ -458,12 +458,12 @@ sim-mcp-delete_skill({ workspaceId, id })
 
 Invoke with `skill` tool. Tier indicates when loading is mandatory vs recommended.
 
-Repo-local skills under `.claude/skills/` are listed below. Externally loaded
+Repo-local skills under `.agents/skills/` are listed below. Externally loaded
 authority skills such as `skill-maintainer` and `skill-creator` may still be
 loaded when needed, but they are not part of this repository-owned inventory.
 
 If you package a `.skill` archive for distribution, write it outside the live
-tree (for example `./dist/skills`) instead of placing it under `.claude/skills/`.
+tree (for example `./dist/skills`) instead of placing it under `.agents/skills/`.
 
 | Tier | Skill | Use When |
 |------|-------|----------|
@@ -569,7 +569,7 @@ RAG:               start_trigger → knowledge (retrieve) → agent (answer) →
 | Issue | Solution |
 |-------|----------|
 | Tool gives wrong output | 🔥 Load `sim-workflow-testing` → PATH_ISOLATION profile → check trace spans for actual vs expected |
-| Can't verify custom tool logic | Phase 1 JS validation first, then Phase 2 isolated workflow. See [testing skill](.claude/skills/sim-workflow-testing/SKILL.md) |
+| Can't verify custom tool logic | Phase 1 JS validation first, then Phase 2 isolated workflow. See [testing skill](.agents/skills/sim-workflow-testing/SKILL.md) |
 | Block outputs wrong in trace | `get_execution_logs({ includeTraceSpans: true, details: "full" })` — each span shows block I/O |
 | Condition routes wrong | `CONDITION_ONLY` profile — check condition outputs for branch selection |
 | Blocks left disabled | Emergency restore: `toggle_block_enabled(enabled=true)` for all blocks |

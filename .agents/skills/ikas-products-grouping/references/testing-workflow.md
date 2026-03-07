@@ -216,7 +216,7 @@ console.log(JSON.stringify(grouped[0], null, 2));
 ### 1.5 Run Test
 
 ```bash
-cd .claude/skills/ikas-products-grouping/references
+cd .agents/skills/ikas-products-grouping/references
 node test-products.js
 ```
 

@@ -19,4 +19,4 @@ This skill only wraps deployment targets already documented in the repo.
 - Use `README.md` for high-level setup paths and compose/npm entrypoints.
 - Use `RENDER_DEPLOYMENT.md` for Render-specific service layout and post-deploy steps.
 - Use `helm/sim/README.md` for chart values, secrets, ingress, and production security notes.
-- Keep packaged `.skill` archives outside `.claude/skills/`; deployment docs should point at runtime artifacts, not the live skill tree.
+- Keep packaged `.skill` archives outside `.agents/skills/`; deployment docs should point at runtime artifacts, not the live skill tree.

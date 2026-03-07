@@ -175,7 +175,7 @@ toggle_block_enabled({ workflowId: "wf_abc", blockId: "block_1", enabled: false 
 toggle_block_enabled({ workflowId: "wf_abc", blockId: "block_1", enabled: true })
 ```
 
-**Use cases:** Disable email/Slack/webhook blocks during testing, A/B test branches, isolate failures. See [SKILL.md Best Practices](../SKILL.md#disabling-blocks-for-safe-testing) for patterns.
+**Use cases:** Disable email/Slack/webhook blocks during testing, A/B test branches, isolate failures. See [safe testing patterns](#disabling-blocks-for-safe-testing) for patterns.
 
 #### Disabling Blocks for Safe Testing
 

@@ -107,7 +107,7 @@ If curl fails, the server is still compiling. Wait 10s and retry. Monitor with `
 Run the health check script:
 
 ```bash
-bash .claude/skills/sim-runtime/scripts/check-health.sh
+bash .agents/skills/sim-runtime/scripts/check-health.sh
 ```
 
 ## Health Checks
