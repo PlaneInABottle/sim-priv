@@ -1,3 +1,8 @@
+---
+name: db-migrations
+description: Authoritative guide for the dual-config Drizzle migration architecture in this repo. Use when working on Sim database migrations, rebasing upstream migration history, running local fork migrations, or debugging Drizzle watermark and production migration issues.
+---
+
 # Database Migrations — Sim Studio
 
 > Authoritative guide for the dual-config Drizzle migration architecture, rebase
@@ -142,9 +147,15 @@ DROP TRIGGER IF EXISTS user_table_rows_delete_trigger ON user_table_rows;
 ## Production Connection
 
 ```bash
-# Using env var (recommended)
-source apps/sim/.env && psql "$PROD_DATABASE_URL"
+# Export a production connection string in your shell, then connect
+# Use the variable name your deployment environment actually provides.
+psql "$DATABASE_URL"
 ```
+
+`DATABASE_URL` is the repo-standard connection-string variable. If your deployment
+platform exposes the production database under a different variable name, export
+that value into `DATABASE_URL` (or pass it directly to `psql`) before running the
+diagnostics below.
 
 ### Quick diagnostic queries
 

@@ -458,18 +458,27 @@ sim-mcp-delete_skill({ workspaceId, id })
 
 Invoke with `skill` tool. Tier indicates when loading is mandatory vs recommended.
 
+Repo-local skills under `.claude/skills/` are listed below. Externally loaded
+authority skills such as `skill-maintainer` and `skill-creator` may still be
+loaded when needed, but they are not part of this repository-owned inventory.
+
+If you package a `.skill` archive for distribution, write it outside the live
+tree (for example `./dist/skills`) instead of placing it under `.claude/skills/`.
+
 | Tier | Skill | Use When |
 |------|-------|----------|
 | 🔥 Required | `sim-workflow-testing` | **ANY** workflow testing, debugging, trace inspection, or execution verification |
+| ✅ Recommended | `kamatas-workflow-testing` | Kamatas-specific workflow inventory, IDs, and maintained scenario suite layered on the generic testing framework |
 | 🔥 Required | `sim-workflows` | Building/modifying workflows via MCP (blocks, edges, variables) |
 | 🔥 Required | `ikas-api` | Querying ikas e-commerce data (products, orders, customers via GraphQL) |
+| ✅ Recommended | `db-migrations` | Dual-config Drizzle migration architecture, rebases, watermark debugging, production remediation |
 | ✅ Recommended | `ecommerce-agent-template` | Creating WhatsApp/chat support agents for ikas companies (product browsing, order lookup, handoff) |
 | ✅ Recommended | `ikas-products-grouping` | Product discovery tools with category grouping, color/dimension parsing for ikas stores |
-
-> **⚠️ Note:** `ikas-products-grouping` may not auto-discover if the binary `.skill` package (`.claude/skills/ikas-products-grouping.skill`) conflicts with directory-based discovery. If not available, load it manually or remove the `.skill` file.
 | ✅ Recommended | `config-production-db` | Config_production database schema, tenant auth, runtime query flow |
+| ✅ Recommended | `sim-app-development` | Repo-local app development touchpoints and integration checklist outside workflow-only or deployment work |
 | ✅ Recommended | `sim-runtime` | Starting/monitoring the Sim Studio dev environment |
-| ✅ Recommended | `skill-creator` | Creating and packaging new AI skills |
+| ✅ Recommended | `sim-self-hosting` | Self-hosting and deployment guidance for npm, Docker Compose, Render, Helm, and environment setup |
+| ✅ Recommended | `trendyol-api` | Trendyol marketplace Q&A and approved-products API reference |
 | ⚠️ Commands | `add-integration` / `add-block` / `add-tools` / `add-trigger` | Slash commands: `/add-integration`, `/add-block`, `/add-tools`, `/add-trigger` for workflow scaffolding |
 
 ---

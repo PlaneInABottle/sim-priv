@@ -23,7 +23,7 @@ Test scenarios for the Kamatas PROD workflow (`98c363ef-febc-42cc-82d2-d40b501c5
 
 ## Block Map (Quick Reference)
 
-See `references/block-management.md` for the full 25-block map, edge map, and Mermaid diagram.
+See `block-management.md` for the full 25-block map, edge map, and Mermaid diagram.
 
 Key blocks referenced in test scenarios:
 
@@ -136,7 +136,7 @@ GROUP BY w.conversation_limit, w.is_enabled;
 ```
 
 > **Important:** Modify budget state via the operational API or sim-mcp subblock updates,
-> not direct SQL. See `testing-protocol.md` § "Modifying Workflow State During Testing".
+> not direct SQL. Use the generic `sim-workflow-testing` protocol for workflow-state changes.
 
 ### BG-01: Budget Available — Conversation Allowed
 
@@ -406,7 +406,7 @@ This test suite covers the 8 most critical scenarios. To add more, follow this p
 
 ### Block ID Reference for New Scenarios
 
-All block IDs are in `references/block-management.md`. Key IDs for constructing disable lists:
+All block IDs are in `block-management.md`. Key IDs for constructing disable lists:
 
 ```python
 # Copy-paste ready: all 25 block IDs

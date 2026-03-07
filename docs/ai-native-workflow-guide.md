@@ -148,13 +148,15 @@ A skill is a structured document that gives an AI agent domain-specific knowledg
 Use `skill-creator` (or equivalent) to scaffold the skill structure:
 
 ```
-skill-name/
-├── skill.md          # Primary knowledge document
+.claude/skills/skill-name/
+├── SKILL.md          # Primary knowledge document
 ├── scripts/          # Automation scripts (optional)
-└── README.md         # Human-readable overview
+├── references/       # Load-on-demand detail (optional)
+└── assets/           # Output resources (optional)
 ```
 
-The skill document should be dense, actionable, and organized for quick lookup—not prose.
+Keep `SKILL.md` concise and move large detail into `references/`. Skills in this
+repo do not require extra human-facing docs alongside the skill files.
 
 #### 3.2 Document Core Operations
 
@@ -204,11 +206,14 @@ check_socket && echo "✓ Socket" || echo "✗ Socket"
 Skills are project artifacts. Commit them alongside code:
 
 ```bash
-git add .skills/sim-runtime/
+git add .claude/skills/sim-runtime/
 git commit -m "feat: add sim-runtime skill for AI-managed development"
 ```
 
 This ensures every developer (human or AI) has access to the same operational knowledge.
+
+If you package a `.skill` archive for distribution, write it outside the live
+tree (for example `./dist/skills`) instead of placing it under `.claude/skills/`.
 
 ### Example: sim-runtime Skill
 

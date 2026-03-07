@@ -1,7 +1,6 @@
 ---
 name: sim-workflows
 description: Use when building or modifying Sim workflows programmatically via MCP tools - adding/removing blocks, connecting edges, managing workflow state, importing/exporting workflows, or automating workflow creation. Provides comprehensive guide for all sim-mcp operations including block types, API operations, variables, subflows, templates, and best practices.
-license: Complete terms in LICENSE.txt
 ---
 
 # AI-Native Workflow Management

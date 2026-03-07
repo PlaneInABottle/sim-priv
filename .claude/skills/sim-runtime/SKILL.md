@@ -36,7 +36,8 @@ Native dev is 3-5x faster than Docker volumes on macOS (50-200ms HMR vs 200-800m
 - **bun** installed globally
 - **Docker** and Docker Compose installed and running
 - `.env` file at `apps/sim/.env` (copy from `apps/sim/.env.example`)
-- Required env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `ENCRYPTION_KEY`, `INTERNAL_API_SECRET`, `API_ENCRYPTION_KEY`
+- Core env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `ENCRYPTION_KEY`, `INTERNAL_API_SECRET`
+- Optional / deployment-specific security var: `API_ENCRYPTION_KEY` (recommended by self-hosting docs and Helm guidance, but not required by the local env schema)
 
 ## Starting the Environment
 
@@ -205,7 +206,7 @@ bun run --cwd packages/db drizzle-kit push --config=./drizzle.config.ts
 ### scripts/
 
 - `check-health.sh` — Check all three services are healthy. Run directly or read for command reference.
-- `startup.sh` — Complete startup sequence (DB → migrations → health wait). Useful as a command reference for AI agents.
+- `startup.sh` — Starts PostgreSQL, waits for DB readiness, and runs migrations. Use it as a DB/bootstrap reference; start the app and realtime server separately.
 
 ### references/
 

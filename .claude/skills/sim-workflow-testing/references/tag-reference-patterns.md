@@ -17,7 +17,7 @@ and pre-deployment checklists for Sim Studio workflows.
 
 ## Critical: Tag Reference Anti-Patterns
 
-**28 tag reference errors in Kamatas PROD (last 24h) — avoid these mistakes:**
+**Recent production and debugging work surfaced these patterns — avoid these mistakes:**
 
 ### Anti-Pattern 1: JSDoc Comments with `<>` Tag Syntax ❌ CRITICAL
 

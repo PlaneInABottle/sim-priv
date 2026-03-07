@@ -1,6 +1,6 @@
 ---
 name: trendyol-api
-description: Reference for Trendyol Marketplace APIs — Customer Questions (Q&A) and Product Filtering (Approved Products v2). Based exclusively on official Trendyol developer documentation.
+description: Reference for Trendyol Marketplace APIs — Customer Questions (Q&A) and Product Filtering (Approved Products v2). Use when the AI agent needs official request/response details, constraints, pagination, status values, or the combined product-aware Q&A flow for Trendyol seller support workflows. Based exclusively on official Trendyol developer documentation.
 ---
 
 # Trendyol Marketplace API
@@ -107,13 +107,3 @@ See [Integration Workflow](references/integration-workflow.md) for the full step
 | [Integration Workflow](references/integration-workflow.md) | How to combine both APIs for product-aware Q&A support |
 
 ---
-
-## When to Use This Skill
-
-Use when you need to:
-- Fetch customer questions from Trendyol marketplace
-- Answer customer questions via the API
-- List approved products with detailed information (pricing, variants, delivery)
-- Look up product details by `productMainId`, barcode, or stock code
-- Build workflows that combine customer questions with product data
-- Understand the Q&A and product data models

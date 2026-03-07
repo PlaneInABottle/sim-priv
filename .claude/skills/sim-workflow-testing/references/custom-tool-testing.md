@@ -21,9 +21,9 @@ See `testing-protocol.md` for the core 6-phase workflow testing protocol.
 
 When testing a new custom tool for the first time, use a restricted block configuration before full integration.
 
-### Setup: Minimal Blocks Profile
+### Setup: Minimal PATH_ISOLATION Profile
 
-Create a **TOOL_ONLY** test profile with:
+Use the shared **PATH_ISOLATION** profile with:
 - **Enabled:** `start_trigger` → Agent block (uses tool) → Response block  
   *(Legacy `api_trigger` may exist in older workflows but is hidden/deprecated.)*
 - **Disabled:** All other blocks (routers, conditions, secondary agents, integrations)
@@ -77,7 +77,7 @@ Common mistakes and their corrections:
 
 ### ❌ Anti-Pattern 1: Creating Parallel Test Workflows
 
-**What it looks like:** Copy "Kamatas PROD" → "Kamatas PROD - TEST COPY" → test on copy.
+**What it looks like:** Copy a live workflow → create a `- TEST COPY` variant → test on the copy.
 
 **Why it fails:** Divergence, no confidence (changes haven't touched real workflow), maintenance burden.
 
@@ -157,7 +157,7 @@ When building a new custom tool for multiple companies or workflows:
 - [ ] Token savings measured and documented
 - [ ] Edge cases tested (null, empty, invalid input)
 - [ ] Tool created via sim-mcp-upsert_custom_tools
-- [ ] Tool tested in isolated blocks profile (trigger → agent → response only)
+- [ ] Tool tested with a PATH_ISOLATION block set (trigger → agent → response only)
 - [ ] Output schema validated (all fields present, correct types)
 - [ ] Agent routing verified (when to use tool vs other paths)
 - [ ] Error handling tested (invalid input, API failure)

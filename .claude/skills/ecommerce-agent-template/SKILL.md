@@ -104,11 +104,11 @@ If your agent uses ikas GraphQL-backed tools (`ikas_browse`, `ikas_lookup_custom
    - `https://<store>.myikas.com/api/admin/oauth/token`
 5. Use returned bearer token for Admin GraphQL calls.
 
-For full auth flow and token lifecycle details, see [ikas-api skill quick start](../../ikas-api/SKILL.md#quick-start).
+For full auth flow and token lifecycle details, see [ikas-api skill quick start](../ikas-api/SKILL.md#quick-start).
 
-> **Rate limits:** ikas Admin API requests are rate-limited (currently 50 requests / 10 seconds). See [ikas-api rate limiting](../../ikas-api/SKILL.md#rate-limiting) before production rollout.
+> **Rate limits:** ikas Admin API requests are rate-limited (currently 50 requests / 10 seconds). See [ikas-api rate limiting](../ikas-api/SKILL.md#rate-limiting) before production rollout.
 
-> **Production note:** Kamatas replaces `ikas_browse` with `get_products_by_main_category` — a single-call tool returning all products grouped by type with `dims: "WxH"` strings and color variants. See the [ikas-products-grouping skill](../../ikas-products-grouping/SKILL.md) for the grouping pattern. When using this tool, navigation simplifies from multi-step browsing to: customer says category → single tool call → filter and present results. The template uses `ikas_browse` as the generic fallback; customize the navigation section for your tool.
+> **Production note:** Kamatas replaces `ikas_browse` with `get_products_by_main_category` — a single-call tool returning all products grouped by type with `dims: "WxH"` strings and color variants. See the [ikas-products-grouping skill](../ikas-products-grouping/SKILL.md) for the grouping pattern. When using this tool, navigation simplifies from multi-step browsing to: customer says category → single tool call → filter and present results. The template uses `ikas_browse` as the generic fallback; customize the navigation section for your tool.
 
 ### Order Context Capture Pattern
 
@@ -211,13 +211,7 @@ The memory block takes the formatted `contextText` and injects it into the agent
 | **Retrieval** | Agent reads via sliding window on next turn — context persists across messages |
 | **TTL** | 24h+ sliding window (configurable per deployment) |
 
-The `compositeKey` should combine conversation ID + customer identifier to scope context per customer session.
-
-#### When to Use
-
-- **Customer has existing orders** — phone-based lookup returns order history, agent needs to discuss specific orders across multiple messages
-- **Cargo/tracking queries** — customer asks "where is my order?" then follows up with "which cargo company?" — agent recalls tracking data without re-fetching
-- **Multi-order customers** — customer has 5+ orders, agent needs to help navigate between them over several turns
+The `compositeKey` should combine conversation ID + customer identifier to scope context per customer session. This pattern is most useful for order-history, cargo/tracking, and multi-order follow-up conversations.
 
 #### Example: Kamatas PROD Agent Handling Cargo Query
 
