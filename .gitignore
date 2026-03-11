@@ -32,6 +32,7 @@ sim-standalone.tar.gz
 
 # env files
 .env
+.env.render
 *.env
 .env.local
 .env.development
