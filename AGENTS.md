@@ -476,6 +476,7 @@ tree (for example `./dist/skills`) instead of placing it under `.agents/skills/`
 | ✅ Recommended | `ikas-products-grouping` | Product discovery tools with category grouping, color/dimension parsing for ikas stores |
 | ✅ Recommended | `config-production-db` | Config_production database schema, tenant auth, runtime query flow |
 | ✅ Recommended | `sim-app-development` | Repo-local app development touchpoints and integration checklist outside workflow-only or deployment work |
+| ✅ Recommended | `sim-debugging` | Production debugging workflow for Render-hosted incidents, SSH/log access issues, and production Postgres execution/queue investigation |
 | ✅ Recommended | `sim-runtime` | Starting/monitoring the Sim Studio dev environment |
 | ✅ Recommended | `sim-self-hosting` | Self-hosting and deployment guidance for npm, Docker Compose, Render, Helm, and environment setup |
 | ✅ Recommended | `trendyol-api` | Trendyol marketplace Q&A and approved-products API reference |
